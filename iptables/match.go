@@ -59,4 +59,5 @@ const (
 	MatchTcp
 )
 
-type Match struct{}
+type Match struct {
+}

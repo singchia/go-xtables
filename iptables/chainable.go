@@ -8,5 +8,5 @@ func (iptables *IPTables) Chain() *Iptables {
 	return nil
 }
 
-func (iptables *IPTables) Match() *Iptables {
+func (iptables *IPTables) Match(matches ...*Match) *Iptables {
 }
