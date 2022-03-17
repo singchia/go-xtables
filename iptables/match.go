@@ -1,63 +1,90 @@
 package iptables
 
-type MatchType int
+type matchType int
 
 const (
-	MatchAddrType MatchType = iota
-	MatchAH
-	MatchBPF
-	MatchCgroup
-	MatchCluster
-	MatchComment
-	MatchConnBytes
-	MatchConnLabel
-	MatchConnLimit
-	MatchConnMark
-	MatchConnTrack
-	MatchCPU
-	MatchDCCP
-	MatchDevGroup
-	MatchDSCP
-	MatchDst
-	MatchECN
-	MatchESP
-	MatchEUI64
-	MatchFrag
-	MatchHashLimit
-	MatchHBH // Hop-by-Hop
-	MatchHelper
-	MatchHL // Hop Limit
-	MatchIcmp
-	MatchIcmp6
-	MatchIPRange
-	MatchIPv6Header
-	MatchIPVS
-	MatchLength
-	MatchLimit
-	MatchMAC
-	MatchMark
-	MatchMH
-	MatchMultiPort
-	MatchNFacct
-	MatchOSF
-	MatchOwner
-	MatchPhysDev
-	MatchPktType
-	MatchPolicy
-	MatchQuota
-	MatchRateEst
-	MatchRealm
-	MatchRecent
-	MatchRPFilter
-	MatchRT
-	MatchSCTP
-	MatchSet
-	MatchSocket
-	MatchState
-	MatchStatistic
-	MatchString
-	MatchTcp
+	matchAddrType matchType = iota
+	matchAH
+	matchBPF
+	matchCgroup
+	matchCluster
+	matchComment
+	matchConnBytes
+	matchConnLabel
+	matchConnLimit
+	matchConnMark
+	matchConnTrack
+	matchCPU
+	matchDCCP
+	matchDevGroup
+	matchDSCP
+	matchDst
+	matchECN
+	matchESP
+	matchEUI64
+	matchFrag
+	matchHashLimit
+	matchHBH // Hop-by-Hop
+	matchHelper
+	matchHL // Hop Limit
+	matchIcmp
+	matchIcmp6
+	matchIPRange
+	matchIPv4
+	matchIPv6
+	matchIPv6Header
+	matchIPVS
+	matchLength
+	matchLimit
+	matchMAC
+	matchMark
+	matchMH
+	matchMultiPort
+	matchNFacct
+	matchOSF
+	matchOwner
+	matchPhysDev
+	matchPktType
+	matchPolicy
+	matchQuota
+	matchRateEst
+	matchRealm
+	matchRecent
+	matchRPFilter
+	matchRT
+	matchSCTP
+	matchSet
+	matchSocket
+	matchState
+	matchStatistic
+	matchString
+	matchTcp
 )
 
-type Match struct {
+type match interface {
+	typ() matchType
+	string() string
+}
+
+type baseMatch struct {
+	matchType matchType
+}
+
+func (base baseMatch) typ() matchType {
+	return base.matchType
+}
+
+func (base baseMatch) string() string {
+	return ""
+}
+
+type MatchIPv4 struct {
+	baseMatch
+}
+
+func (iptables *IPTables) MatchIPv4() *IPTables {
+	match := &MatchIPv4{
+		baseMatch: baseMatch{matchIPv4},
+	}
+	iptables.statement.addMatch()
 }
