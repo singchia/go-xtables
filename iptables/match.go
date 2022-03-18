@@ -63,18 +63,19 @@ const (
 
 type match interface {
 	typ() matchType
-	string() string
+	short() string
+	long() long
 }
 
 type baseMatch struct {
 	matchType matchType
 }
 
-func (base baseMatch) typ() matchType {
-	return base.matchType
+func (bm baseMatch) typ() matchType {
+	return bm.matchType
 }
 
-func (base baseMatch) string() string {
+func (bm baseMatch) short() string {
 	return ""
 }
 
@@ -82,9 +83,22 @@ type MatchIPv4 struct {
 	baseMatch
 }
 
-func (iptables *IPTables) MatchIPv4() *IPTables {
-	match := &MatchIPv4{
-		baseMatch: baseMatch{matchIPv4},
-	}
-	iptables.statement.addMatch()
+func (mIPv4 *MatchIPv4) short() {
+	return "-4"
+}
+
+func (mIPv4 *MatchIPv4) long() {
+	return "--ipv4"
+}
+
+type MatchIPv6 struct {
+	baseMatch
+}
+
+func (mIPv6 *MatchIPv6) short() {
+	return "-6"
+}
+
+func (mIPv6 *MatchIPv6) long() {
+	return "--ipv6"
 }
