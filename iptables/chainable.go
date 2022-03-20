@@ -44,3 +44,6 @@ func (iptables *IPTables) MatchIPv6() *IPTables {
 		},
 	}
 }
+
+func (iptables *IPTables) MatchProtocol() *IPTables {
+}

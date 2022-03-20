@@ -102,3 +102,7 @@ func (mIPv6 *MatchIPv6) short() {
 func (mIPv6 *MatchIPv6) long() {
 	return "--ipv6"
 }
+
+type MatchProtocol struct {
+	baseMatch
+}
