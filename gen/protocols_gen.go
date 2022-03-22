@@ -15,7 +15,7 @@ const headerFmt = `/*
  * All rights reserved.
  */
 
-package gopacket
+package iptables
 
 // Created by gen.go, don't edit manually
 // Generated at %s

@@ -32,10 +32,6 @@ func (iptables *IPTables) ConnSecMark() error {
 	return nil
 }
 
-func (iptables *IPTables) Classify() error {
-	return nil
-}
-
 func (iptables *IPTables) CT() error {
 	return nil
 }
