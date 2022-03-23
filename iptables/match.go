@@ -1,3 +1,9 @@
+/*
+ * Apache License 2.0
+ *
+ * Copyright (c) 2022, Austin Zhai
+ * All rights reserved.
+ */
 package iptables
 
 import "fmt"
@@ -18,7 +24,7 @@ const (
 	matchConnTrack
 	matchCPU
 	matchDCCP
-	matchDestination
+	matchDestination // option
 	matchDevGroup
 	matchDSCP
 	matchDst
@@ -32,6 +38,7 @@ const (
 	matchHL // Hop Limit
 	matchIcmp
 	matchIcmp6
+	matchInInterface // option
 	matchIPRange
 	matchIPv4
 	matchIPv6
@@ -45,11 +52,12 @@ const (
 	matchMultiPort
 	matchNFacct
 	matchOSF
+	matchOutInterface // option
 	matchOwner
 	matchPhysDev
 	matchPktType
 	matchPolicy
-	matchProtocol
+	matchProtocol // option
 	matchQuota
 	matchRateEst
 	matchRealm
@@ -59,11 +67,11 @@ const (
 	matchSCTP
 	matchSet
 	matchSocket
-	matchSource
+	matchSource // option
 	matchState
 	matchStatistic
 	matchString
-	matchTcp
+	matchTCP
 )
 
 type match interface {
@@ -168,4 +176,42 @@ func (mDst *MatchDestination) long() string {
 		return fmt.Sprintf("! --destination %s", mDst.ads.String())
 	}
 	return fmt.Sprintf("--destination %s", mDst.ads.String())
+}
+
+type MatchInInterface struct {
+	baseMatch
+	iface string
+}
+
+func (mInIface *MatchInInterface) short() string {
+	if mInIface.invert {
+		return fmt.Sprintf("! -i %s", mInIface.iface)
+	}
+	return fmt.Sprintf("-i %s", mInIface.iface)
+}
+
+func (mInIface *MatchInInterface) long() string {
+	if mInIface.invert {
+		return fmt.Sprintf("! --in-interface %s", mInIface.iface)
+	}
+	return fmt.Sprintf("--in-interface %s", mInIface.iface)
+}
+
+type MatchOutInterface struct {
+	baseMatch
+	iface string
+}
+
+func (mOutIface *MatchOutInterface) short() string {
+	if mOutIface.invert {
+		return fmt.Sprintf("! -o %s", mOutIface.iface)
+	}
+	return fmt.Sprintf("-o %s", mOutIface.iface)
+}
+
+func (mOutIface *MatchOutInterface) short() string {
+	if mOutIface.invert {
+		return fmt.Sprintf("! --out-interface %s", mOutIface.iface)
+	}
+	return fmt.Sprintf("--out-interface %s", mOutIface.iface)
 }
