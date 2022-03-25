@@ -10,22 +10,22 @@ type Statement struct {
 	table   Table
 	chain   Chain
 	err     error
-	matches map[matchType]match
-	options map[optionType]option
+	matches map[MatchType]Match
+	options map[OptionType]Option
 }
 
 func NewStatement() *Statement {
 	return &Statement{
 		table:   TableFilter,
-		matches: make(map[matchType]match),
-		options: make(map[optionType]option),
+		matches: make(map[MatchType]Match),
+		options: make(map[OptionType]Option),
 	}
 }
 
-func (statement *Statement) addMatch(match match) {
+func (statement *Statement) addMatch(match Match) {
 	statement.matches[match.typ()] = match
 }
 
-func (statement *Statement) addOption(option option) {
+func (statement *Statement) addOption(option Option) {
 	statement.options[option.typ()] = option
 }

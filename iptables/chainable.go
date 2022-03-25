@@ -6,29 +6,22 @@
  */
 package iptables
 
-type Table string
-type Chain string
+type TableType int
 
 const (
-	TableFilter   Table = "filter"
-	TableNat      Table = "nat"
-	TableMangle   Table = "mangle"
-	TableRaw      Table = "raw"
-	TableSecutiry Table = "security"
-
-	ChainPREROUTING  Chain = "PREROUTING"
-	ChainINPUT       Chain = "INPUT"
-	ChainFORWARD     Chain = "FORWARD"
-	ChainOUTPUT      Chain = "OUTPUT"
-	ChainPOSTROUTING Chain = "POSTROUTING"
+	TableFilter   TableType = iota // filter
+	TableNat                       // nat
+	TableMangle                    // mangle
+	TableRaw                       // raw
+	TableSecutiry                  // security
 )
 
-func (iptables *IPTables) Table(table Table) *IPTables {
+func (iptables *IPTables) Table(table TableType) *IPTables {
 	iptables.statement.table = table
 	return iptables
 }
 
-func (iptables *IPTables) Chain(chain Chain) *IPTables {
+func (iptables *IPTables) Chain(chain ChainType) *IPTables {
 	iptables.statement.chain = chain
 	return iptables
 }

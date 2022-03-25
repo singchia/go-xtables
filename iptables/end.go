@@ -1,6 +1,10 @@
 package iptables
 
-func (iptables *IPTables) Jump() error {
+func (iptables *IPTables) List() error {
+	return nil
+}
+
+func (iptables *IPTables) JumpChain() error {
 	return nil
 }
 

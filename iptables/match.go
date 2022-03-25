@@ -8,92 +8,92 @@ package iptables
 
 import "fmt"
 
-type matchType int
+type MatchType int
 
 const (
-	matchAddrType matchType = iota
-	matchAH
-	matchBPF
-	matchCgroup
-	matchCluster
-	matchComment
-	matchConnBytes
-	matchConnLabel
-	matchConnLimit
-	matchConnMark
-	matchConnTrack
-	matchCPU
-	matchDCCP
-	matchDestination // option
-	matchDevGroup
-	matchDSCP
-	matchDst
-	matchECN
-	matchESP
-	matchEUI64
-	matchFrag
-	matchHashLimit
-	matchHBH // Hop-by-Hop
-	matchHelper
-	matchHL // Hop Limit
-	matchIcmp
-	matchIcmp6
-	matchInInterface // option
-	matchIPRange
-	matchIPv4
-	matchIPv6
-	matchIPv6Header
-	matchIPVS
-	matchLength
-	matchLimit
-	matchMAC
-	matchMark
-	matchMH
-	matchMultiPort
-	matchNFacct
-	matchOSF
-	matchOutInterface // option
-	matchOwner
-	matchPhysDev
-	matchPktType
-	matchPolicy
-	matchProtocol // option
-	matchQuota
-	matchRateEst
-	matchRealm
-	matchRecent
-	matchRPFilter
-	matchRT
-	matchSCTP
-	matchSet
-	matchSocket
-	matchSource // option
-	matchState
-	matchStatistic
-	matchString
-	matchTCP
+	MatchTypeAddrType MatchType = iota
+	MatchTypeAH
+	MatchTypeBPF
+	MatchTypeCgroup
+	MatchTypeCluster
+	MatchTypeComment
+	MatchTypeConnBytes
+	MatchTypeConnLabel
+	MatchTypeConnLimit
+	MatchTypeConnMark
+	MatchTypeConnTrack
+	MatchTypeCPU
+	MatchTypeDCCP
+	MatchTypeDestination // option
+	MatchTypeDevGroup
+	MatchTypeDSCP
+	MatchTypeDst
+	MatchTypeECN
+	MatchTypeESP
+	MatchTypeEUI64
+	MatchTypeFrag
+	MatchTypeHashLimit
+	MatchTypeHBH // Hop-by-Hop
+	MatchTypeHelper
+	MatchTypeHL // Hop Limit
+	MatchTypeIcmp
+	MatchTypeIcmp6
+	MatchTypeInInterface // option
+	MatchTypeIPRange
+	MatchTypeIPv4
+	MatchTypeIPv6
+	MatchTypeIPv6Header
+	MatchTypeIPVS
+	MatchTypeLength
+	MatchTypeLimit
+	MatchTypeMAC
+	MatchTypeMark
+	MatchTypeMH
+	MatchTypeMultiPort
+	MatchTypeNFacct
+	MatchTypeOSF
+	MatchTypeOutInterface // option
+	MatchTypeOwner
+	MatchTypePhysDev
+	MatchTypePktType
+	MatchTypePolicy
+	MatchTypeProtocol // option
+	MatchTypeQuota
+	MatchTypeRateEst
+	MatchTypeRealm
+	MatchTypeRecent
+	MatchTypeRPFilter
+	MatchTypeRT
+	MatchTypeSCTP
+	MatchTypeSet
+	MatchTypeSocket
+	MatchTypeSource // option
+	MatchTypeState
+	MatchTypeStatistic
+	MatchTypeString
+	MatchTypeTCP
 )
 
-type match interface {
-	typ() matchType
-	short() string
-	long() string
+type Match interface {
+	Type() MatchType
+	Short() string
+	Long() string
 }
 
 type baseMatch struct {
-	matchType matchType
+	matchType MatchType
 	invert    bool
 }
 
-func (bm baseMatch) typ() matchType {
+func (bm baseMatch) Type() MatchType {
 	return bm.matchType
 }
 
-func (bm baseMatch) short() string {
+func (bm baseMatch) Short() string {
 	return ""
 }
 
-func (bm baseMatch) long() string {
+func (bm baseMatch) Long() string {
 	return ""
 }
 
@@ -101,11 +101,11 @@ type MatchIPv4 struct {
 	baseMatch
 }
 
-func (mIPv4 *MatchIPv4) short() string {
+func (mIPv4 *MatchIPv4) Short() string {
 	return "-4"
 }
 
-func (mIPv4 *MatchIPv4) long() string {
+func (mIPv4 *MatchIPv4) Long() string {
 	return "--ipv4"
 }
 
@@ -113,105 +113,105 @@ type MatchIPv6 struct {
 	baseMatch
 }
 
-func (mIPv6 *MatchIPv6) short() string {
+func (mIPv6 *MatchIPv6) Short() string {
 	return "-6"
 }
 
-func (mIPv6 *MatchIPv6) long() string {
+func (mIPv6 *MatchIPv6) Long() string {
 	return "--ipv6"
 }
 
 type MatchProtocol struct {
 	baseMatch
-	protocol Protocol
+	Protocol Protocol
 }
 
-func (mProtocol *MatchProtocol) short() string {
+func (mProtocol *MatchProtocol) Short() string {
 	if mProtocol.invert {
-		return fmt.Sprintf("! -p %d", int(mProtocol.protocol))
+		return fmt.Sprintf("! -p %d", int(mProtocol.Protocol))
 	}
-	return fmt.Sprintf("-p %d", int(mProtocol.protocol))
+	return fmt.Sprintf("-p %d", int(mProtocol.Protocol))
 }
 
-func (mProtocol *MatchProtocol) long() string {
+func (mProtocol *MatchProtocol) Long() string {
 	if mProtocol.invert {
-		return fmt.Sprintf("! --protocol %d", int(mProtocol.protocol))
+		return fmt.Sprintf("! --protocol %d", int(mProtocol.Protocol))
 	}
-	return fmt.Sprintf("--protocol %d", int(mProtocol.protocol))
+	return fmt.Sprintf("--protocol %d", int(mProtocol.Protocol))
 }
 
 type MatchSource struct {
 	baseMatch
-	ads *Address
+	Address *Address
 }
 
-func (mSrc *MatchSource) short() string {
+func (mSrc *MatchSource) Short() string {
 	if mSrc.invert {
-		return fmt.Sprintf("! -s %s", mSrc.ads.String())
+		return fmt.Sprintf("! -s %s", mSrc.Address.String())
 	}
-	return fmt.Sprintf("-s %s", mSrc.ads.String())
+	return fmt.Sprintf("-s %s", mSrc.Address.String())
 }
 
-func (mSrc *MatchSource) long() string {
+func (mSrc *MatchSource) Long() string {
 	if mSrc.invert {
-		return fmt.Sprintf("! --source %s", mSrc.ads.String())
+		return fmt.Sprintf("! --source %s", mSrc.Address.String())
 	}
-	return fmt.Sprintf("--source %s", mSrc.ads.String())
+	return fmt.Sprintf("--source %s", mSrc.Address.String())
 }
 
 type MatchDestination struct {
 	baseMatch
-	ads *Address
+	Address *Address
 }
 
-func (mDst *MatchDestination) short() string {
+func (mDst *MatchDestination) Short() string {
 	if mDst.invert {
-		return fmt.Sprintf("! -d %s", mDst.ads.String())
+		return fmt.Sprintf("! -d %s", mDst.Address.String())
 	}
-	return fmt.Sprintf("-d %s", mDst.ads.String())
+	return fmt.Sprintf("-d %s", mDst.Address.String())
 }
 
-func (mDst *MatchDestination) long() string {
+func (mDst *MatchDestination) Long() string {
 	if mDst.invert {
-		return fmt.Sprintf("! --destination %s", mDst.ads.String())
+		return fmt.Sprintf("! --destination %s", mDst.Address.String())
 	}
-	return fmt.Sprintf("--destination %s", mDst.ads.String())
+	return fmt.Sprintf("--destination %s", mDst.Address.String())
 }
 
 type MatchInInterface struct {
 	baseMatch
-	iface string
+	Interface string
 }
 
-func (mInIface *MatchInInterface) short() string {
+func (mInIface *MatchInInterface) Short() string {
 	if mInIface.invert {
-		return fmt.Sprintf("! -i %s", mInIface.iface)
+		return fmt.Sprintf("! -i %s", mInIface.Interface)
 	}
-	return fmt.Sprintf("-i %s", mInIface.iface)
+	return fmt.Sprintf("-i %s", mInIface.Interface)
 }
 
-func (mInIface *MatchInInterface) long() string {
+func (mInIface *MatchInInterface) Long() string {
 	if mInIface.invert {
-		return fmt.Sprintf("! --in-interface %s", mInIface.iface)
+		return fmt.Sprintf("! --in-interface %s", mInIface.Interface)
 	}
-	return fmt.Sprintf("--in-interface %s", mInIface.iface)
+	return fmt.Sprintf("--in-interface %s", mInIface.Interface)
 }
 
 type MatchOutInterface struct {
 	baseMatch
-	iface string
+	Interface string
 }
 
-func (mOutIface *MatchOutInterface) short() string {
+func (mOutIface *MatchOutInterface) Short() string {
 	if mOutIface.invert {
-		return fmt.Sprintf("! -o %s", mOutIface.iface)
+		return fmt.Sprintf("! -o %s", mOutIface.Interface)
 	}
-	return fmt.Sprintf("-o %s", mOutIface.iface)
+	return fmt.Sprintf("-o %s", mOutIface.Interface)
 }
 
-func (mOutIface *MatchOutInterface) short() string {
+func (mOutIface *MatchOutInterface) Long() string {
 	if mOutIface.invert {
-		return fmt.Sprintf("! --out-interface %s", mOutIface.iface)
+		return fmt.Sprintf("! --out-interface %s", mOutIface.Interface)
 	}
-	return fmt.Sprintf("--out-interface %s", mOutIface.iface)
+	return fmt.Sprintf("--out-interface %s", mOutIface.Interface)
 }
