@@ -210,3 +210,171 @@ func (iptables *IPTables) OptionWaitInterval(microseconds uint64) *IPTables {
 	iptables.statement.addOption(option)
 	return iptables
 }
+
+func (iptables *IPTables) TargetJumpChain() *IPTables {
+	return nil
+}
+
+func (iptables *IPTables) TargetGoto() *IPTables {
+	return nil
+}
+
+func (iptables *IPTables) TargetAudit() *IPTables {
+	return nil
+}
+
+func (iptables *IPTables) TargetCheckSum() *IPTables {
+	return nil
+}
+
+func (iptables *IPTables) TargetClassify() *IPTables {
+	return nil
+}
+
+func (iptables *IPTables) TargetClusterIP() *IPTables {
+	return nil
+}
+
+func (iptables *IPTables) TargetConnMark() *IPTables {
+	return nil
+}
+
+func (iptables *IPTables) TargetConnSecMark() *IPTables {
+	return nil
+}
+
+func (iptables *IPTables) TargetCT() *IPTables {
+	return nil
+}
+
+func (iptables *IPTables) TargetDNAT() *IPTables {
+	return nil
+}
+
+func (iptables *IPTables) TargetDNPT() *IPTables {
+	return nil
+}
+
+func (iptables *IPTables) TargetDSCP() *IPTables {
+	return nil
+}
+
+func (iptables *IPTables) TargetECN() *IPTables {
+	return nil
+}
+
+func (iptables *IPTables) TargetHL() *IPTables {
+	return nil
+}
+
+func (iptables *IPTables) TargetHMark() *IPTables {
+	return nil
+}
+
+func (iptables *IPTables) TargetIdleTimer() *IPTables {
+	return nil
+}
+
+func (iptables *IPTables) TargetLED() *IPTables {
+	return nil
+}
+
+func (iptables *IPTables) TargetLog() *IPTables {
+	return nil
+}
+
+func (iptables *IPTables) TargetMark() *IPTables {
+	return nil
+}
+
+func (iptables *IPTables) TargetMasquerade() *IPTables {
+	return nil
+}
+
+func (iptables *IPTables) TargetMirror() *IPTables {
+	return nil
+}
+
+func (iptables *IPTables) TargetNetMap() *IPTables {
+	return nil
+}
+
+func (iptables *IPTables) TargetNFLog() *IPTables {
+	return nil
+}
+
+func (iptables *IPTables) TargetNFQueue() *IPTables {
+	return nil
+}
+
+func (iptables *IPTables) TargetNoTrack() *IPTables {
+	return nil
+}
+
+func (iptables *IPTables) TargetRateEst() *IPTables {
+	return nil
+}
+
+func (iptables *IPTables) TargetRedirect() *IPTables {
+	return nil
+}
+
+func (iptables *IPTables) TargetReject() *IPTables {
+	return nil
+}
+
+func (iptables *IPTables) TargetSame() *IPTables {
+	return nil
+}
+
+func (iptables *IPTables) TargetSecMark() *IPTables {
+	return nil
+}
+
+func (iptables *IPTables) TargetSet() *IPTables {
+	return nil
+}
+
+func (iptables *IPTables) TargetSNAT() *IPTables {
+	return nil
+}
+
+func (iptables *IPTables) TargetSNPT() *IPTables {
+	return nil
+}
+
+func (iptables *IPTables) TargetSynProxy() *IPTables {
+	return nil
+}
+
+func (iptables *IPTables) TargetTCPMSS() *IPTables {
+	return nil
+}
+
+func (iptables *IPTables) TargetTCPOptStrip() *IPTables {
+	return nil
+}
+
+func (iptables *IPTables) TargetTEE() *IPTables {
+	return nil
+}
+
+func (iptables *IPTables) TargetTOS() *IPTables {
+	return nil
+}
+
+func (iptables *IPTables) TargetTProxy() *IPTables {
+	return nil
+}
+
+func (iptables *IPTables) TargetTrace() *IPTables {
+	return nil
+}
+
+func (iptables *IPTables) TargetTTL() *IPTables {
+	return nil
+}
+
+func (iptables *IPTables) TargetULog() *IPTables {
+	return nil
+}
