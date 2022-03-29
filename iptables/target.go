@@ -1,11 +1,13 @@
 package iptables
 
+import "fmt"
+
 type TargetType int
 
 const (
-	TargetAccept TargetType = iota
-	TargetDrop
-	TargetReturn
+	TargetTypeAccept TargetType = iota
+	TargetTypeDrop
+	TargetTypeReturn
 	TargetTypeJumpChain // jump chain
 	TargetTypeGoto
 	TargetTypeAudit
@@ -52,8 +54,7 @@ const (
 
 type Target interface {
 	Type() TargetType
-	Short() string
-	Long() string
+	String() string
 }
 
 type baseTarget struct {
@@ -64,10 +65,39 @@ func (bt baseTarget) Type() TargetType {
 	return bt.targetType
 }
 
-func (bt baseTarget) Short() string {
+func (bt baseTarget) String() string {
 	return ""
 }
 
-func (bt baseTarget) Long() string {
-	return ""
+type TargetAccept struct {
+	baseTarget
+}
+
+func (ta *TargetAccept) String() string {
+	return "-j ACCEPT"
+}
+
+type TargetDrop struct {
+	baseTarget
+}
+
+func (ta *TargetDrop) String() string {
+	return "-j DROP"
+}
+
+type TargetReturn struct {
+	baseTarget
+}
+
+func (ta *TargetReturn) String() string {
+	return "-j RETURN"
+}
+
+type TargetJumpChain struct {
+	baseTarget
+	chain string
+}
+
+func (ta *TargetJumpChain) String() string {
+	return fmt.Sprintf("-j %s", ta.chain)
 }

@@ -12,6 +12,7 @@ type Statement struct {
 	err     error
 	matches map[MatchType]Match
 	options map[OptionType]Option
+	target  Target
 }
 
 func NewStatement() *Statement {
@@ -28,4 +29,7 @@ func (statement *Statement) addMatch(match Match) {
 
 func (statement *Statement) addOption(option Option) {
 	statement.options[option.typ()] = option
+}
+
+func (statement *Statement) String() string {
 }

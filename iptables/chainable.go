@@ -211,6 +211,10 @@ func (iptables *IPTables) OptionWaitInterval(microseconds uint64) *IPTables {
 	return iptables
 }
 
+func (iptables *IPTables) TargetAccetp() *IPTables {
+	return nil
+}
+
 func (iptables *IPTables) TargetJumpChain() *IPTables {
 	return nil
 }
