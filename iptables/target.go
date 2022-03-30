@@ -5,7 +5,8 @@ import "fmt"
 type TargetType int
 
 const (
-	TargetTypeAccept TargetType = iota
+	_ = iota
+	TargetTypeAccept
 	TargetTypeDrop
 	TargetTypeReturn
 	TargetTypeJumpChain // jump chain

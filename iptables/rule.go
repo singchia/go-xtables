@@ -2,7 +2,7 @@ package iptables
 
 type Rule struct {
 	tableType TableType
-	chain     Chain
+	chain     ChainType
 	matches   []Match
 	options   []Option
 	target    Target

@@ -3,12 +3,13 @@ package iptables
 type ChainType int
 
 const (
-	ChainPREROUTING  ChainType = iota // PREROUTING
-	ChainINPUT                        // INPUT
-	ChainFORWARD                      // FORWARD
-	ChainOUTPUT                       // OUTPUT
-	ChainPOSTROUTING                  // POSTROUTING
-	ChainUserDefined                  // USER-DEFINED
+	_                    ChainType = iota
+	ChainTypePREROUTING            // PREROUTING
+	ChainTypeINPUT                 // INPUT
+	ChainTypeFORWARD               // FORWARD
+	ChainTypeOUTPUT                // OUTPUT
+	ChainTypePOSTROUTING           // POSTROUTING
+	ChainTypeUserDefined           // USER-DEFINED
 )
 
 type Chain struct {

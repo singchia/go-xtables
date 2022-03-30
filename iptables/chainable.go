@@ -9,11 +9,12 @@ package iptables
 type TableType int
 
 const (
-	TableFilter   TableType = iota // filter
-	TableNat                       // nat
-	TableMangle                    // mangle
-	TableRaw                       // raw
-	TableSecutiry                  // security
+	_             = iota
+	TableFilter   // filter
+	TableNat      // nat
+	TableMangle   // mangle
+	TableRaw      // raw
+	TableSecurity // security
 )
 
 func (iptables *IPTables) Table(table TableType) *IPTables {
@@ -23,6 +24,12 @@ func (iptables *IPTables) Table(table TableType) *IPTables {
 
 func (iptables *IPTables) Chain(chain ChainType) *IPTables {
 	iptables.statement.chain = chain
+	return iptables
+}
+
+func (iptables *IPTables) UserDefinedChain(chain string) *IPTables {
+	iptables.statement.chain = ChainUserDefined
+	iptables.statement.userDefinedChain = chain
 	return iptables
 }
 
@@ -212,11 +219,57 @@ func (iptables *IPTables) OptionWaitInterval(microseconds uint64) *IPTables {
 }
 
 func (iptables *IPTables) TargetAccetp() *IPTables {
-	return nil
+	if iptables.statement.err != nil {
+		return iptables
+	}
+	target := &TargetAccept{
+		baseTarget: baseTarget{
+			targetType: TargetTypeAccept,
+		},
+	}
+	iptables.statement.target = target
+	return iptables
 }
 
-func (iptables *IPTables) TargetJumpChain() *IPTables {
-	return nil
+func (iptables *IPTables) TargetDrop() *IPTables {
+	if iptables.statement.err != nil {
+		return iptables
+	}
+	target := &TargetAccept{
+		baseTarget: baseTarget{
+			targetType: TargetTypeDrop,
+		},
+	}
+	iptables.statement.target = target
+	return iptables
+}
+
+func (iptables *IPTables) TargetReturn() *IPTables {
+	if iptables.statement.err != nil {
+		return iptables
+	}
+	target := &TargetAccept{
+		baseTarget: baseTarget{
+			targetType: TargetTypeReturn,
+		},
+	}
+	iptables.statement.target = target
+	return iptables
+}
+
+func (iptables *IPTables) TargetJumpChain(chain string) *IPTables {
+	if iptables.statement.err != nil {
+		return iptables
+	}
+	target := &TargetJumpChain{
+		baseTarget: baseTarget{
+			targetType: TargetTypeJumpChain,
+		},
+		chain: chain,
+	}
+	iptables.statement.chain = ChainUserDefined
+	iptables.statement.target = target
+	return iptables
 }
 
 func (iptables *IPTables) TargetGoto() *IPTables {

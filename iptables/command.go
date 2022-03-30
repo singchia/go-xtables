@@ -28,7 +28,7 @@ type hasRulenum interface {
 	rulenum() uint32
 }
 
-type command interface {
+type Command interface {
 	typ() CommandType
 	short() string
 	long() string
