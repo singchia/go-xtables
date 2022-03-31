@@ -9,12 +9,12 @@ package iptables
 type TableType int
 
 const (
-	_             = iota
-	TableFilter   // filter
-	TableNat      // nat
-	TableMangle   // mangle
-	TableRaw      // raw
-	TableSecurity // security
+	_                 TableType = iota
+	TableTypeFilter             // filter
+	TableTypeNat                // nat
+	TableTypeMangle             // mangle
+	TableTypeRaw                // raw
+	TableTypeSecurity           // security
 )
 
 func (iptables *IPTables) Table(table TableType) *IPTables {
@@ -28,7 +28,7 @@ func (iptables *IPTables) Chain(chain ChainType) *IPTables {
 }
 
 func (iptables *IPTables) UserDefinedChain(chain string) *IPTables {
-	iptables.statement.chain = ChainUserDefined
+	iptables.statement.chain = ChainTypeUserDefined
 	iptables.statement.userDefinedChain = chain
 	return iptables
 }
@@ -39,7 +39,7 @@ func (iptables *IPTables) MatchIPv4() *IPTables {
 	}
 	match := &MatchIPv4{
 		baseMatch: baseMatch{
-			matchType: matchIPv4,
+			matchType: MatchTypeIPv4,
 		},
 	}
 	iptables.statement.addMatch(match)
@@ -52,21 +52,21 @@ func (iptables *IPTables) MatchIPv6() *IPTables {
 	}
 	match := &MatchIPv6{
 		baseMatch: baseMatch{
-			matchType: matchIPv6,
+			matchType: MatchTypeIPv6,
 		},
 	}
 	iptables.statement.addMatch(match)
 	return iptables
 }
 
-func (iptables *IPTables) MatchProtocol(not bool, protocol Protocol) *IPTables {
+func (iptables *IPTables) MatchProtocol(yes bool, protocol Protocol) *IPTables {
 	if iptables.statement.err != nil {
 		return iptables
 	}
 	match := &MatchProtocol{
 		baseMatch: baseMatch{
-			matchType: matchProtocol,
-			invert:    not,
+			matchType: MatchTypeProtocol,
+			invert:    !yes,
 		},
 	}
 	iptables.statement.addMatch(match)
@@ -77,7 +77,7 @@ func (iptables *IPTables) MatchProtocol(not bool, protocol Protocol) *IPTables {
 // 1. string for hostname or network or ip
 // 2. *net.IPNet
 // 3. net.IP
-func (iptables *IPTables) MatchSource(not bool, address interface{}) *IPTables {
+func (iptables *IPTables) MatchSource(yes bool, address interface{}) *IPTables {
 	if iptables.statement.err != nil {
 		return iptables
 	}
@@ -88,9 +88,10 @@ func (iptables *IPTables) MatchSource(not bool, address interface{}) *IPTables {
 	}
 	match := &MatchSource{
 		baseMatch: baseMatch{
-			matchType: matchSource,
-			invert:    not,
+			matchType: MatchTypeSource,
+			invert:    !yes,
 		},
+		Address: ads,
 	}
 	iptables.statement.addMatch(match)
 	return iptables
@@ -100,7 +101,7 @@ func (iptables *IPTables) MatchSource(not bool, address interface{}) *IPTables {
 // 1. string for hostname or network or ip
 // 2. *net.IPNet
 // 3. net.IP
-func (iptables *IPTables) MatchDestination(not bool, address interface{}) *IPTables {
+func (iptables *IPTables) MatchDestination(yes bool, address interface{}) *IPTables {
 	if iptables.statement.err != nil {
 		return iptables
 	}
@@ -111,50 +112,51 @@ func (iptables *IPTables) MatchDestination(not bool, address interface{}) *IPTab
 	}
 	match := &MatchDestination{
 		baseMatch: baseMatch{
-			matchType: matchDestination,
-			invert:    not,
+			matchType: MatchTypeDestination,
+			invert:    !yes,
 		},
+		Address: ads,
 	}
 	iptables.statement.addMatch(match)
 	return iptables
 }
 
-func (iptables *IPTables) MatchInInterface(not bool, name string) *IPTables {
+func (iptables *IPTables) MatchInInterface(yes bool, name string) *IPTables {
 	if iptables.statement.err != nil {
 		return iptables
 	}
 	match := &MatchInInterface{
 		baseMatch: baseMatch{
-			matchType: matchInInterface,
-			invert:    not,
+			matchType: MatchTypeInInterface,
+			invert:    !yes,
 		},
 	}
 	iptables.statement.addMatch(match)
 	return iptables
 }
 
-func (iptables *IPTables) MatchOutInterface(not bool, name string) *IPTables {
+func (iptables *IPTables) MatchOutInterface(yes bool, name string) *IPTables {
 	if iptables.statement.err != nil {
 		return iptables
 	}
 	match := &MatchOutInterface{
 		baseMatch: baseMatch{
-			matchType: matchOutInterface,
-			invert:    not,
+			matchType: MatchTypeOutInterface,
+			invert:    !yes,
 		},
 	}
 	iptables.statement.addMatch(match)
 	return iptables
 }
 
-func (iptables *IPTables) OptionFragment(not bool) *IPTables {
+func (iptables *IPTables) OptionFragment(yes bool) *IPTables {
 	if iptables.statement.err != nil {
 		return iptables
 	}
 	option := &OptionFragment{
 		baseOption: baseOption{
-			optionType: optionFragment,
-			invert:     not,
+			optionType: OptionTypeFragment,
+			invert:     !yes,
 		},
 	}
 	iptables.statement.addOption(option)
@@ -167,7 +169,7 @@ func (iptables *IPTables) OptionSetCounters(packets, bytes uint64) *IPTables {
 	}
 	option := &OptionSetCounters{
 		baseOption: baseOption{
-			optionType: optionSetCounters,
+			optionType: OptionTypeSetCounters,
 		},
 		packets: packets,
 		bytes:   bytes,
@@ -182,7 +184,7 @@ func (iptables *IPTables) OptionVerbose() *IPTables {
 	}
 	option := &OptionVerbose{
 		baseOption: baseOption{
-			optionType: optionVerbose,
+			optionType: OptionTypeVerbose,
 		},
 	}
 	iptables.statement.addOption(option)
@@ -196,7 +198,7 @@ func (iptables *IPTables) OptionWait(seconds uint32) *IPTables {
 	}
 	option := &OptionWait{
 		baseOption: baseOption{
-			optionType: optionWait,
+			optionType: OptionTypeWait,
 		},
 		seconds: seconds,
 	}
@@ -210,7 +212,7 @@ func (iptables *IPTables) OptionWaitInterval(microseconds uint64) *IPTables {
 	}
 	option := &OptionWaitInterval{
 		baseOption: baseOption{
-			optionType: optionWaitInterval,
+			optionType: OptionTypeWaitInterval,
 		},
 		microseconds: microseconds,
 	}
@@ -267,7 +269,7 @@ func (iptables *IPTables) TargetJumpChain(chain string) *IPTables {
 		},
 		chain: chain,
 	}
-	iptables.statement.chain = ChainUserDefined
+	iptables.statement.chain = ChainTypeUserDefined
 	iptables.statement.target = target
 	return iptables
 }

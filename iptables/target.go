@@ -56,6 +56,7 @@ const (
 type Target interface {
 	Type() TargetType
 	String() string
+	Args() []string
 }
 
 type baseTarget struct {
@@ -70,12 +71,20 @@ func (bt baseTarget) String() string {
 	return ""
 }
 
+func (bt baseTarget) Args() []string {
+	return nil
+}
+
 type TargetAccept struct {
 	baseTarget
 }
 
 func (ta *TargetAccept) String() string {
 	return "-j ACCEPT"
+}
+
+func (ta *TargetAccept) Args() []string {
+	return []string{"-j", "ACCEPT"}
 }
 
 type TargetDrop struct {
@@ -86,12 +95,20 @@ func (ta *TargetDrop) String() string {
 	return "-j DROP"
 }
 
+func (ta *TargetDrop) Args() []string {
+	return []string{"-j", "ACCEPT"}
+}
+
 type TargetReturn struct {
 	baseTarget
 }
 
 func (ta *TargetReturn) String() string {
 	return "-j RETURN"
+}
+
+func (ta *TargetReturn) Args() []string {
+	return []string{"-j", "RETURN"}
 }
 
 type TargetJumpChain struct {
@@ -101,4 +118,8 @@ type TargetJumpChain struct {
 
 func (ta *TargetJumpChain) String() string {
 	return fmt.Sprintf("-j %s", ta.chain)
+}
+
+func (ta *TargetJumpChain) Args() []string {
+	return []string{"-j", ta.chain}
 }

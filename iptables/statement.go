@@ -6,6 +6,11 @@
  */
 package iptables
 
+import (
+	"strconv"
+	"strings"
+)
+
 type Statement struct {
 	table            TableType
 	chain            ChainType
@@ -15,42 +20,48 @@ type Statement struct {
 	options          map[OptionType]Option
 	target           Target
 	command          Command
+	dump             bool
 }
 
 func NewStatement() *Statement {
 	return &Statement{
-		table:   TableFilter,
+		table:   TableTypeFilter,
 		matches: make(map[MatchType]Match),
 		options: make(map[OptionType]Option),
 	}
 }
 
 func (statement *Statement) addMatch(match Match) {
-	statement.matches[match.typ()] = match
+	statement.matches[match.Type()] = match
 }
 
 func (statement *Statement) addOption(option Option) {
-	statement.options[option.typ()] = option
+	statement.options[option.Type()] = option
 }
 
 func (statement *Statement) Elems() ([]string, error) {
+	// table
 	elems := []string{}
 	tableName, chainName := "-t filter", ""
 	switch statement.table {
-	case TableNat:
+	case TableTypeNat:
 		tableName = "-t nat"
-	case TableMangle:
+	case TableTypeMangle:
 		tableName = "-t mangle"
-	case TableRaw:
+	case TableTypeRaw:
 		tableName = "-t raw"
-	case TableSecurity:
+	case TableTypeSecurity:
 		tableName = "-t security"
 	}
 	elems = append(elems, tableName)
 
-	if chainName == "" {
-		return nil, ErrNoChain
+	// command
+	if statement.command == nil {
+		return nil, ErrCommandRequired
 	}
+	elems = append(elems, statement.command.Short())
+
+	// chain
 	switch statement.chain {
 	case ChainTypePREROUTING:
 		chainName = "PREROUTING"
@@ -65,27 +76,48 @@ func (statement *Statement) Elems() ([]string, error) {
 	case ChainTypeUserDefined:
 		chainName = statement.userDefinedChain
 	}
+	if chainName == "" {
+		return nil, ErrChainRequired
+	}
+
 	elems = append(elems, chainName)
 
-	options := ""
+	// rulenum
+	hasRulenum, ok := statement.command.(HasRulenum)
+	if ok && hasRulenum.Rulenum() != 0 {
+		elems = append(elems, strconv.Itoa(int(hasRulenum.Rulenum())))
+	}
+
+	// options
 	for _, option := range statement.options {
-		options += option.Short()
-	}
-	if options != "" {
-		elems = append(elems, options)
+		args := option.ShortArgs()
+		if args != nil {
+			elems = append(elems, args...)
+		}
 	}
 
-	matches := ""
+	// matches
 	for _, match := range statement.matches {
-		matches += match.Short()
-	}
-	if options != "" {
-		elems = append(elems, matches)
+		args := match.ShortArgs()
+		if args != nil {
+			elems = append(elems, args...)
+		}
 	}
 
+	// target
 	if statement.target != nil {
-		target := statement.target.String()
-		elems = append(elems, target)
+		args := statement.target.Args()
+		if args != nil {
+			elems = append(elems, args...)
+		}
 	}
 	return elems, nil
+}
+
+func (statement *Statement) String() (string, error) {
+	elems, err := statement.Elems()
+	if err != nil {
+		return "", err
+	}
+	return strings.Join(elems, " "), nil
 }

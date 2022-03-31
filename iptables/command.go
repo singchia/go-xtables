@@ -9,56 +9,62 @@ package iptables
 type CommandType int
 
 const (
-	CommandAppend      CommandType = iota // append
-	CommandCheck                          // check
-	CommandDelete                         // delete
-	CommandInsert                         // insert
-	CommandReplace                        // replace
-	CommandList                           // list
-	CommandListRules                      // list_rules
-	CommandFlush                          // flush
-	CommandZero                           // zero
-	CommandNewChain                       // new_chain
-	CommandDeleteChain                    // delete_chain
-	CommandPolicy                         // policy
-	CommandRenameChain                    // rename_chain
+	_                      CommandType = iota
+	CommandTypeAppend                  // append
+	CommandTypeCheck                   // check
+	CommandTypeDelete                  // delete
+	CommandTypeInsert                  // insert
+	CommandTypeReplace                 // replace
+	CommandTypeList                    // list
+	CommandTypeListRules               // list_rules
+	CommandTypeFlush                   // flush
+	CommandTypeZero                    // zero
+	CommandTypeNewChain                // new_chain
+	CommandTypeDeleteChain             // delete_chain
+	CommandTypePolicy                  // policy
+	CommandTypeRenameChain             // rename_chain
+	CommandTypeFind                    // go-xtables support
 )
 
-type hasRulenum interface {
-	rulenum() uint32
+type HasRulenum interface {
+	Rulenum() uint32
 }
 
 type Command interface {
-	typ() CommandType
-	short() string
-	long() string
+	Type() CommandType
+	Short() string
+	Long() string
 }
 
 type baseCommand struct {
 	commandType CommandType
 }
 
-func (bc baseCommand) typ() CommandType {
+func (bc baseCommand) Type() CommandType {
 	return bc.commandType
 }
 
-func (bc baseCommand) short() string {
+func (bc baseCommand) Short() string {
 	return ""
 }
 
-func (bc baseCommand) long() string {
+func (bc baseCommand) Long() string {
 	return ""
+}
+
+type Find struct {
+	List
 }
 
 type Append struct {
 	baseCommand
 }
 
-func (apd *Append) short() string {
+func (apd *Append) Short() string {
 	return "-A"
 }
 
-func (apd *Append) long() string {
+func (apd *Append) Long() string {
 	return "--append"
 }
 
@@ -66,11 +72,11 @@ type Check struct {
 	baseCommand
 }
 
-func (check *Check) short() string {
+func (check *Check) Short() string {
 	return "-C"
 }
 
-func (check *Check) long() string {
+func (check *Check) Long() string {
 	return "--check"
 }
 
@@ -79,15 +85,15 @@ type Delete struct {
 	rnum uint32
 }
 
-func (del *Delete) rulenum() uint32 {
+func (del *Delete) Rulenum() uint32 {
 	return del.rnum
 }
 
-func (del *Delete) short() string {
+func (del *Delete) Short() string {
 	return "-D"
 }
 
-func (del *Delete) long() string {
+func (del *Delete) Long() string {
 	return "--delete"
 }
 
@@ -96,15 +102,15 @@ type Insert struct {
 	rnum uint32
 }
 
-func (insert *Insert) rulenum() uint32 {
+func (insert *Insert) Rulenum() uint32 {
 	return insert.rnum
 }
 
-func (insert *Insert) short() string {
+func (insert *Insert) Short() string {
 	return "-I"
 }
 
-func (insert *Insert) long() string {
+func (insert *Insert) Long() string {
 	return "--insert"
 }
 
@@ -113,15 +119,15 @@ type Replace struct {
 	rnum uint32
 }
 
-func (replace *Replace) rulenum() uint32 {
+func (replace *Replace) Rulenum() uint32 {
 	return replace.rnum
 }
 
-func (replace *Replace) short() string {
+func (replace *Replace) Short() string {
 	return "-R"
 }
 
-func (replace *Replace) long() string {
+func (replace *Replace) Long() string {
 	return "--replace"
 }
 
@@ -129,11 +135,11 @@ type List struct {
 	baseCommand
 }
 
-func (list *List) short() string {
+func (list *List) Short() string {
 	return "-L"
 }
 
-func (list *List) long() string {
+func (list *List) Long() string {
 	return "--list"
 }
 
@@ -141,11 +147,11 @@ type ListRules struct {
 	baseCommand
 }
 
-func (listRules *ListRules) short() string {
+func (listRules *ListRules) Short() string {
 	return "-S"
 }
 
-func (listRules *ListRules) long() string {
+func (listRules *ListRules) Long() string {
 	return "--list-rules"
 }
 
@@ -153,11 +159,11 @@ type Flush struct {
 	baseCommand
 }
 
-func (flush *Flush) short() string {
+func (flush *Flush) Short() string {
 	return "-F"
 }
 
-func (flush *Flush) long() string {
+func (flush *Flush) Long() string {
 	return "--flush"
 }
 
@@ -166,15 +172,15 @@ type Zero struct {
 	rnum uint32
 }
 
-func (zero *Zero) rulenum() uint32 {
+func (zero *Zero) Rulenum() uint32 {
 	return zero.rnum
 }
 
-func (zero *Zero) short() string {
+func (zero *Zero) Short() string {
 	return "-Z"
 }
 
-func (zero *Zero) long() string {
+func (zero *Zero) Long() string {
 	return "--zero"
 }
 
@@ -182,11 +188,11 @@ type NewChain struct {
 	baseCommand
 }
 
-func (nc *NewChain) short() string {
+func (nc *NewChain) Short() string {
 	return "-N"
 }
 
-func (nc *NewChain) long() string {
+func (nc *NewChain) Long() string {
 	return "--new-chain"
 }
 
@@ -194,11 +200,11 @@ type DeleteChain struct {
 	baseCommand
 }
 
-func (dc *DeleteChain) short() string {
+func (dc *DeleteChain) Short() string {
 	return "-X"
 }
 
-func (dc *DeleteChain) long() string {
+func (dc *DeleteChain) Long() string {
 	return "--delete-chain"
 }
 
@@ -206,11 +212,11 @@ type Policy struct {
 	baseCommand
 }
 
-func (policy *Policy) short() string {
+func (policy *Policy) Short() string {
 	return "-P"
 }
 
-func (policy *Policy) long() string {
+func (policy *Policy) Long() string {
 	return "--policy"
 }
 
@@ -218,10 +224,10 @@ type RenameChain struct {
 	baseCommand
 }
 
-func (renameChain *RenameChain) short() string {
+func (renameChain *RenameChain) Short() string {
 	return "-E"
 }
 
-func (renameChain *RenameChain) long() string {
+func (renameChain *RenameChain) Long() string {
 	return "--rename-chain"
 }
