@@ -1,5 +1,7 @@
 package iptables
 
+import "fmt"
+
 func (iptables *IPTables) Find() error {
 	if iptables.statement.err != nil {
 		return iptables.statement.err
@@ -98,10 +100,12 @@ func (iptables *IPTables) List() error {
 		},
 	}
 	iptables.statement.command = command
-	_, err := iptables.exec()
+	data, err := iptables.exec()
 	if err != nil {
+		fmt.Println(string(data))
 		return err
 	}
+	fmt.Println(string(data))
 	return nil
 }
 

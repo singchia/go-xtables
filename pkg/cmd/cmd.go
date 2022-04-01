@@ -7,7 +7,6 @@ import (
 
 func Cmd(name string, arg ...string) ([]byte, []byte, error) {
 	cmd := exec.Command(name, arg...)
-	cmd.Output()
 	infoO := new(bytes.Buffer)
 	infoE := new(bytes.Buffer)
 	cmd.Stdout = infoO

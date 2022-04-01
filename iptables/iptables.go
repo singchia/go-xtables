@@ -18,7 +18,8 @@ type IPTables struct {
 func NewIPTables() *IPTables {
 	tables := &IPTables{
 		statement: NewStatement(),
-		cmdName:   "iptables",
+		//cmdName:   "iptables",
+		cmdName: "/usr/sbin/iptables",
 	}
 	return tables
 }

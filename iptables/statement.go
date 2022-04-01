@@ -42,16 +42,17 @@ func (statement *Statement) addOption(option Option) {
 func (statement *Statement) Elems() ([]string, error) {
 	// table
 	elems := []string{}
-	tableName, chainName := "-t filter", ""
+	elems = append(elems, "-t")
+	tableName, chainName := "filter", ""
 	switch statement.table {
 	case TableTypeNat:
-		tableName = "-t nat"
+		tableName = "nat"
 	case TableTypeMangle:
-		tableName = "-t mangle"
+		tableName = "mangle"
 	case TableTypeRaw:
-		tableName = "-t raw"
+		tableName = "raw"
 	case TableTypeSecurity:
-		tableName = "-t security"
+		tableName = "security"
 	}
 	elems = append(elems, tableName)
 
