@@ -20,6 +20,7 @@ const (
 	OptionTypeWait
 	OptionTypeWaitInterval
 	OptionTypeNumeric
+	OptionTypeNotNumeric
 	OptionTypeExact
 	OptionTypeLineNumbers
 	OptionTypeModprobe
@@ -196,6 +197,9 @@ func (oWaitInterval *OptionWaitInterval) LongArgs() []string {
 	return []string{"--wait-interval", strconv.FormatUint(oWaitInterval.microseconds, 10)}
 }
 
+type OptionNotNumeric struct{}
+
+// by default
 type OptionNumeric struct {
 	baseOption
 }

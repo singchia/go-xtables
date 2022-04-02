@@ -2,6 +2,27 @@ package iptables
 
 import "fmt"
 
+func (iptables *IPTables) Chain(chain ChainType) (*Chain, error) {
+	if iptables.statement.err != nil {
+		return nil, iptables.statement.err
+	}
+	// set command
+	command := &Find{
+		List: List{
+			baseCommand: baseCommand{
+				commandType: CommandTypeFind,
+			},
+		},
+	}
+	iptables.statement.command = command
+	data, err := iptables.exec()
+	if err != nil {
+		return nil, err
+	}
+	fmt.Println(string(data))
+	return nil, nil
+}
+
 func (iptables *IPTables) Find() error {
 	if iptables.statement.err != nil {
 		return iptables.statement.err

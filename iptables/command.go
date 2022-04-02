@@ -23,6 +23,7 @@ const (
 	CommandTypeDeleteChain             // delete_chain
 	CommandTypePolicy                  // policy
 	CommandTypeRenameChain             // rename_chain
+	CommandTypeChain                   // go-xtables support
 	CommandTypeFind                    // go-xtables support
 )
 

@@ -17,12 +17,12 @@ const (
 	TableTypeSecurity           // security
 )
 
-func (iptables *IPTables) Table(table TableType) *IPTables {
+func (iptables *IPTables) TableType(table TableType) *IPTables {
 	iptables.statement.table = table
 	return iptables
 }
 
-func (iptables *IPTables) Chain(chain ChainType) *IPTables {
+func (iptables *IPTables) ChainType(chain ChainType) *IPTables {
 	iptables.statement.chain = chain
 	return iptables
 }

@@ -7,8 +7,8 @@ import (
 func TestIptables(t *testing.T) {
 	iptables := NewIPTables()
 	err := iptables.
-		Table(TableTypeFilter).
-		Chain(ChainTypeINPUT).
+		TableType(TableTypeFilter).
+		ChainType(ChainTypeINPUT).
 		OptionFragment(true).
 		MatchIPv4().
 		TargetAccetp().Insert(0)
@@ -28,8 +28,8 @@ func TestIptables(t *testing.T) {
 func TestList(t *testing.T) {
 	iptables := NewIPTables()
 	err := iptables.
-		Table(TableTypeFilter).
-		Chain(ChainTypeINPUT).
+		TableType(TableTypeFilter).
+		ChainType(ChainTypeINPUT).
 		List()
 	if err != nil {
 		t.Error(err)
@@ -42,4 +42,15 @@ func TestList(t *testing.T) {
 		return
 	}
 	t.Log(str)
+}
+
+func TestChain(t *testing.T) {
+	iptables := NewIPTables()
+	_, err := iptables.
+		TableType(TableTypeFilter).
+		Chain(ChainTypeINPUT)
+	if err != nil {
+		t.Error(err)
+		return
+	}
 }

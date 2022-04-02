@@ -24,11 +24,13 @@ type Statement struct {
 }
 
 func NewStatement() *Statement {
-	return &Statement{
+	state := &Statement{
 		table:   TableTypeFilter,
 		matches: make(map[MatchType]Match),
 		options: make(map[OptionType]Option),
 	}
+	state.addOption(&OptionNumeric{})
+	return state
 }
 
 func (statement *Statement) addMatch(match Match) {
@@ -94,6 +96,9 @@ func (statement *Statement) Elems() ([]string, error) {
 		args := option.ShortArgs()
 		if args != nil {
 			elems = append(elems, args...)
+		}
+		if option.Type() == OptionTypeNotNumeric {
+			delete(statement.options, OptionTypeNotNumeric)
 		}
 	}
 
