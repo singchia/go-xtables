@@ -6,17 +6,6 @@
  */
 package iptables
 
-type TableType int
-
-const (
-	_                 TableType = iota
-	TableTypeFilter             // filter
-	TableTypeNat                // nat
-	TableTypeMangle             // mangle
-	TableTypeRaw                // raw
-	TableTypeSecurity           // security
-)
-
 func (iptables *IPTables) TableType(table TableType) *IPTables {
 	iptables.statement.table = table
 	return iptables

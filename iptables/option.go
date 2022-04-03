@@ -13,6 +13,14 @@ import (
 
 type OptionType int
 
+func (ot OptionType) Type() string {
+	return "OptionType"
+}
+
+func (ot OptionType) Value() string {
+	return strconv.Itoa(int(ot))
+}
+
 const (
 	OptionTypeFragment OptionType = iota
 	OptionTypeSetCounters

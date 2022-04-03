@@ -12,22 +12,24 @@ import (
 )
 
 type Statement struct {
+	err              error
 	table            TableType
 	chain            ChainType
 	userDefinedChain string
-	err              error
 	matches          map[MatchType]Match
 	options          map[OptionType]Option
 	target           Target
 	command          Command
 	dump             bool
+	constraints      *constraints
 }
 
 func NewStatement() *Statement {
 	state := &Statement{
-		table:   TableTypeFilter,
-		matches: make(map[MatchType]Match),
-		options: make(map[OptionType]Option),
+		table:       TableTypeFilter,
+		matches:     make(map[MatchType]Match),
+		options:     make(map[OptionType]Option),
+		constraints: newConstraints(),
 	}
 	state.addOption(&OptionNumeric{})
 	return state
@@ -126,4 +128,7 @@ func (statement *Statement) String() (string, error) {
 		return "", err
 	}
 	return strings.Join(elems, " "), nil
+}
+
+func (statement *Statement) Conflict() bool {
 }

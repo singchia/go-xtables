@@ -6,10 +6,20 @@
  */
 package iptables
 
+import "strconv"
+
 // Created by gen.go, don't edit manually
 // Generated at 2022-03-21 20:30:51
 
 type Protocol int
+
+func (proto Protocol) Type() string {
+	return "Protocol"
+}
+
+func (proto Protocol) Value() string {
+	return strconv.Itoa(int(proto))
+}
 
 const (
 	ProtocolIP              Protocol = 0   // internet protocol, pseudo protocol number

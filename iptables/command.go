@@ -6,7 +6,17 @@
  */
 package iptables
 
+import "strconv"
+
 type CommandType int
+
+func (ct CommandType) Type() string {
+	return "CommandType"
+}
+
+func (ct CommandType) Value() string {
+	return strconv.Itoa(int(ct))
+}
 
 const (
 	_                      CommandType = iota

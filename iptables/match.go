@@ -13,6 +13,14 @@ import (
 
 type MatchType int
 
+func (mt MatchType) Type() string {
+	return "MatchType"
+}
+
+func (mt MatchType) Value() string {
+	return strconv.Itoa(int(mt))
+}
+
 const (
 	MatchTypeAddrType MatchType = iota
 	MatchTypeAH

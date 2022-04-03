@@ -1,8 +1,19 @@
 package iptables
 
-import "fmt"
+import (
+	"fmt"
+	"strconv"
+)
 
 type TargetType int
+
+func (tt TargetType) Type() string {
+	return "TargetType"
+}
+
+func (tt TargetType) Value() string {
+	return strconv.Itoa(int(tt))
+}
 
 const (
 	_ = iota
