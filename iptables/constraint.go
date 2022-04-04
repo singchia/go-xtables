@@ -60,6 +60,33 @@ func (constraints *constraints) add(operator operator,
 }
 
 func (constraints *constraints) conflict(firstType, first, secondType, second string) bool {
+	// must
+	key := Must.String() + firstType + first + secondType
+	value, ok := constraints.constraints[key]
+	if ok {
+		found := false
+		for _, elem := range value.seconds {
+			if second == elem {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return true
+		}
+	}
+
+	// mustnot
+	key = Mustnot.String() + firstType + first + secondType
+	value, ok := constraints.constraints[key]
+	if ok {
+		for _, elem := range value.seconds {
+			if second == elem {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 type constraint struct {

@@ -64,6 +64,17 @@ const (
 	TargetTypeULog
 )
 
+var (
+	TargetTypeValue = map[TargetType]string{
+		TargetTypeAccept: "ACCEPT",
+		TargetTypeDrop:   "DROP",
+	}
+)
+
+var (
+	TargetValueType = map[string]TargetType{}
+)
+
 type Target interface {
 	Type() TargetType
 	String() string

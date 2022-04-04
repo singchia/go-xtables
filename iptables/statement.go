@@ -7,6 +7,7 @@
 package iptables
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 )
@@ -130,5 +131,19 @@ func (statement *Statement) String() (string, error) {
 	return strings.Join(elems, " "), nil
 }
 
-func (statement *Statement) Conflict() bool {
+func (statement *Statement) Conflict() error {
+	constraints := statement.constraints
+	// table-chain
+	conflict := constraints.conflict(
+		statement.table.Type(),
+		statement.table.Value(),
+		statement.chain.Type(),
+		statement.chain.Value(),
+	)
+	if conflict {
+		return fmt.Errorf("table %s conflict with chain %s",
+			statement.table.Value(),
+			statement.chain.Value(),
+		)
+	}
 }

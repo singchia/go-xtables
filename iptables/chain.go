@@ -23,11 +23,11 @@ const (
 )
 
 type Chain struct {
-	chainType  ChainType
-	tableType  TableType
-	references int
-	name       string
-	policy     Target
-	packets    int
-	bytes      int
+	chainType   ChainType
+	userDefined bool
+	name        string
+	references  int
+	policy      Target
+	packets     int
+	bytes       int
 }
