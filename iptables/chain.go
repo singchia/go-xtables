@@ -28,6 +28,6 @@ type Chain struct {
 	name        string
 	references  int
 	policy      Target
-	packets     int
-	bytes       int
+	packets     int64
+	bytes       int64
 }

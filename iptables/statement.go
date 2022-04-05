@@ -146,4 +146,5 @@ func (statement *Statement) Conflict() error {
 			statement.chain.Value(),
 		)
 	}
+	return nil
 }

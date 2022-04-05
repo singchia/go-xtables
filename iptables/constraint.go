@@ -2,7 +2,7 @@ package iptables
 
 type operator int
 
-func (operator operator) String() {
+func (operator operator) String() string {
 	switch operator {
 	case Must:
 		return "Must"
@@ -19,17 +19,17 @@ const (
 )
 
 type constraints struct {
-	constraints map[string]constraint
+	constraints map[string]*constraint
 }
 
 func newConstraints() *constraints {
 	return &constraints{
-		constraints: make(map[string]constraint),
+		constraints: make(map[string]*constraint),
 	}
 }
 
 func (constraints *constraints) add(operator operator,
-	firstType, first, secondType, seconds ...string) {
+	firstType, first, secondType string, seconds ...string) {
 	key := operator.String() + firstType + first + secondType
 	value, ok := constraints.constraints[key]
 	if !ok {
@@ -78,7 +78,7 @@ func (constraints *constraints) conflict(firstType, first, secondType, second st
 
 	// mustnot
 	key = Mustnot.String() + firstType + first + secondType
-	value, ok := constraints.constraints[key]
+	value, ok = constraints.constraints[key]
 	if ok {
 		for _, elem := range value.seconds {
 			if second == elem {

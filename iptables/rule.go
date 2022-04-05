@@ -2,10 +2,14 @@ package iptables
 
 type Rule struct {
 	tableType TableType
-	chainType ChainType
+	chain     *Chain
 	matches   []Match
 	options   []Option
 	target    Target
+	packets   int64
+	bytes     int64
+	prot      string
+	opt       string
 }
 
 func (rule *Rule) TableType() TableType {
@@ -13,7 +17,7 @@ func (rule *Rule) TableType() TableType {
 }
 
 func (rule *Rule) ChainType() ChainType {
-	return rule.chainType
+	return rule.chain.chainType
 }
 
 func (rule *Rule) Matches() []Match {
