@@ -2,14 +2,25 @@ package iptables
 
 type Rule struct {
 	tableType TableType
-	chain     *Chain
-	matches   []Match
+
+	// chain info
+	chain *Chain
+
+	// matches
+	matches  []Match
+	matchMap map[MatchType]Match
+
+	// options
 	options   []Option
-	target    Target
-	packets   int64
-	bytes     int64
-	prot      string
-	opt       string
+	optionMap map[OptionType]Option
+
+	// target
+	target Target
+
+	packets int64
+	bytes   int64
+	prot    Protocol
+	opt     string
 }
 
 func (rule *Rule) TableType() TableType {

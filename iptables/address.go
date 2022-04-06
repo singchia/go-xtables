@@ -10,47 +10,87 @@ import (
 	"net"
 )
 
+type addrType int
+
+const (
+	addrTypeUnknow addrType = iota
+	addrTypeHost
+	addrTypeIP
+	addrTypeIPNet
+)
+
 type Address struct {
-	address string
+	addrType addrType
+	ip       net.IP
+	ipNet    *net.IPNet
+	host     string
 }
 
 func (address *Address) String() string {
-	return address.address
+	switch address.addrType {
+	case addrTypeHost:
+		return address.host
+	case addrTypeIP:
+		return address.ip.String()
+	case addrTypeIPNet:
+		return address.ipNet.String()
+	}
+	return ""
 }
 
 func ParseAddress(address interface{}) (*Address, error) {
 	switch value := address.(type) {
 	case string:
-		ads, err := parseAddress(value)
+		addrType, ads, err := parseAddress(value)
 		if err != nil {
 			return nil, err
 		}
-		return &Address{ads}, nil
+		switch addrType {
+		case addrTypeHost:
+			return &Address{
+				addrType: addrTypeHost,
+				host:     ads.(string),
+			}, nil
+		case addrTypeIP:
+			return &Address{
+				addrType: addrTypeIP,
+				ip:       ads.(net.IP),
+			}, nil
+		case addrTypeIPNet:
+			return &Address{
+				addrType: addrTypeIPNet,
+				ipNet:    ads.(*net.IPNet),
+			}, nil
+		}
 
 	case *net.IPNet:
-		ads := value.String()
-		return &Address{ads}, nil
+		return &Address{
+			addrType: addrTypeIPNet,
+			ipNet:    value,
+		}, nil
 	case net.IP:
-		ads := value.String()
-		return &Address{ads}, nil
+		return &Address{
+			addrType: addrTypeIP,
+			ip:       value,
+		}, nil
 	}
 	return nil, ErrUnsupportedAddress
 }
 
-func parseAddress(address string) (string, error) {
+func parseAddress(address string) (addrType, interface{}, error) {
 	length := len(address)
 	// https://man7.org/linux/man-pages/man7/hostname.7.html
 	if length == 0 || length > 253 {
-		return "", ErrIllegalAddress
+		return addrTypeUnknow, nil, ErrIllegalAddress
 	}
 
 	_, ipNet, err := net.ParseCIDR(address)
 	if err == nil {
-		return ipNet.String(), nil
+		return addrTypeIPNet, ipNet, nil
 	}
 	ip := net.ParseIP(address)
 	if ip != nil {
-		return ip.String(), nil
+		return addrTypeIP, ip, nil
 	}
 
 	head, tail := 0, 0
@@ -58,18 +98,18 @@ func parseAddress(address string) (string, error) {
 		t := address[i]
 		if i == head {
 			if t == '.' || t == '-' {
-				return "", ErrIllegalAddress
+				return addrTypeUnknow, nil, ErrIllegalAddress
 			}
 		}
 		if i == tail+2 && tail >= 0 {
 			if address[tail] == '-' {
-				return "", ErrIllegalAddress
+				return addrTypeUnknow, nil, ErrIllegalAddress
 			}
 		}
 
 		if t == '.' {
 			if i-head > 63 {
-				return "", ErrIllegalAddress
+				return addrTypeUnknow, nil, ErrIllegalAddress
 			}
 			head = i + 1
 			tail = i - 1
@@ -80,8 +120,8 @@ func parseAddress(address string) (string, error) {
 			(t >= 'A' && t <= 'Z') ||
 			(t >= '0' && t <= '9') ||
 			t == '-') {
-			return "", ErrIllegalAddress
+			return addrTypeUnknow, nil, ErrIllegalAddress
 		}
 	}
-	return address, nil
+	return addrTypeHost, address, nil
 }

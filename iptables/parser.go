@@ -61,35 +61,154 @@ func ParseRule(line []byte, head []string, chain *Chain) (*Rule, error) {
 	}
 	fields := bytes.Fields(line)
 	for index, name := range head {
+		field := string(fields[index])
 		switch name {
 		case "pkts":
-			num, err := unfoldDecimal(fields[index])
+			num, err := unfoldDecimal(field)
 			if err != nil {
 				return nil, err
 			}
 			rule.packets = num
 		case "bytes":
-			num, err := unfoldDecimal(fields[index])
+			num, err := unfoldDecimal(field)
 			if err != nil {
 				return nil, err
 			}
 			rule.bytes = num
 		case "target":
-			value, ok := TargetValueType[fields[index]]
+			value, ok := TargetValueType[field]
 			if !ok {
-				// user defined chain
-				target := Target
+				// user defined chain, wait to see concrete details
+				target, err := NewTarget(TargetTypeUnknow, field)
+				if err != nil {
+					return nil, err
+				}
+				rule.target = target
+			} else {
+				target, err := NewTarget(value, field)
+				if err != nil {
+					return nil, err
+				}
+				rule.target = target
+			}
+		case "prot":
+			prot, ok := ProtocolUpperNameType[field]
+			if ok {
+				rule.prot = prot
+			} else {
+				id, err := strconv.Atoi(prot)
+				if err != nil {
+					return nil, err
+				}
+				rule.prot = Protocol(id)
+			}
+		case "opt":
+			rule.opt = field
+		case "in":
+			yes := true
+			iface := field
+			if field[0] == '!' {
+				yes = false
+				iface = field[1:]
+			}
+			match, err := NewMatch(MatchTypeInInterface, yes, iface)
+			if err != nil {
+				return nil, err
+			}
+			rule.matches = append(rule.matches, match)
+			rule.matchMap[MatchTypeInInterface] = match
+		case "out":
+			yes := true
+			iface := field
+			if field[0] == '!' {
+				yes = false
+				iface = field[1:]
+			}
+			match, err := NewMatch(MatchTypeOutInterface, yes, iface)
+			if err != nil {
+				return nil, err
+			}
+			rule.matches = append(rule.matches, match)
+			rule.matchMap[MatchTypeOutInterface] = match
+		case "source":
+			yes := true
+			source := field
+			if field[0] == '!' {
+				yes = false
+				source = field[1:]
 			}
 
-		case "prot":
-		case "opt":
-		case "in":
-		case "out":
-		case "source":
+			ads, err := ParseAddress(source)
+			if err != nil {
+				return nil, err
+			}
+			match, err := NewMatch(MatchTypeSource, yes, ads)
+			if err != nil {
+				return nil, err
+			}
+			rule.matches = append(rule.matches, match)
+			rule.matchMap[MatchTypeSource] = match
 		case "destination":
+			yes := true
+			destination := field
+			if field[0] == '!' {
+				yes = false
+				destination = field[1:]
+			}
+
+			ads, err := ParseAddress(destination)
+			if err != nil {
+				return nil, err
+			}
+			match, err := NewMatch(MatchTypeDestination, yes, ads)
+			if err != nil {
+				return nil, err
+			}
+			rule.matches = append(rule.matches, match)
+			rule.matchMap[MatchTypeDestination] = match
 		}
 	}
+	jump := true
 	// matches or target options
+	fields := fields[len(head):]
+	if len(fields) > 0 {
+		// see https://git.netfilter.org/iptables/tree/iptables/iptables.c
+		// the [goto] clause should be before matches
+		if bytes.Compare(fields[0], []byte("[goto]")) {
+			jump = false
+			fields = fields[1:]
+		}
+	}
+
+	if rule.target.Type() == TargetTypeUnknown {
+		if jump {
+			target, err := NewTarget(TargetTypeJumpChain,
+				rule.target.(*TargetUnknown).Unknown())
+			if err != nil {
+				return nil, err
+			}
+			rule.target = target
+		} else {
+			target, err := NewTarget(TargetTypeGotoChain,
+				rule.target.(*TargetUnknown).Unknown())
+			if err != nil {
+				return nil, err
+			}
+			rule.target = target
+		}
+	}
+
+	// then matches
+	matches, err := ParseMatch(fields)
+	if err != nil {
+		return nil, err
+	}
+	rule.matches = append(rule.matches, matches...)
+	for _, match := range matches {
+		rule.matchMap[match.Type()] = match
+	}
+
+	// then target
 	return rule, nil
 }
 

@@ -10,4 +10,5 @@ var (
 	ErrRulenumMustnot0         = errors.New("rulenum mustn't be 0")
 	ErrChainLineTooShort       = errors.New("chain line too short")
 	ErrChainAttrsNotRecognized = errors.New("chain attrs not recognized")
+	ErrArgs                    = errors.New("wrong args")
 )

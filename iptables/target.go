@@ -16,12 +16,12 @@ func (tt TargetType) Value() string {
 }
 
 const (
-	_ = iota
+	TargetTypeUnknown TargetType = iota
 	TargetTypeAccept
 	TargetTypeDrop
 	TargetTypeReturn
 	TargetTypeJumpChain // jump chain
-	TargetTypeGoto
+	TargetTypeGotoChain // goto chain
 	TargetTypeAudit
 	TargetTypeCheckSum
 	TargetTypeClassify
@@ -156,14 +156,45 @@ var (
 	}
 )
 
-var (
-	TargetValueType = map[string]TargetType{}
-)
-
 type Target interface {
 	Type() TargetType
 	String() string
 	Args() []string
+}
+
+func NewTarget(targetType TargetType, args ...interface{}) (Target, error) {
+	switch targetType {
+	case TargetTypeUnknown:
+		if len(args) != 1 {
+			goto Err
+		}
+		name, ok := args[0].(string)
+		if !ok {
+			goto Err
+		}
+		return NewTargetUnknown(name), nil
+	case TargetTypeJumpChain:
+		if len(args) != 1 {
+			goto Err
+		}
+		chain, ok := args[0].(string)
+		if !ok {
+			goto Err
+		}
+		return NewTargetJumpChain(chain)
+	case TargetTypeGotoChain:
+		if len(args) != 1 {
+			goto Err
+		}
+		name, ok := args[0].(string)
+		if !ok {
+			goto Err
+		}
+		return NewTargetGotoChain(chain)
+	}
+
+Err:
+	return nil, ErrArgs
 }
 
 type baseTarget struct {
@@ -180,6 +211,24 @@ func (bt baseTarget) String() string {
 
 func (bt baseTarget) Args() []string {
 	return nil
+}
+
+type TargetUnknown struct {
+	baseTarget
+	unknown string
+}
+
+func NewTargetUnknown(unknown string) *TargetUnknown {
+	return &TargetUnknown{
+		baseTarget: baseTarget{
+			tagetType: TargetTypeUnknown,
+		},
+		unknown: unknown,
+	}
+}
+
+func (tu *TargetUnknown) Unknown() string {
+	return tu.unknown
 }
 
 type TargetAccept struct {
@@ -223,10 +272,41 @@ type TargetJumpChain struct {
 	chain string
 }
 
+func NewTargetJumpChain(chain string) *TargetJumpChain {
+	return &TargetJumpChain{
+		baseTarget: baseTarget{
+			targetType: TargetTypeJumpChain,
+		},
+		chain: chain,
+	}
+}
+
 func (ta *TargetJumpChain) String() string {
 	return fmt.Sprintf("-j %s", ta.chain)
 }
 
 func (ta *TargetJumpChain) Args() []string {
 	return []string{"-j", ta.chain}
+}
+
+type TargetGotoChain struct {
+	baseTarget
+	chain string
+}
+
+func NewTargetGotoChain(chain string) *TargetGotoChain {
+	return &TargetGotoChain{
+		baseTarget: baseTarget{
+			targetType: TargetTypeGotoChain,
+		},
+		chain: chain,
+	}
+}
+
+func (ta *TargetGotoChain) String() string {
+	return fmt.Sprintf("-g %s", ta.chain)
+}
+
+func (ta *TargetGotoChain) Args() []string {
+	return []string{"-g", ta.chain}
 }

@@ -110,7 +110,7 @@ func (iptables *IPTables) MatchDestination(yes bool, address interface{}) *IPTab
 	return iptables
 }
 
-func (iptables *IPTables) MatchInInterface(yes bool, name string) *IPTables {
+func (iptables *IPTables) MatchInInterface(yes bool, iface string) *IPTables {
 	if iptables.statement.err != nil {
 		return iptables
 	}
@@ -119,12 +119,13 @@ func (iptables *IPTables) MatchInInterface(yes bool, name string) *IPTables {
 			matchType: MatchTypeInInterface,
 			invert:    !yes,
 		},
+		iface: iface,
 	}
 	iptables.statement.addMatch(match)
 	return iptables
 }
 
-func (iptables *IPTables) MatchOutInterface(yes bool, name string) *IPTables {
+func (iptables *IPTables) MatchOutInterface(yes bool, iface string) *IPTables {
 	if iptables.statement.err != nil {
 		return iptables
 	}
@@ -133,6 +134,7 @@ func (iptables *IPTables) MatchOutInterface(yes bool, name string) *IPTables {
 			matchType: MatchTypeOutInterface,
 			invert:    !yes,
 		},
+		iface: iface,
 	}
 	iptables.statement.addMatch(match)
 	return iptables
@@ -263,7 +265,7 @@ func (iptables *IPTables) TargetJumpChain(chain string) *IPTables {
 	return iptables
 }
 
-func (iptables *IPTables) TargetGoto() *IPTables {
+func (iptables *IPTables) TargetGotoChain() *IPTables {
 	return nil
 }
 

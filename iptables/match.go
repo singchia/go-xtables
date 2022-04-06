@@ -93,6 +93,41 @@ type Match interface {
 	LongArgs() []string
 }
 
+func NewMatch(matchType MatchType, args ...interface{}) (Match, error) {
+	switch matchType {
+	case MatchTypeInInterface:
+		if len(args) != 2 {
+			goto Err
+		}
+		yes, ok := args[0].(bool)
+		if !ok {
+			goto Err
+		}
+		iface, ok := args[1].(string)
+		if !ok {
+			goto Err
+		}
+		return NewMatchInInterface(yes, iface), nil
+
+	case MatchTypeOutInterface:
+		if len(args) != 2 {
+			goto Err
+		}
+		yes, ok := args[0].(bool)
+		if !ok {
+			goto Err
+		}
+		iface, ok := args[1].(string)
+		if !ok {
+			goto Err
+		}
+		return NewMatchOutInterface(yes, iface), nil
+	}
+
+Err:
+	return nil, ErrArgs
+}
+
 type baseMatch struct {
 	matchType MatchType
 	invert    bool
@@ -193,132 +228,165 @@ func (mProtocol *MatchProtocol) LongArgs() []string {
 
 type MatchSource struct {
 	baseMatch
-	Address *Address
+	address *Address
+}
+
+func NewMatchSource(yes bool, address *Address) *MatchSource {
+	return &MatchSource{
+		baseMatch: baseMatch{
+			matchType: MatchTypeSource,
+		},
+		address: address,
+	}
 }
 
 func (mSrc *MatchSource) Short() string {
 	if mSrc.invert {
-		return fmt.Sprintf("! -s %s", mSrc.Address.String())
+		return fmt.Sprintf("! -s %s", mSrc.address.String())
 	}
-	return fmt.Sprintf("-s %s", mSrc.Address.String())
+	return fmt.Sprintf("-s %s", mSrc.address.String())
 }
 
 func (mSrc *MatchSource) ShortArgs() []string {
 	if mSrc.invert {
-		return []string{"!", "-s", mSrc.Address.String()}
+		return []string{"!", "-s", mSrc.address.String()}
 	}
-	return []string{"-s", mSrc.Address.String()}
+	return []string{"-s", mSrc.address.String()}
 }
 
 func (mSrc *MatchSource) Long() string {
 	if mSrc.invert {
-		return fmt.Sprintf("! --source %s", mSrc.Address.String())
+		return fmt.Sprintf("! --source %s", mSrc.address.String())
 	}
-	return fmt.Sprintf("--source %s", mSrc.Address.String())
+	return fmt.Sprintf("--source %s", mSrc.address.String())
 }
 
 func (mSrc *MatchSource) LongArgs() []string {
 	if mSrc.invert {
-		return []string{"!", "--source", mSrc.Address.String()}
+		return []string{"!", "--source", mSrc.address.String()}
 	}
-	return []string{"--source", mSrc.Address.String()}
+	return []string{"--source", mSrc.address.String()}
 }
 
 type MatchDestination struct {
 	baseMatch
-	Address *Address
+	address *Address
 }
 
 func (mDst *MatchDestination) Short() string {
 	if mDst.invert {
-		return fmt.Sprintf("! -d %s", mDst.Address.String())
+		return fmt.Sprintf("! -d %s", mDst.address.String())
 	}
-	return fmt.Sprintf("-d %s", mDst.Address.String())
+	return fmt.Sprintf("-d %s", mDst.address.String())
 }
 
 func (mDst *MatchDestination) ShortArgs() []string {
 	if mDst.invert {
-		return []string{"!", "-d", mDst.Address.String()}
+		return []string{"!", "-d", mDst.address.String()}
 	}
-	return []string{"-d", mDst.Address.String()}
+	return []string{"-d", mDst.address.String()}
 }
 
 func (mDst *MatchDestination) Long() string {
 	if mDst.invert {
-		return fmt.Sprintf("! --destination %s", mDst.Address.String())
+		return fmt.Sprintf("! --destination %s", mDst.address.String())
 	}
-	return fmt.Sprintf("--destination %s", mDst.Address.String())
+	return fmt.Sprintf("--destination %s", mDst.address.String())
 }
 
 func (mDst *MatchDestination) LongArgs() []string {
 	if mDst.invert {
-		return []string{"!", "--destination", mDst.Address.String()}
+		return []string{"!", "--destination", mDst.address.String()}
 	}
-	return []string{"--destination", mDst.Address.String()}
+	return []string{"--destination", mDst.address.String()}
 }
 
 type MatchInInterface struct {
 	baseMatch
-	Interface string
+	iface string
+}
+
+func NewMatchInInterface(yes bool, iface string) *MatchInInterface {
+	return &MatchInInterface{
+		baseMatch: baseMatch{
+			matchType: MatchInInterface,
+			invert:    !yes,
+		},
+		iface: iface,
+	}
 }
 
 func (mInIface *MatchInInterface) Short() string {
 	if mInIface.invert {
-		return fmt.Sprintf("! -i %s", mInIface.Interface)
+		return fmt.Sprintf("! -i %s", mInIface.iface)
 	}
-	return fmt.Sprintf("-i %s", mInIface.Interface)
+	return fmt.Sprintf("-i %s", mInIface.iface)
 }
 
 func (mInIface *MatchInInterface) ShortArgs() []string {
 	if mInIface.invert {
-		return []string{"!", "-i", mInIface.Interface}
+		return []string{"!", "-i", mInIface.iface}
 	}
-	return []string{"-i", mInIface.Interface}
+	return []string{"-i", mInIface.iface}
 }
 
 func (mInIface *MatchInInterface) Long() string {
 	if mInIface.invert {
-		return fmt.Sprintf("! --in-interface %s", mInIface.Interface)
+		return fmt.Sprintf("! --in-interface %s", mInIface.iface)
 	}
-	return fmt.Sprintf("--in-interface %s", mInIface.Interface)
+	return fmt.Sprintf("--in-interface %s", mInIface.iface)
 }
 
 func (mInIface *MatchInInterface) LongArgs() []string {
 	if mInIface.invert {
-		return []string{"!", "--in-interface", mInIface.Interface}
+		return []string{"!", "--in-interface", mInIface.iface}
 	}
-	return []string{"--in-interface", mInIface.Interface}
+	return []string{"--in-interface", mInIface.iface}
 }
 
 type MatchOutInterface struct {
 	baseMatch
-	Interface string
+	iface string
+}
+
+func NewMatchOutInterface(yes bool, iface string) *MatchOutInterface {
+	return &MatchOutInterface{
+		baseMatch: baseMatch{
+			matchType: MatchOutInterface,
+			invert:    !yes,
+		},
+		iface: iface,
+	}
 }
 
 func (mOutIface *MatchOutInterface) Short() string {
 	if mOutIface.invert {
-		return fmt.Sprintf("! -o %s", mOutIface.Interface)
+		return fmt.Sprintf("! -o %s", mOutIface.iface)
 	}
-	return fmt.Sprintf("-o %s", mOutIface.Interface)
+	return fmt.Sprintf("-o %s", mOutIface.iface)
 }
 
 func (mOutIface *MatchOutInterface) ShortArgs() []string {
 	if mOutIface.invert {
-		return []string{"!", "-o", mOutIface.Interface}
+		return []string{"!", "-o", mOutIface.iface}
 	}
-	return []string{"-o", mOutIface.Interface}
+	return []string{"-o", mOutIface.iface}
 }
 
 func (mOutIface *MatchOutInterface) Long() string {
 	if mOutIface.invert {
-		return fmt.Sprintf("! --out-interface %s", mOutIface.Interface)
+		return fmt.Sprintf("! --out-interface %s", mOutIface.iface)
 	}
-	return fmt.Sprintf("--out-interface %s", mOutIface.Interface)
+	return fmt.Sprintf("--out-interface %s", mOutIface.iface)
 }
 
 func (mOutIface *MatchOutInterface) LongArgs() []string {
 	if mOutIface.invert {
-		return []string{"!", "-o", mOutIface.Interface}
+		return []string{"!", "-o", mOutIface.iface}
 	}
-	return []string{"-o", mOutIface.Interface}
+	return []string{"-o", mOutIface.iface}
+}
+
+// see https://git.netfilter.org/iptables/tree/extensions
+func ParseMatch(fields [][]byte) ([]Match, error) {
 }
