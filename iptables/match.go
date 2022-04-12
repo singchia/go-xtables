@@ -387,6 +387,30 @@ func (mOutIface *MatchOutInterface) LongArgs() []string {
 	return []string{"-o", mOutIface.iface}
 }
 
+type AddrType int
+
+const (
+	_      AddrType = iota
+	UNSPEC          // unspecified
+	UNICAST
+	LOCAL
+	BROADCAST
+	ANYCAST
+	MULTICAST
+	BLACKHOLE
+	UNREACHABLE
+	PROHIBIT
+	THROW
+	NAT
+	XRESOLVE
+)
+
+type MatchAddrtype struct {
+	baseMatch
+	SrcType AddrType
+	DstType AddrType
+}
+
 // see https://git.netfilter.org/iptables/tree/extensions
 func ParseMatch(fields [][]byte) ([]Match, error) {
 }
