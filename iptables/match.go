@@ -405,11 +405,51 @@ const (
 	XRESOLVE
 )
 
-type MatchAddrtype struct {
+type MatchAddrType struct {
 	baseMatch
-	SrcType AddrType
-	DstType AddrType
+	SrcType       AddrType
+	SrcTypeYes    bool
+	DstType       AddrType
+	DstTypeYes    bool
+	LimitIfaceIn  bool
+	LimitIfaceOut bool
 }
+
+func (mAddrType *MatchAddrType) Parse(fields [][]byte) (int, error) {
+}
+
+var (
+	matchPrefixes = map[string]MatchType{
+		"ADDRTYPE":       MatchTypeAddrType,
+		"ah":             MatchTypeAH,
+		"match bpf":      MatchTypeBPF,
+		"cgroup":         MatchTypeCgroup,
+		"cluster":        MatchTypeCluster,
+		"/*":             MatchTypeComment,
+		"connbytes":      MatchTypeConnBytes,
+		"! connbytes":    MatchTypeConnBytes,
+		"connlabel":      MatchTypeConnLabel,
+		"#conn":          MatchTypeConnLimit,
+		"CONNMARK":       MatchTypeConnMark,
+		"connmark":       MatchTypeConnMark,
+		"--sctstate":     MatchTypeConnTrack,
+		"! --sctstate":   MatchTypeConnTrack,
+		"--sctproto":     MatchTypeConnTrack,
+		"! --sctproto":   MatchTypeConnTrack,
+		"--sctorigsrc":   MatchTypeConnTrack,
+		"! --sctorigsrc": MatchTypeConnTrack,
+		"--sctorigdst":   MatchTypeConnTrack,
+		"! --sctorigdst": MatchTypeConnTrack,
+		"--sctreplsrc":   MatchTypeConnTrack,
+		"! --sctreplsrc": MatchTypeConnTrack,
+		"--sctrepldst":   MatchTypeConnTrack,
+		"! --sctrepldst": MatchTypeConnTrack,
+		"--sctstatus":    MatchTypeConnTrack,
+		"! --sctstatus":  MatchTypeConnTrack,
+		"--sctexpire":    MatchTypeConnTrack,
+		"! --sctexpire":  MatchTypeConnTrack,
+	}
+)
 
 // see https://git.netfilter.org/iptables/tree/extensions
 func ParseMatch(fields [][]byte) ([]Match, error) {
