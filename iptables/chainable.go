@@ -63,7 +63,7 @@ func (iptables *IPTables) MatchProtocol(yes bool, protocol Protocol) *IPTables {
 }
 
 // address takes:
-// 1. string for hostname or network or ip
+// 1. string for hostname, network or ip
 // 2. *net.IPNet
 // 3. net.IP
 func (iptables *IPTables) MatchSource(yes bool, address interface{}) *IPTables {
@@ -80,7 +80,7 @@ func (iptables *IPTables) MatchSource(yes bool, address interface{}) *IPTables {
 			matchType: MatchTypeSource,
 			invert:    !yes,
 		},
-		Address: ads,
+		address: ads,
 	}
 	iptables.statement.addMatch(match)
 	return iptables
@@ -104,7 +104,7 @@ func (iptables *IPTables) MatchDestination(yes bool, address interface{}) *IPTab
 			matchType: MatchTypeDestination,
 			invert:    !yes,
 		},
-		Address: ads,
+		address: ads,
 	}
 	iptables.statement.addMatch(match)
 	return iptables
@@ -140,6 +140,20 @@ func (iptables *IPTables) MatchOutInterface(yes bool, iface string) *IPTables {
 	return iptables
 }
 
+func (iptables *IPTables) MatchAddrType(opts ...OptionMatchAddrType) *IPTables {
+	if iptables.statement.err != nil {
+		return iptables
+	}
+	mAddrType, err := NewMatchAddrType(opts...)
+	if err != nil {
+		iptables.statement.err = err
+		return iptables
+	}
+	iptables.statement.addMatch(mAddrType)
+	return iptables
+}
+
+// iptables OPTIONS
 func (iptables *IPTables) OptionFragment(yes bool) *IPTables {
 	if iptables.statement.err != nil {
 		return iptables

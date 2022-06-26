@@ -115,7 +115,7 @@ func (statement *Statement) Elems() ([]string, error) {
 
 	// target
 	if statement.target != nil {
-		args := statement.target.Args()
+		args := statement.target.ShortArgs()
 		if args != nil {
 			elems = append(elems, args...)
 		}

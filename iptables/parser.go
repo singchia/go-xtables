@@ -59,9 +59,9 @@ func ParseRule(line []byte, head []string, chain *Chain) (*Rule, error) {
 		packets: -1,
 		bytes:   -1,
 	}
-	fields := bytes.Fields(line)
-	for index, name := range head {
-		field := string(fields[index])
+	fields, index := NFields(line, len(head))
+	for i, name := range head {
+		field := string(fields[i])
 		switch name {
 		case "pkts":
 			num, err := unfoldDecimal(field)
@@ -79,7 +79,7 @@ func ParseRule(line []byte, head []string, chain *Chain) (*Rule, error) {
 			value, ok := TargetValueType[field]
 			if !ok {
 				// user defined chain, wait to see concrete details
-				target, err := NewTarget(TargetTypeUnknow, field)
+				target, err := NewTarget(TargetTypeUnknown, field)
 				if err != nil {
 					return nil, err
 				}
@@ -96,7 +96,7 @@ func ParseRule(line []byte, head []string, chain *Chain) (*Rule, error) {
 			if ok {
 				rule.prot = prot
 			} else {
-				id, err := strconv.Atoi(prot)
+				id, err := strconv.Atoi(field)
 				if err != nil {
 					return nil, err
 				}
@@ -169,14 +169,15 @@ func ParseRule(line []byte, head []string, chain *Chain) (*Rule, error) {
 		}
 	}
 	jump := true
-	// matches or target options
-	fields := fields[len(head):]
-	if len(fields) > 0 {
+	// matches or target params
+	params := line[index:]
+	if len(params) > 0 {
 		// see https://git.netfilter.org/iptables/tree/iptables/iptables.c
 		// the [goto] clause should be before matches
-		if bytes.Compare(fields[0], []byte("[goto]")) {
+		p0, next := NFields(params, 1)
+		if bytes.Compare(p0[0], []byte("[goto]")) == 0 {
 			jump = false
-			fields = fields[1:]
+			params = params[next:]
 		}
 	}
 
@@ -199,7 +200,7 @@ func ParseRule(line []byte, head []string, chain *Chain) (*Rule, error) {
 	}
 
 	// then matches
-	matches, err := ParseMatch(fields)
+	matches, err := ParseMatch(params)
 	if err != nil {
 		return nil, err
 	}
