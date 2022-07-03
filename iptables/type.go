@@ -11,6 +11,21 @@ type Rate struct {
 	Unit Unit
 }
 
+func (rate Rate) String() string {
+	unit := "second"
+	switch rate.Unit {
+	case Minute:
+		unit = "minute"
+	case Hour:
+		unit = "hour"
+	case Day:
+		unit = "day"
+	default:
+		return ""
+	}
+	return strconv.Itoa(rate.Rate) + "/" + unit
+}
+
 type RateFloat struct {
 	Rate float64
 	Unit Unit
@@ -22,6 +37,17 @@ type PortRange struct {
 }
 
 type Dir int
+
+func (dir Dir) String() string {
+	switch dir {
+	case In:
+		return "in"
+	case Out:
+		return "out"
+	default:
+		return ""
+	}
+}
 
 const (
 	In Dir = 1 << iota
@@ -246,6 +272,29 @@ type IPv6Option struct {
 // see https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/include/uapi/linux/inX.h
 type IPHeaderType uint8
 
+func (ipHeaderType IPHeaderType) String() string {
+	switch ipHeaderType {
+	case IPPROTO_HOPOPTS:
+		return "hop"
+	case IPPROTO_DSTOPTS:
+		return "dst"
+	case IPPROTO_ROUTING:
+		return "route"
+	case IPPROTO_FRAGMENT:
+		return "frag"
+	case IPPROTO_AH:
+		return "auth"
+	case IPPROTO_ESP:
+		return "esp"
+	case IPPROTO_NONE:
+		return "none"
+	case IPPROTO_RAW:
+		return "proto"
+	default:
+		return ""
+	}
+}
+
 const (
 	IPPROTO_IP       IPHeaderType = 0
 	IPPROTO_ICMP     IPHeaderType = 1
@@ -368,8 +417,8 @@ const (
 )
 
 // ICMP related
-type ICMPType uint8
-type ICMPCode uint8
+type ICMPType int
+type ICMPCode int
 
 type ICMP4Type ICMPType
 

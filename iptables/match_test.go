@@ -597,6 +597,7 @@ func TestMatchOwner(t *testing.T) {
 		[]byte("owner socket exists owner UID match 0 owner GID match 0 incl. suppl. groups"),
 		[]byte("owner socket exists owner UID match root owner GID match root incl. suppl. groups"),
 		[]byte("owner UID match 0"),
+		[]byte("owner UID match 1-999"),
 	}
 	for _, main := range mains {
 		mOwner := &MatchOwner{}

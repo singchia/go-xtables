@@ -21,14 +21,6 @@ import (
 
 type MatchType int
 
-func (mt MatchType) Type() string {
-	return "MatchType"
-}
-
-func (mt MatchType) Value() string {
-	return strconv.Itoa(int(mt))
-}
-
 const (
 	MatchTypeAddrType MatchType = iota
 	MatchTypeAH                 // Both IPv4 & IPv6 specific
@@ -100,6 +92,141 @@ const (
 	MatchTypeUnclean // unsupport
 )
 
+func (mt MatchType) Type() string {
+	return "MatchType"
+}
+
+func (mt MatchType) Value() string {
+	return strconv.Itoa(int(mt))
+}
+
+func (mt MatchType) String() string {
+	switch mt {
+	case MatchTypeAddrType:
+		return "addrtype"
+	case MatchTypeAH:
+		return "ah"
+	case MatchTypeBPF:
+		return "bpf"
+	case MatchTypeCGroup:
+		return "cgroup"
+	case MatchTypeCluster:
+		return "cluster"
+	case MatchTypeComment:
+		return "comment"
+	case MatchTypeConnBytes:
+		return "connbytes"
+	case MatchTypeConnLabel:
+		return "connlabel"
+	case MatchTypeConnLimit:
+		return "connlimit"
+	case MatchTypeConnMark:
+		return "connmark"
+	case MatchTypeConnTrack:
+		return "conntrack"
+	case MatchTypeCPU:
+		return "cpu"
+	case MatchTypeDCCP:
+		return "dccp"
+	case MatchTypeDevGroup:
+		return "devgroup"
+	case MatchTypeDSCP:
+		return "dscp"
+	case MatchTypeDst:
+		return "dst"
+	case MatchTypeECN:
+		return "ecn"
+	case MatchTypeESP:
+		return "esp"
+	case MatchTypeEUI64:
+		return "eui64"
+	case MatchTypeFrag:
+		return "frag"
+	case MatchTypeHashLimit:
+		return "hashlimit"
+	case MatchTypeHBH:
+		return "hbh"
+	case MatchTypeHelper:
+		return "helper"
+	case MatchTypeHL:
+		return "hl"
+	case MatchTypeICMP:
+		return "icmp"
+	case MatchTypeIPRange:
+		return "iprange"
+	case MatchTypeIPv6Header:
+		return "ipv6header"
+	case MatchTypeIPVS:
+		return "ipvs"
+	case MatchTypeLength:
+		return "length"
+	case MatchTypeLimit:
+		return "limit"
+	case MatchTypeMAC:
+		return "mac"
+	case MatchTypeMark:
+		return "mark"
+	case MatchTypeMH:
+		return "mh"
+	case MatchTypeMultiPort:
+		return "multiport"
+	case MatchTypeNFAcct:
+		return "nfacct"
+	case MatchTypeOSF:
+		return "osf"
+	case MatchTypeOwner:
+		return "owner"
+	case MatchTypePhysDev:
+		return "physdev"
+	case MatchTypePktType:
+		return "pkttype"
+	case MatchTypePolicy:
+		return "policy"
+	case MatchTypeQuota:
+		return "quota"
+	case MatchTypeRateEst:
+		return "rateest"
+	case MatchTypeRealm:
+		return "realm"
+	case MatchTypeRecent:
+		return "recent"
+	case MatchTypeRPFilter:
+		return "rpfilter"
+	case MatchTypeRT:
+		return "rt"
+	case MatchTypeSCTP:
+		return "sctp"
+	case MatchTypeSet:
+		return "set"
+	case MatchTypeSocket:
+		return "socket"
+	case MatchTypeSRH:
+		return "srh"
+	case MatchTypeState:
+		return "state"
+	case MatchTypeStatistic:
+		return "statistic"
+	case MatchTypeString:
+		return "string"
+	case MatchTypeTCP:
+		return "tcp"
+	case MatchTypeTCPMSS:
+		return "tcpmss"
+	case MatchTypeTime:
+		return "time"
+	case MatchTypeTOS:
+		return "tos"
+	case MatchTypeTTL:
+		return "ttl"
+	case MatchTypeU32:
+		return "u32"
+	case MatchTypeUDP:
+		return "udp"
+	default:
+		return ""
+	}
+}
+
 type Match interface {
 	Type() MatchType
 	Short() string
@@ -107,6 +234,7 @@ type Match interface {
 	Long() string
 	LongArgs() []string
 	Parse([]byte) (int, bool)
+	Depends() []MatchType
 }
 
 func NewMatch(matchType MatchType, args ...interface{}) (Match, error) {
@@ -182,6 +310,10 @@ func (bm *baseMatch) Parse(params []byte) (int, bool) {
 
 func (bm *baseMatch) IPType() IPType {
 	return bm.ipType
+}
+
+func (bm *baseMatch) Depends() []MatchType {
+	return nil
 }
 
 type MatchIPv4 struct {
@@ -556,7 +688,8 @@ func (mAddrType *MatchAddrType) Short() string {
 }
 
 func (mAddrType *MatchAddrType) ShortArgs() []string {
-	args := make([]string, 0, 6)
+	args := make([]string, 0, 8)
+	args = append(args, "-m", mAddrType.matchType.String())
 	if mAddrType.HasSrcType {
 		if mAddrType.SrcTypeInvert {
 			args = append(args, "!")
@@ -685,6 +818,9 @@ func NewMatchAH(opts ...OptionMatchAH) (*MatchAH, error) {
 		baseMatch: baseMatch{
 			matchType: MatchTypeAH,
 		},
+		SPIMin: -1,
+		SPIMax: -1,
+		Length: -1,
 	}
 	for _, opt := range opts {
 		opt(match)
@@ -706,6 +842,43 @@ type MatchAH struct {
 	// invert
 	SPIInvert    bool
 	LengthInvert bool
+}
+
+func (mAH *MatchAH) Short() string {
+	return strings.Join(mAH.ShortArgs(), " ")
+}
+
+func (mAH *MatchAH) ShortArgs() []string {
+	args := make([]string, 0, 7)
+	if mAH.SPIMin > -1 {
+		if mAH.SPIInvert {
+			args = append(args, "!")
+		}
+		if mAH.SPIMax > -1 {
+			args = append(args, "--ahspi",
+				strconv.Itoa(mAH.SPIMin)+":"+strconv.Itoa(mAH.SPIMax))
+		} else {
+			args = append(args, "--ahspi", strconv.Itoa(mAH.SPIMin))
+		}
+	}
+	if mAH.Length > -1 {
+		if mAH.LengthInvert {
+			args = append(args, "!")
+		}
+		args = append(args, "--ahlen", strconv.Itoa(mAH.Length))
+	}
+	if mAH.Reserved {
+		args = append(args, "--ahres")
+	}
+	return args
+}
+
+func (mAH *MatchAH) Long() string {
+	return mAH.Short()
+}
+
+func (mAH *MatchAH) LongArgs() []string {
+	return mAH.ShortArgs()
 }
 
 func (mAH *MatchAH) Parse(main []byte) (int, bool) {
@@ -819,6 +992,30 @@ type MatchBPF struct {
 	Path   string
 }
 
+func (mBPF *MatchBPF) Short() string {
+	return strings.Join(mBPF.ShortArgs(), " ")
+}
+
+func (mBPF *MatchBPF) ShortArgs() []string {
+	args := make([]string, 0, 6)
+	args = append(args, "-m", mBPF.matchType.String())
+	if mBPF.Path != "" {
+		args = append(args, "--object-pinned", mBPF.Path)
+	}
+	if mBPF.BPFRaw != "" {
+		args = append(args, "--bytecode", mBPF.BPFRaw)
+	}
+	return args
+}
+
+func (mBPF *MatchBPF) Long() string {
+	return mBPF.Short()
+}
+
+func (mBPF *MatchBPF) LongArgs() []string {
+	return mBPF.ShortArgs()
+}
+
 func (mBPF *MatchBPF) Parse(main []byte) (int, bool) {
 	// 1. "^match bpf "
 	// 2. "([0-9, ]+\000)?" #1
@@ -906,6 +1103,7 @@ func NewMatchCGroup(opts ...OptionMatchCGroup) (*MatchCGroup, error) {
 		baseMatch: baseMatch{
 			matchType: MatchTypeCGroup,
 		},
+		ClassID: -1,
 	}
 	for _, opt := range opts {
 		opt(match)
@@ -920,6 +1118,36 @@ type MatchCGroup struct {
 	// invert
 	PathInvert    bool
 	ClassIDInvert bool
+}
+
+func (mCG *MatchCGroup) Short() string {
+	return strings.Join(mCG.ShortArgs(), " ")
+}
+
+func (mCG *MatchCGroup) ShortArgs() []string {
+	args := make([]string, 0, 8)
+	args = append(args, "-m", mCG.matchType.String())
+	if mCG.ClassID > -1 {
+		if mCG.ClassIDInvert {
+			args = append(args, "!")
+		}
+		args = append(args, "--cgroup", strconv.Itoa(mCG.ClassID))
+	}
+	if mCG.Path != "" {
+		if mCG.PathInvert {
+			args = append(args, "!")
+		}
+		args = append(args, "--path", mCG.Path)
+	}
+	return args
+}
+
+func (mCG *MatchCGroup) Long() string {
+	return mCG.Short()
+}
+
+func (mCG *MatchCGroup) LongArgs() []string {
+	return mCG.ShortArgs()
 }
 
 func (mCG *MatchCGroup) Parse(main []byte) (int, bool) {
@@ -966,21 +1194,21 @@ func WithMatchClusterTotalNodes(total int) OptionMatchCluster {
 }
 
 // Set the local node number ID.
-func WithMatchClusterLocalNode(localNode uint64) OptionMatchCluster {
+func WithMatchClusterLocalNode(localNode int64) OptionMatchCluster {
 	return func(mCluster *MatchCluster) {
 		mCluster.LocalNodeMask = localNode
 	}
 }
 
 // Set the local node number ID mask.
-func WithMatchClusterLocalNodeMask(mask uint64) OptionMatchCluster {
+func WithMatchClusterLocalNodeMask(mask int64) OptionMatchCluster {
 	return func(mCluster *MatchCluster) {
 		mCluster.LocalNodeMask = mask
 	}
 }
 
 // Set seed value of the Jenkins hash.
-func WithMatchClusterHashSeed(seed uint64) OptionMatchCluster {
+func WithMatchClusterHashSeed(seed int64) OptionMatchCluster {
 	return func(mCluster *MatchCluster) {
 		mCluster.HashSeed = seed
 	}
@@ -991,6 +1219,9 @@ func NewMatchCluster(opts ...OptionMatchCluster) (*MatchCluster, error) {
 		baseMatch: baseMatch{
 			matchType: MatchTypeCluster,
 		},
+		TotalNodes:    -1,
+		LocalNodeMask: -1,
+		HashSeed:      -1,
 	}
 	for _, opt := range opts {
 		opt(match)
@@ -1001,8 +1232,41 @@ func NewMatchCluster(opts ...OptionMatchCluster) (*MatchCluster, error) {
 type MatchCluster struct {
 	baseMatch
 	TotalNodes    int
-	LocalNodeMask uint64
-	HashSeed      uint64
+	LocalNodeMask int64
+	HashSeed      int64
+}
+
+func (mCluster *MatchCluster) Short() string {
+	return strings.Join(mCluster.ShortArgs(), " ")
+}
+
+func (mCluster *MatchCluster) ShortArgs() []string {
+	args := make([]string, 0, 9)
+	args = append(args, "-m", mCluster.matchType.String())
+	if mCluster.TotalNodes > -1 {
+		args = append(args, "--cluster-total-nodes",
+			strconv.Itoa(mCluster.TotalNodes))
+	}
+	if mCluster.LocalNodeMask > -1 {
+		if mCluster.invert {
+			args = append(args, "!")
+		}
+		args = append(args, "--cluster-local-nodemask",
+			strconv.FormatInt(mCluster.LocalNodeMask, 10))
+	}
+	if mCluster.HashSeed > -1 {
+		args = append(args, "--cluster-hash-seed",
+			strconv.FormatInt(mCluster.HashSeed, 10))
+	}
+	return args
+}
+
+func (mCluster *MatchCluster) Long() string {
+	return mCluster.Short()
+}
+
+func (mCluster *MatchCluster) LongArgs() []string {
+	return mCluster.ShortArgs()
 }
 
 func (mCluster *MatchCluster) Parse(main []byte) (int, bool) {
@@ -1019,7 +1283,7 @@ func (mCluster *MatchCluster) Parse(main []byte) (int, bool) {
 	}
 	// node mask
 	if len(matches[2]) != 0 {
-		mask, err := strconv.ParseUint(string(matches[2]), 16, 64)
+		mask, err := strconv.ParseInt(string(matches[2]), 16, 64)
 		if err != nil {
 			return 0, false
 		}
@@ -1038,7 +1302,7 @@ func (mCluster *MatchCluster) Parse(main []byte) (int, bool) {
 	}
 	// hash seed
 	if len(matches[4]) != 0 {
-		seed, err := strconv.ParseUint(string(matches[4]), 16, 54)
+		seed, err := strconv.ParseInt(string(matches[4]), 16, 54)
 		if err != nil {
 			return 0, false
 		}
@@ -1060,6 +1324,15 @@ func NewMatchComment(comment string) (*MatchComment, error) {
 type MatchComment struct {
 	baseMatch
 	Comment string
+}
+
+func (mComment *MatchComment) ShortArgs() []string {
+	args := make([]string, 0, 4)
+	args = append(args, "-m", mComment.matchType.String())
+	if mComment.Comment != "" {
+		args = append(args, "--comment", mComment.Comment)
+	}
+	return args
 }
 
 func (mComment *MatchComment) Parse(main []byte) (int, bool) {
@@ -1129,6 +1402,9 @@ func NewMatchConnBytes(opts ...OptionMatchConnBytes) (*MatchConnBytes, error) {
 		baseMatch: baseMatch{
 			matchType: MatchTypeConnBytes,
 		},
+		From:      -1,
+		To:        -1,
+		Direction: -1,
 	}
 	for _, opt := range opts {
 		opt(match)
@@ -1142,6 +1418,39 @@ type MatchConnBytes struct {
 	To        int64
 	Mode      ConnBytesMode
 	Direction ConnTrackDir
+}
+
+func (mConnBytes *MatchConnBytes) Short() string {
+	return strings.Join(mConnBytes.ShortArgs(), " ")
+}
+
+func (mConnBytes *MatchConnBytes) ShortArgs() []string {
+	args := make([]string, 0, 10)
+	args = append(args, "-m", mConnBytes.matchType.String())
+	if mConnBytes.From > -1 {
+		if mConnBytes.invert {
+			args = append(args, "!")
+		}
+		args = append(args, "--connbytes", strconv.FormatInt(mConnBytes.From, 10))
+		if mConnBytes.To > -1 {
+			args = append(args, ":"+strconv.FormatInt(mConnBytes.To, 10))
+		}
+	}
+	if mConnBytes.Mode != "" {
+		args = append(args, "--connbytes-mode", string(mConnBytes.Mode))
+	}
+	if mConnBytes.Direction > -1 {
+		args = append(args, "--connbytes-dir", mConnBytes.Direction.String())
+	}
+	return args
+}
+
+func (mConnBytes *MatchConnBytes) Long() string {
+	return mConnBytes.Short()
+}
+
+func (mConnBytes *MatchConnBytes) LongArgs() []string {
+	return mConnBytes.ShortArgs()
 }
 
 func (mConnBytes *MatchConnBytes) Parse(main []byte) (int, bool) {
@@ -1223,6 +1532,7 @@ func NewMatchConnLabel(opts ...OptionMatchConnLabel) (*MatchConnLabel, error) {
 		baseMatch: baseMatch{
 			matchType: MatchTypeConnLabel,
 		},
+		Label: -1,
 	}
 	for _, opt := range opts {
 		opt(match)
@@ -1235,6 +1545,38 @@ type MatchConnLabel struct {
 	Label     int
 	LabelName string
 	Set       bool
+}
+
+func (mConnLabel *MatchConnLabel) Short() string {
+	return strings.Join(mConnLabel.ShortArgs(), " ")
+}
+
+func (mConnLabel *MatchConnLabel) ShortArgs() []string {
+	args := make([]string, 0, 6)
+	args = append(args, "-m", mConnLabel.matchType.String())
+	if mConnLabel.Label > -1 {
+		if mConnLabel.invert {
+			args = append(args, "!")
+		}
+		args = append(args, "--label", strconv.Itoa(mConnLabel.Label))
+	} else if mConnLabel.LabelName != "" {
+		if mConnLabel.invert {
+			args = append(args, "!")
+		}
+		args = append(args, "--label", mConnLabel.LabelName)
+	}
+	if mConnLabel.Set {
+		args = append(args, "--set")
+	}
+	return args
+}
+
+func (mConnLabel *MatchConnLabel) Long() string {
+	return mConnLabel.Short()
+}
+
+func (mConnLabel *MatchConnLabel) LongArgs() []string {
+	return mConnLabel.ShortArgs()
 }
 
 func (mConnLabel *MatchConnLabel) Parse(main []byte) (int, bool) {
@@ -1270,15 +1612,6 @@ func (mConnLabel *MatchConnLabel) Parse(main []byte) (int, bool) {
 		mConnLabel.Set = true
 	}
 	return len(matches[0]), true
-}
-
-type MatchConnLimit struct {
-	baseMatch
-	Upto  int
-	Above int
-	Mask  int
-	Src   bool
-	Dst   bool
 }
 
 type OptionMatchConnLimit func(*MatchConnLimit)
@@ -1326,11 +1659,56 @@ func NewMatchConnLimit(opts ...OptionMatchConnLimit) (*MatchConnLimit, error) {
 		baseMatch: baseMatch{
 			matchType: MatchTypeConnLimit,
 		},
+		Upto:  -1,
+		Above: -1,
+		Mask:  -1,
 	}
 	for _, opt := range opts {
 		opt(match)
 	}
 	return match, nil
+}
+
+type MatchConnLimit struct {
+	baseMatch
+	Upto  int
+	Above int
+	Mask  int
+	Src   bool
+	Dst   bool
+}
+
+func (mConnLimit *MatchConnLimit) Short() string {
+	return strings.Join(mConnLimit.ShortArgs(), " ")
+}
+
+func (mConnLimit *MatchConnLimit) ShortArgs() []string {
+	args := make([]string, 0, 10)
+	args = append(args, "-m", mConnLimit.matchType.String())
+	if mConnLimit.Upto > -1 {
+		args = append(args, "--connlimit-upto", strconv.Itoa(mConnLimit.Upto))
+	}
+	if mConnLimit.Above > -1 {
+		args = append(args, "--connlimit-above", strconv.Itoa(mConnLimit.Above))
+	}
+	if mConnLimit.Mask > -1 {
+		args = append(args, "--connlimit-mask", strconv.Itoa(mConnLimit.Mask))
+	}
+	if mConnLimit.Src {
+		args = append(args, "--connlimit-saddr")
+	}
+	if mConnLimit.Dst {
+		args = append(args, "--connlimit-daddr")
+	}
+	return args
+}
+
+func (mConnLimit *MatchConnLimit) Long() string {
+	return strings.Join(mConnLimit.ShortArgs(), " ")
+}
+
+func (mConnLimit *MatchConnLimit) LongArgs() []string {
+	return mConnLimit.ShortArgs()
 }
 
 func (mConnLimit *MatchConnLimit) Parse(main []byte) (int, bool) {
@@ -1398,6 +1776,35 @@ type MatchConnMark struct {
 	Mask  int
 }
 
+func (mConnMark *MatchConnMark) Short() string {
+	return strings.Join(mConnMark.ShortArgs(), " ")
+}
+
+func (mConnMark *MatchConnMark) ShortArgs() []string {
+	args := make([]string, 0, 6)
+	args = append(args, "-m", mConnMark.matchType.String())
+	if mConnMark.Value > -1 {
+		if mConnMark.invert {
+			args = append(args, "!")
+		}
+		if mConnMark.Mask > -1 {
+			args = append(args, "--mark",
+				strconv.Itoa(mConnMark.Value)+"/"+strconv.Itoa(mConnMark.Mask))
+		} else {
+			args = append(args, "--mark", strconv.Itoa(mConnMark.Value))
+		}
+	}
+	return args
+}
+
+func (mConnMark *MatchConnMark) Long() string {
+	return mConnMark.Short()
+}
+
+func (mConnMark *MatchConnMark) LongArgs() []string {
+	return mConnMark.ShortArgs()
+}
+
 func (mConnMark *MatchConnMark) Parse(main []byte) (int, bool) {
 	// 1. "^CONNMARK|connmark match "
 	// 2. "(!)?" #1
@@ -1430,6 +1837,24 @@ func (mConnMark *MatchConnMark) Parse(main []byte) (int, bool) {
 
 type ConnTrackState int
 
+func (connTrackState ConnTrackState) String() string {
+	switch connTrackState {
+	case INVALID:
+		return CTStateINVALID
+	case NEW:
+		return CTStateNEW
+	case ESTABLISHED:
+		return CTStateESTABLISHED
+	case UNTRACKED:
+		return CTStateUNTRACKED
+	case SNAT:
+		return CTStateSNAT
+	case DNAT:
+		return CTStateDNAT
+	}
+	return ""
+}
+
 const (
 	INVALID ConnTrackState = 1 << iota
 	NEW
@@ -1452,6 +1877,22 @@ const (
 
 type ConnTrackStatus int
 
+func (connTrackStatus ConnTrackStatus) String() string {
+	switch connTrackStatus {
+	case NONE:
+		return CTStatusNONE
+	case EXPECTED:
+		return CTStatusEXPECTED
+	case SEEN_REPLY:
+		return CTStatusSEEN_REPLY
+	case ASSURED:
+		return CTStatusASSURED
+	case CONFIRMED:
+		return CTStatusCONFIRMED
+	}
+	return ""
+}
+
 const (
 	NONE ConnTrackStatus = 1 << iota
 	EXPECTED
@@ -1469,6 +1910,18 @@ const (
 )
 
 type ConnTrackDir int
+
+func (connTrack ConnTrackDir) String() string {
+	switch connTrack {
+	case ORIGINAL:
+		return CTDirOriginal
+	case REPLY:
+		return CTDirReply
+	case BOTH:
+		return CTDirBoth
+	}
+	return ""
+}
 
 const (
 	ORIGINAL ConnTrackDir = 1 << iota
@@ -1646,6 +2099,20 @@ func NewMatchConnTrack(opts ...OptionMatchConnTrack) (*MatchConnTrack, error) {
 		baseMatch: baseMatch{
 			matchType: MatchTypeConnTrack,
 		},
+		State:          -1,
+		Status:         -1,
+		Proto:          -1,
+		Direction:      -1,
+		OrigSrcPortMin: -1,
+		OrigSrcPortMax: -1,
+		OrigDstPortMin: -1,
+		OrigDstPortMax: -1,
+		ReplSrcPortMin: -1,
+		ReplSrcPortMax: -1,
+		ReplDstPortMin: -1,
+		ReplDstPortMax: -1,
+		ExpireMin:      -1,
+		ExpireMax:      -1,
 	}
 	for _, opt := range opts {
 		opt(match)
@@ -1686,7 +2153,127 @@ type MatchConnTrack struct {
 	ReplSrcPortInvert bool
 	ReplDstPortInvert bool
 	ExpireInvert      bool
-	DirectionInvert   bool
+	// unused
+	DirectionInvert bool
+}
+
+func (mConnTrack *MatchConnTrack) Short() string {
+	return strings.Join(mConnTrack.ShortArgs(), " ")
+}
+
+func (mConnTrack *MatchConnTrack) ShortArgs() []string {
+	args := make([]string, 0, 49)
+	args = append(args, "-m", mConnTrack.matchType.String())
+	if mConnTrack.State > -1 {
+		if mConnTrack.StateInvert {
+			args = append(args, "!")
+		}
+		args = append(args, "--ctstate", mConnTrack.State.String())
+	}
+	if mConnTrack.Status > -1 {
+		if mConnTrack.StatusInvert {
+			args = append(args, "!")
+		}
+		args = append(args, "--ctstatus", mConnTrack.Status.String())
+	}
+	if mConnTrack.Proto > -1 {
+		if mConnTrack.ProtoInvert {
+			args = append(args, "!")
+		}
+		args = append(args, "--ctproto", strconv.Itoa(int(mConnTrack.Proto)))
+	}
+	if mConnTrack.OrigSrc != nil {
+		if mConnTrack.OrigSrcInvert {
+			args = append(args, "!")
+		}
+		args = append(args, "--ctorigsrc", mConnTrack.OrigSrc.String())
+	}
+	if mConnTrack.OrigDst != nil {
+		if mConnTrack.OrigDstInvert {
+			args = append(args, "!")
+		}
+		args = append(args, "--ctorigdst", mConnTrack.OrigDst.String())
+	}
+	if mConnTrack.ReplSrc != nil {
+		if mConnTrack.ReplSrcInvert {
+			args = append(args, "!")
+		}
+		args = append(args, "--ctreplsrc", mConnTrack.ReplSrc.String())
+	}
+	if mConnTrack.ReplDst != nil {
+		if mConnTrack.ReplDstInvert {
+			args = append(args, "!")
+		}
+		args = append(args, "--ctrepldst", mConnTrack.ReplDst.String())
+	}
+	if mConnTrack.OrigSrcPortMin > -1 {
+		if mConnTrack.OrigSrcPortInvert {
+			args = append(args, "!")
+		}
+		if mConnTrack.OrigSrcPortMax > -1 {
+			args = append(args, "--ctorigsrcport",
+				strconv.Itoa(mConnTrack.OrigSrcPortMin)+":"+strconv.Itoa(mConnTrack.OrigSrcPortMax))
+		} else {
+			args = append(args, "--ctorigsrcport",
+				strconv.Itoa(mConnTrack.OrigSrcPortMin))
+		}
+	}
+	if mConnTrack.OrigDstPortMin > -1 {
+		if mConnTrack.OrigDstPortInvert {
+			args = append(args, "!")
+		}
+		if mConnTrack.OrigDstPortMax > -1 {
+			args = append(args, "--ctorigdstport",
+				strconv.Itoa(mConnTrack.OrigDstPortMin)+":"+strconv.Itoa(mConnTrack.OrigDstPortMax))
+		} else {
+			args = append(args, "--ctorigdstport", strconv.Itoa(mConnTrack.OrigDstPortMin))
+		}
+	}
+	if mConnTrack.ReplSrcPortMin > -1 {
+		if mConnTrack.ReplSrcPortInvert {
+			args = append(args, "!")
+		}
+		if mConnTrack.ReplSrcPortMax > -1 {
+			args = append(args, "--ctreplsrcport",
+				strconv.Itoa(mConnTrack.ReplSrcPortMin)+":"+strconv.Itoa(mConnTrack.ReplSrcPortMax))
+		} else {
+			args = append(args, "--ctreplsrcport", strconv.Itoa(mConnTrack.ReplSrcPortMin))
+		}
+	}
+	if mConnTrack.ReplDstPortMin > -1 {
+		if mConnTrack.ReplDstPortInvert {
+			args = append(args, "!")
+		}
+		if mConnTrack.ReplDstPortMax > -1 {
+			args = append(args, "--ctrepldstport",
+				strconv.Itoa(mConnTrack.ReplDstPortMin)+":"+strconv.Itoa(mConnTrack.ReplDstPortMax))
+		} else {
+			args = append(args, "--ctrepldstport", strconv.Itoa(mConnTrack.ReplDstPortMin))
+		}
+	}
+	if mConnTrack.ExpireMin > -1 {
+		if mConnTrack.ExpireInvert {
+			args = append(args, "!")
+		}
+		if mConnTrack.ExpireMax > -1 {
+			args = append(args, "--ctexpire",
+				strconv.Itoa(mConnTrack.ExpireMin)+":"+strconv.Itoa(mConnTrack.ExpireMax))
+		} else {
+			args = append(args, "--ctexpire", strconv.Itoa(mConnTrack.ExpireMin))
+		}
+	}
+	if mConnTrack.Direction > -1 {
+		args = append(args, "--ctdir", mConnTrack.Direction.String())
+	}
+	return args
+}
+
+func (mConnTrack *MatchConnTrack) Long() string {
+	return mConnTrack.Short()
+}
+
+func (mConnTrack *MatchConnTrack) LongArgs() []string {
+	return mConnTrack.ShortArgs()
 }
 
 func (mConnTrack *MatchConnTrack) Parse(main []byte) (int, bool) {
@@ -1898,6 +2485,28 @@ type MatchCPU struct {
 	CPU int
 }
 
+func (mCPU *MatchCPU) Short() string {
+	return strings.Join(mCPU.ShortArgs(), " ")
+}
+
+func (mCPU *MatchCPU) ShortArgs() []string {
+	args := make([]string, 0, 5)
+	args = append(args, "-m", mCPU.matchType.String())
+	if mCPU.invert {
+		args = append(args, "!")
+	}
+	args = append(args, "--cpu", strconv.Itoa(mCPU.CPU))
+	return args
+}
+
+func (mCPU *MatchCPU) Long() string {
+	return mCPU.Short()
+}
+
+func (mCPU *MatchCPU) LongArgs() []string {
+	return mCPU.ShortArgs()
+}
+
 func (mCPU *MatchCPU) Parse(main []byte) (int, bool) {
 	// 1. "^cpu (!)?([0-9]+)"
 	pattern := `^cpu (!)?([0-9]+) *`
@@ -1918,6 +2527,34 @@ func (mCPU *MatchCPU) Parse(main []byte) (int, bool) {
 }
 
 type DCCPType int
+
+func (dccpType DCCPType) String() string {
+	switch dccpType {
+	case DCCPTypeREQUEST:
+		return "REQUEST"
+	case DCCPTypeRESPONSE:
+		return "RESPONSE"
+	case DCCPTypeDATA:
+		return "DATA"
+	case DCCPTypeACK:
+		return "ACK"
+	case DCCPTypeDATAACK:
+		return "DATAACK"
+	case DCCPTypeCLOSEREQ:
+		return "CLOSEREQ"
+	case DCCPTypeCLOSE:
+		return "CLOSE"
+	case DCCPTypeRESET:
+		return "RESET"
+	case DCCPTypeSYNC:
+		return "SYNC"
+	case DCCPTypeSYNCACK:
+		return "SYNCACK"
+	case DCCPTypeINVALID:
+		return "INVALID"
+	}
+	return ""
+}
 
 const (
 	DCCPTypeREQUEST DCCPType = 1 << iota
@@ -2004,6 +2641,12 @@ func NewMatchDCCP(opts ...OptionMatchDCCP) (*MatchDCCP, error) {
 		baseMatch: baseMatch{
 			matchType: MatchTypeDCCP,
 		},
+		SrcPortMin: -1,
+		SrcPortMax: -1,
+		DstPortMin: -1,
+		DstPortMax: -1,
+		Type:       -1,
+		Option:     -1,
 	}
 	for _, opt := range opts {
 		opt(match)
@@ -2024,6 +2667,86 @@ type MatchDCCP struct {
 	DstPortInvert bool
 	TypeInvert    bool
 	OptionInvert  bool
+}
+
+func (mDCCP *MatchDCCP) Short() string {
+	return strings.Join(mDCCP.ShortArgs(), " ")
+}
+
+func (mDCCP *MatchDCCP) ShortArgs() []string {
+	args := make([]string, 0, 16)
+	args = append(args, "-m", mDCCP.matchType.String())
+	if mDCCP.SrcPortMin > -1 {
+		if mDCCP.SrcPortInvert {
+			args = append(args, "!")
+		}
+		args = append(args, "--sport", strconv.Itoa(mDCCP.SrcPortMin))
+		if mDCCP.SrcPortMax > -1 {
+			args = append(args, ":"+strconv.Itoa(mDCCP.SrcPortMax))
+		}
+	}
+	if mDCCP.DstPortMin > -1 {
+		if mDCCP.DstPortInvert {
+			args = append(args, "!")
+		}
+		args = append(args, "--dport", strconv.Itoa(mDCCP.DstPortMin))
+		if mDCCP.DstPortMax > -1 {
+			args = append(args, ":"+strconv.Itoa(mDCCP.DstPortMax))
+		}
+	}
+	if mDCCP.Type > -1 {
+		if mDCCP.TypeInvert {
+			args = append(args, "!")
+		}
+		args = append(args, "--dccp-types", mDCCP.Type.String())
+	}
+	if mDCCP.Option > -1 {
+		if mDCCP.OptionInvert {
+			args = append(args, "!")
+		}
+		args = append(args, "--dccp-option", strconv.Itoa(mDCCP.Option))
+	}
+	return args
+}
+
+func (mDCCP *MatchDCCP) Long() string {
+	return strings.Join(mDCCP.LongArgs(), " ")
+}
+
+func (mDCCP *MatchDCCP) LongArgs() []string {
+	args := make([]string, 0, 16)
+	args = append(args, "-m", mDCCP.matchType.String())
+	if mDCCP.SrcPortMin > -1 {
+		if mDCCP.SrcPortInvert {
+			args = append(args, "!")
+		}
+		args = append(args, "--source-port", strconv.Itoa(mDCCP.SrcPortMin))
+		if mDCCP.SrcPortMax > -1 {
+			args = append(args, ":"+strconv.Itoa(mDCCP.SrcPortMax))
+		}
+	}
+	if mDCCP.DstPortMin > -1 {
+		if mDCCP.DstPortInvert {
+			args = append(args, "!")
+		}
+		args = append(args, "--destination-port", strconv.Itoa(mDCCP.DstPortMin))
+		if mDCCP.DstPortMax > -1 {
+			args = append(args, ":"+strconv.Itoa(mDCCP.DstPortMax))
+		}
+	}
+	if mDCCP.Type > -1 {
+		if mDCCP.TypeInvert {
+			args = append(args, "!")
+		}
+		args = append(args, "--dccp-types", mDCCP.Type.String())
+	}
+	if mDCCP.Option > -1 {
+		if mDCCP.OptionInvert {
+			args = append(args, "!")
+		}
+		args = append(args, "--dccp-option", strconv.Itoa(mDCCP.Option))
+	}
+	return args
 }
 
 func (mDCCP *MatchDCCP) Parse(main []byte) (int, bool) {
@@ -2121,7 +2844,7 @@ func (mDCCP *MatchDCCP) Parse(main []byte) (int, bool) {
 type OptionMatchDevGroup func(*MatchDevGroup)
 
 // Match device group of incoming device.
-func WithMatchDevGroupSrc(yes bool, src uint64) OptionMatchDevGroup {
+func WithMatchDevGroupSrc(yes bool, src int64) OptionMatchDevGroup {
 	return func(mDevGroup *MatchDevGroup) {
 		mDevGroup.SrcGroup = src
 		mDevGroup.SrcGroupInvert = !yes
@@ -2129,7 +2852,7 @@ func WithMatchDevGroupSrc(yes bool, src uint64) OptionMatchDevGroup {
 }
 
 // Match device group of outgoing device.
-func WithMatchDevGroupDst(yes bool, dst uint64) OptionMatchDevGroup {
+func WithMatchDevGroupDst(yes bool, dst int64) OptionMatchDevGroup {
 	return func(mDevGroup *MatchDevGroup) {
 		mDevGroup.DstGroup = dst
 		mDevGroup.DstGroupInvert = !yes
@@ -2141,6 +2864,8 @@ func NewMatchDevGroup(opts ...OptionMatchDevGroup) (*MatchDevGroup, error) {
 		baseMatch: baseMatch{
 			matchType: MatchTypeDevGroup,
 		},
+		SrcGroup: -1,
+		DstGroup: -1,
 	}
 	for _, opt := range opts {
 		opt(match)
@@ -2150,11 +2875,43 @@ func NewMatchDevGroup(opts ...OptionMatchDevGroup) (*MatchDevGroup, error) {
 
 type MatchDevGroup struct {
 	baseMatch
-	SrcGroup uint64
-	DstGroup uint64
+	SrcGroup int64
+	DstGroup int64
 	// invert
 	SrcGroupInvert bool
 	DstGroupInvert bool
+}
+
+func (mDevGroup *MatchDevGroup) Short() string {
+	return strings.Join(mDevGroup.ShortArgs(), " ")
+}
+
+func (mDevGroup *MatchDevGroup) ShortArgs() []string {
+	args := make([]string, 0, 8)
+	args = append(args, "-m", mDevGroup.matchType.String())
+	if mDevGroup.SrcGroup > -1 {
+		if mDevGroup.SrcGroupInvert {
+			args = append(args, "!")
+		}
+		args = append(args, "--src-group",
+			"0x"+strconv.FormatInt(mDevGroup.SrcGroup, 16))
+	}
+	if mDevGroup.DstGroup > -1 {
+		if mDevGroup.DstGroupInvert {
+			args = append(args, "!")
+		}
+		args = append(args, "--dst-group",
+			"0x"+strconv.FormatInt(mDevGroup.DstGroup, 16))
+	}
+	return args
+}
+
+func (mDevGroup *MatchDevGroup) Long() string {
+	return mDevGroup.Short()
+}
+
+func (mDevGroup *MatchDevGroup) LongArgs() []string {
+	return mDevGroup.ShortArgs()
 }
 
 func (mDevGroup *MatchDevGroup) Parse(main []byte) (int, bool) {
@@ -2174,14 +2931,14 @@ func (mDevGroup *MatchDevGroup) Parse(main []byte) (int, bool) {
 		opt := string(matches[2])
 		switch opt {
 		case "src-group":
-			group, err := strconv.ParseUint(string(matches[3]), 16, 64)
+			group, err := strconv.ParseInt(string(matches[3]), 16, 64)
 			if err != nil {
 				goto END
 			}
 			mDevGroup.SrcGroup = group
 			mDevGroup.SrcGroupInvert = invert
 		case "dst-group":
-			group, err := strconv.ParseUint(string(matches[3]), 16, 64)
+			group, err := strconv.ParseInt(string(matches[3]), 16, 64)
 			if err != nil {
 				return 0, false
 			}
@@ -2250,6 +3007,7 @@ func NewMatchDSCP(opts ...OptionMatchDSCP) (*MatchDSCP, error) {
 		baseMatch: baseMatch{
 			matchType: MatchTypeDSCP,
 		},
+		Value: -1,
 	}
 	for _, opt := range opts {
 		opt(match)
@@ -2260,6 +3018,30 @@ func NewMatchDSCP(opts ...OptionMatchDSCP) (*MatchDSCP, error) {
 type MatchDSCP struct {
 	baseMatch
 	Value int
+}
+
+func (mDSCP *MatchDSCP) Short() string {
+	return strings.Join(mDSCP.ShortArgs(), " ")
+}
+
+func (mDSCP *MatchDSCP) ShortArgs() []string {
+	args := make([]string, 0, 5)
+	args = append(args, "-m", mDSCP.matchType.String())
+	if mDSCP.Value > -1 {
+		if mDSCP.invert {
+			args = append(args, "!")
+		}
+		args = append(args, "--dscp", strconv.Itoa(mDSCP.Value))
+	}
+	return args
+}
+
+func (mDSCP *MatchDSCP) Long() string {
+	return mDSCP.Short()
+}
+
+func (mDSCP *MatchDSCP) LongArgs() []string {
+	return mDSCP.ShortArgs()
 }
 
 func (mDSCP *MatchDSCP) Parse(main []byte) (int, bool) {
@@ -2304,6 +3086,7 @@ func NewMatchDst(opts ...OptionMatchDst) (*MatchDst, error) {
 		baseMatch: baseMatch{
 			matchType: MatchTypeDst,
 		},
+		Length: -1,
 	}
 	for _, opt := range opts {
 		opt(match)
@@ -2317,6 +3100,42 @@ type MatchDst struct {
 	baseMatch
 	Length  int
 	Options []IPv6Option
+}
+
+func (mDst *MatchDst) Short() string {
+	return strings.Join(mDst.ShortArgs(), " ")
+}
+
+func (mDst *MatchDst) ShortArgs() []string {
+	args := make([]string, 0, 7)
+	args = append(args, "-m", mDst.matchType.String())
+	if mDst.Length > -1 {
+		if mDst.invert {
+			args = append(args, "!")
+		}
+		args = append(args, "--dst-len", strconv.Itoa(mDst.Length))
+	}
+	if mDst.Options != nil && len(mDst.Options) != 0 {
+		opts := ""
+		sep := ""
+		for _, opt := range mDst.Options {
+			opts += sep + strconv.Itoa(opt.Type)
+			if opt.Length > 0 {
+				opts += ":" + strconv.Itoa(opt.Length)
+			}
+			sep = ","
+		}
+		args = append(args, "--dst-opts", opts)
+	}
+	return args
+}
+
+func (mDst *MatchDst) Long() string {
+	return mDst.Short()
+}
+
+func (mDst *MatchDst) LongArgs() []string {
+	return mDst.ShortArgs()
 }
 
 func (mDst *MatchDst) Parse(main []byte) (int, bool) {
@@ -2347,7 +3166,10 @@ func (mDst *MatchDst) Parse(main []byte) (int, bool) {
 	if len(matches[5]) != 0 {
 		elems := strings.Split(string(matches[5]), ",")
 		for _, elem := range elems {
-			opt := IPv6Option{}
+			opt := IPv6Option{
+				Type:   -1,
+				Length: -1,
+			}
 			typelength := strings.Split(string(elem), ":")
 			if len(typelength) >= 1 {
 				typ, err := strconv.Atoi(typelength[0])
@@ -2401,6 +3223,7 @@ func NewMatchECN(opts ...OptionMatchECN) (*MatchECN, error) {
 		baseMatch: baseMatch{
 			matchType: MatchTypeECN,
 		},
+		ECT: -1,
 	}
 	for _, opt := range opts {
 		opt(match)
@@ -2416,6 +3239,42 @@ type MatchECN struct {
 	ECEInvert bool
 	CWRInvert bool
 	ECTInvert bool
+}
+
+func (mECN *MatchECN) Short() string {
+	return strings.Join(mECN.ShortArgs(), " ")
+}
+
+func (mECN *MatchECN) ShortArgs() []string {
+	args := make([]string, 0, 9)
+	args = append(args, "-m", mECN.matchType.String())
+	if mECN.ECE {
+		if mECN.ECEInvert {
+			args = append(args, "!")
+		}
+		args = append(args, "--ecn-tcp-ece")
+	}
+	if mECN.CWR {
+		if mECN.CWRInvert {
+			args = append(args, "!")
+		}
+		args = append(args, "--ecn-tcp-cwr")
+	}
+	if mECN.ECT > -1 {
+		if mECN.ECTInvert {
+			args = append(args, "!")
+		}
+		args = append(args, "--ecn-tcp-ect", strconv.Itoa(mECN.ECT))
+	}
+	return args
+}
+
+func (mECN *MatchECN) Long() string {
+	return mECN.Short()
+}
+
+func (mECN *MatchECN) LongArgs() []string {
+	return mECN.ShortArgs()
 }
 
 func (mECN *MatchECN) Parse(main []byte) (int, bool) {
@@ -2464,6 +3323,8 @@ func NewMatchESP(yes bool, spi ...int) (*MatchESP, error) {
 		baseMatch: baseMatch{
 			matchType: MatchTypeESP,
 		},
+		SPIMin: -1,
+		SPIMax: -1,
 	}
 	switch len(spi) {
 	case 1:
@@ -2481,6 +3342,33 @@ type MatchESP struct {
 	baseMatch
 	SPIMin int
 	SPIMax int
+}
+
+func (mESP *MatchESP) Short() string {
+	return strings.Join(mESP.ShortArgs(), " ")
+}
+
+func (mESP *MatchESP) ShortArgs() []string {
+	args := make([]string, 0, 5)
+	args = append(args, "-m", mESP.matchType.String())
+	if mESP.SPIMin > -1 {
+		if mESP.invert {
+			args = append(args, "!")
+		}
+		if mESP.SPIMax > -1 {
+			args = append(args, "--espspi",
+				strconv.Itoa(mESP.SPIMin)+":"+strconv.Itoa(mESP.SPIMax))
+		}
+	}
+	return args
+}
+
+func (mESP *MatchESP) Long() string {
+	return mESP.Short()
+}
+
+func (mESP *MatchESP) LongArgs() []string {
+	return mESP.ShortArgs()
 }
 
 func (mESP *MatchESP) Parse(main []byte) (int, bool) {
@@ -2547,6 +3435,22 @@ func NewMatchEUI64() (*MatchEUI64, error) {
 // Non-numeric unsupport
 type MatchEUI64 struct {
 	baseMatch
+}
+
+func (mEUI64 *MatchEUI64) Short() string {
+	return strings.Join(mEUI64.ShortArgs(), " ")
+}
+
+func (mEUI64 *MatchEUI64) ShortArgs() []string {
+	return []string{"-m", mEUI64.matchType.String()}
+}
+
+func (mEUI64 *MatchEUI64) Long() string {
+	return mEUI64.Short()
+}
+
+func (mEUI64 *MatchEUI64) LongArgs() []string {
+	return mEUI64.ShortArgs()
 }
 
 func (mEUI64 *MatchEUI64) Parse(main []byte) (int, bool) {
@@ -2619,6 +3523,9 @@ func NewMatchFrag(opts ...OptionMatchFrag) (*MatchFrag, error) {
 		baseMatch: baseMatch{
 			matchType: MatchTypeFrag,
 		},
+		IDMin:  -1,
+		IDMax:  -1,
+		Length: -1,
 	}
 	for _, opt := range opts {
 		opt(match)
@@ -2640,6 +3547,35 @@ type MatchFrag struct {
 	// invert
 	IDInvert     bool
 	LengthInvert bool
+}
+
+func (mFrag *MatchFrag) Short() string {
+	return strings.Join(mFrag.ShortArgs(), " ")
+}
+
+func (mFrag *MatchFrag) ShortArgs() []string {
+	args := make([]string, 0, 12)
+	args = append(args, "-m", mFrag.matchType.String())
+	if mFrag.IDMin > -1 {
+		if mFrag.IDInvert {
+			args = append(args, "!")
+		}
+		if mFrag.IDMax > -1 {
+			args = append(args, "--fragid",
+				strconv.Itoa(mFrag.IDMin)+":"+strconv.Itoa(mFrag.IDMax))
+		} else {
+			args = append(args, "--fragid", strconv.Itoa(mFrag.IDMin))
+		}
+	}
+	return args
+}
+
+func (mFrag *MatchFrag) Long() string {
+	return mFrag.Short()
+}
+
+func (mFrag *MatchFrag) LongArgs() []string {
+	return mFrag.ShortArgs()
 }
 
 func (mFrag *MatchFrag) Parse(main []byte) (int, bool) {
@@ -2747,9 +3683,9 @@ func WithMatchHashLimitAbove(rate Rate) OptionMatchHashLimit {
 // Maximum initial number of packets to match:
 // this number gets recharged by one every time the limit specified above is not reached,
 // up to this number; the default is 5.
-func WithMatchHashLimitBurst(rate Rate) OptionMatchHashLimit {
+func WithMatchHashLimitBurst(burst int) OptionMatchHashLimit {
 	return func(mHashLimit *MatchHashLimit) {
-		mHashLimit.Burst = rate
+		mHashLimit.Burst = burst
 	}
 }
 
@@ -2828,6 +3764,14 @@ func NewHashLimit(opts ...OptionMatchHashLimit) (*MatchHashLimit, error) {
 		baseMatch: baseMatch{
 			matchType: MatchTypeHashLimit,
 		},
+		Burst:               -1,
+		SrcMask:             -1,
+		DstMask:             -1,
+		HashtableSize:       -1,
+		HashtableMax:        -1,
+		HashtableGCInterval: -1,
+		HashtableExpire:     -1,
+		RateInterval:        -1,
 	}
 	for _, opt := range opts {
 		opt(match)
@@ -2836,6 +3780,27 @@ func NewHashLimit(opts ...OptionMatchHashLimit) (*MatchHashLimit, error) {
 }
 
 type HashLimitMode uint8
+
+func (hashLimitMode HashLimitMode) String() string {
+	mode := ""
+	sep := ""
+	if (hashLimitMode & HashLimitModeSrcIP) != 0 {
+		mode += sep + "srcip"
+		sep = ","
+	}
+	if (hashLimitMode & HashLimitModeSrcPort) != 0 {
+		mode += sep + "srcport"
+		sep = ","
+	}
+	if (hashLimitMode & HashLimitModeDstIP) != 0 {
+		mode += sep + "dstip"
+		sep = ","
+	}
+	if (hashLimitMode & HashLimitModeDstPort) != 0 {
+		mode += sep + "dstport"
+	}
+	return mode
+}
 
 const (
 	HashLimitModeSrcIP HashLimitMode = 1 << iota
@@ -2847,7 +3812,7 @@ const (
 type MatchHashLimit struct {
 	baseMatch
 	Avg                 Rate // <= avg
-	Burst               Rate
+	Burst               int
 	Mode                HashLimitMode
 	SrcMask             int
 	DstMask             int
@@ -2859,7 +3824,72 @@ type MatchHashLimit struct {
 	RateMatch           bool
 	RateInterval        int
 	// invert
-	AvgInvert bool // > avg
+	AvgInvert bool // > avg, true means above, false means upto
+}
+
+func (mHashLimit *MatchHashLimit) Short() string {
+	return strings.Join(mHashLimit.ShortArgs(), " ")
+}
+
+func (mHashLimit *MatchHashLimit) ShortArgs() []string {
+	args := make([]string, 0, 27)
+	args = append(args, "-m", mHashLimit.matchType.String())
+	if (mHashLimit.Avg != Rate{}) {
+		if mHashLimit.AvgInvert {
+			args = append(args, "--hashlimit-above", mHashLimit.Avg.String())
+		} else {
+			args = append(args, "--hashlimit-upto", mHashLimit.Avg.String())
+		}
+	}
+	if mHashLimit.Burst > -1 {
+		args = append(args, "--hashlimit-burst", strconv.Itoa(mHashLimit.Burst))
+	}
+	if mHashLimit.Mode != 0 {
+		args = append(args, "--hashlimit-mode", mHashLimit.Mode.String())
+	}
+	if mHashLimit.SrcMask > -1 {
+		args = append(args, "--hashlimit-srcmask",
+			strconv.Itoa(mHashLimit.SrcMask))
+	}
+	if mHashLimit.DstMask > -1 {
+		args = append(args, "--hashlimit-dstmask",
+			strconv.Itoa(mHashLimit.DstMask))
+	}
+	if mHashLimit.Name != "" {
+		args = append(args, "--hashlimit-name", mHashLimit.Name)
+	}
+	if mHashLimit.HashtableSize > -1 {
+		args = append(args, "--hashlimit-htable-size",
+			strconv.Itoa(mHashLimit.HashtableSize))
+	}
+	if mHashLimit.HashtableMax > -1 {
+		args = append(args, "--hashlimit-htable-max",
+			strconv.Itoa(mHashLimit.HashtableMax))
+	}
+	if mHashLimit.HashtableExpire > -1 {
+		args = append(args, "--hashlimit-htable-expire",
+			strconv.Itoa(mHashLimit.HashtableExpire))
+	}
+	if mHashLimit.HashtableGCInterval > -1 {
+		args = append(args, "--hashlimit-htable-interval",
+			strconv.Itoa(mHashLimit.HashtableGCInterval))
+	}
+	if mHashLimit.RateInterval > -1 {
+		args = append(args, "--hashlimit-rate-interval",
+			strconv.Itoa(mHashLimit.RateInterval))
+	}
+	if mHashLimit.RateMatch {
+		args = append(args, "--hashlimit-rate-match")
+	}
+	return args
+}
+
+func (mHashLimit *MatchHashLimit) Long() string {
+	return mHashLimit.Short()
+}
+
+func (mHashLimit *MatchHashLimit) LongShort() []string {
+	return mHashLimit.ShortArgs()
 }
 
 func (mHashLimit *MatchHashLimit) Parse(main []byte) (int, bool) {
@@ -2920,7 +3950,7 @@ func (mHashLimit *MatchHashLimit) Parse(main []byte) (int, bool) {
 		if err != nil {
 			return 0, false
 		}
-		mHashLimit.Burst = Rate{burst, unit}
+		mHashLimit.Burst = burst
 	}
 	if len(matches[7]) != 0 {
 		modes := strings.Split(string(matches[7]), "-")
@@ -3014,6 +4044,7 @@ func NewMatchHBH(opts ...OptionMatchHBH) (*MatchHBH, error) {
 		baseMatch: baseMatch{
 			matchType: MatchTypeHBH,
 		},
+		Length: -1,
 	}
 	for _, opt := range opts {
 		opt(match)
@@ -3027,6 +4058,42 @@ type MatchHBH struct {
 	baseMatch
 	Length  int
 	Options []IPv6Option
+}
+
+func (mHBH *MatchHBH) Short() string {
+	return strings.Join(mHBH.ShortArgs(), " ")
+}
+
+func (mHBH *MatchHBH) ShortArgs() []string {
+	args := make([]string, 0, 7)
+	args = append(args, "-m", mHBH.matchType.String())
+	if mHBH.Length > -1 {
+		if mHBH.invert {
+			args = append(args, "!")
+		}
+		args = append(args, "--hbh-len", strconv.Itoa(mHBH.Length))
+	}
+	if mHBH.Options != nil && len(mHBH.Options) > 0 {
+		opts := ""
+		sep := ""
+		for _, opt := range mHBH.Options {
+			opts += sep + strconv.Itoa(opt.Type)
+			if opt.Length > 0 {
+				opts += ":" + strconv.Itoa(opt.Length)
+			}
+			sep = ","
+		}
+		args = append(args, "--hbh-opts", opts)
+	}
+	return args
+}
+
+func (mHBH *MatchHBH) Long() string {
+	return mHBH.Short()
+}
+
+func (mHBH *MatchHBH) LongArgs() []string {
+	return mHBH.ShortArgs()
 }
 
 func (mHBH *MatchHBH) Parse(main []byte) (int, bool) {
@@ -3095,6 +4162,30 @@ type MatchHelper struct {
 	Name string
 }
 
+func (mHelper *MatchHelper) Short() string {
+	return strings.Join(mHelper.ShortArgs(), " ")
+}
+
+func (mHelper *MatchHelper) ShortArgs() []string {
+	args := make([]string, 0, 5)
+	args = append(args, "-m", mHelper.matchType.String())
+	if mHelper.Name != "" {
+		if mHelper.invert {
+			args = append(args, "!")
+		}
+		args = append(args, "--helper", mHelper.Name)
+	}
+	return args
+}
+
+func (mHelper *MatchHelper) Long() string {
+	return mHelper.Short()
+}
+
+func (mHelper *MatchHelper) LongArgs() []string {
+	return mHelper.ShortArgs()
+}
+
 func (mHelper *MatchHelper) Parse(main []byte) (int, bool) {
 	pattern := `^helper match (!)?"([A-Za-z0-9()+-._]+)"`
 	reg := regexp.MustCompile(pattern)
@@ -3128,6 +4219,34 @@ type MatchHL struct {
 	baseMatch
 	Operator Operator
 	Value    int
+}
+
+func (mHL *MatchHL) Short() string {
+	return strings.Join(mHL.ShortArgs(), " ")
+}
+
+func (mHL *MatchHL) ShortArgs() []string {
+	args := make([]string, 0, 5)
+	args = append(args, "-m", mHL.matchType.String())
+	switch mHL.Operator {
+	case OperatorNE:
+		args = append(args, "!", "--hl-eq", strconv.Itoa(mHL.Value))
+	case OperatorEQ:
+		args = append(args, "--hl-eq", strconv.Itoa(mHL.Value))
+	case OperatorLT:
+		args = append(args, "--hl-lt", strconv.Itoa(mHL.Value))
+	case OperatorGT:
+		args = append(args, "--hl-gt", strconv.Itoa(mHL.Value))
+	}
+	return args
+}
+
+func (mHL *MatchHL) Long() string {
+	return mHL.Short()
+}
+
+func (mHL *MatchHL) LongArgs() []string {
+	return mHL.ShortArgs()
 }
 
 func (mHL *MatchHL) Parse(main []byte) (int, bool) {
@@ -3172,6 +4291,9 @@ func NewMatchICMP(yes bool, typ ICMPType, opts ...OptionMatchICMP) (*MatchICMP, 
 			matchType: MatchTypeICMP,
 			invert:    !yes,
 		},
+		CodeMin:    -1,
+		CodeMax:    -1,
+		typeString: "--icmp-type",
 	}
 	for _, opt := range opts {
 		opt(match)
@@ -3179,13 +4301,43 @@ func NewMatchICMP(yes bool, typ ICMPType, opts ...OptionMatchICMP) (*MatchICMP, 
 	return match, nil
 }
 
-// IPv6 specific
+// IPv6 and IPv4 specific
 // Non-numeric support
 type MatchICMP struct {
 	baseMatch
-	Type    ICMPType
-	CodeMin ICMPCode
-	CodeMax ICMPCode
+	Type       ICMPType
+	CodeMin    ICMPCode
+	CodeMax    ICMPCode
+	typeString string
+}
+
+func (mICMP *MatchICMP) Depends() []MatchType {
+	return []MatchType{MatchTypeIPv4, MatchTypeIPv6}
+}
+
+func (mICMP *MatchICMP) Short() string {
+	return strings.Join(mICMP.ShortArgs(), " ")
+}
+
+func (mICMP *MatchICMP) ShortArgs() []string {
+	args := make([]string, 0, 5)
+	args = append(args, "-m", mICMP.matchType.String())
+	if mICMP.CodeMin > -1 {
+		args = append(args, mICMP.typeString,
+			strconv.Itoa(int(mICMP.Type))+"/"+strconv.Itoa(int(mICMP.CodeMin)))
+	} else {
+		args = append(args, mICMP.typeString,
+			strconv.Itoa(int(mICMP.Type)))
+	}
+	return args
+}
+
+func (mICMP *MatchICMP) Long() string {
+	return mICMP.Short()
+}
+
+func (mICMP *MatchICMP) LongArgs() []string {
+	return mICMP.ShortArgs()
 }
 
 func (mICMP *MatchICMP) Parse(main []byte) (int, bool) {
@@ -3327,6 +4479,46 @@ type MatchIPRange struct {
 	DstIPInvert bool
 }
 
+func (mIPRange *MatchIPRange) Short() string {
+	return strings.Join(mIPRange.ShortArgs(), " ")
+}
+
+func (mIPRange *MatchIPRange) ShortArgs() []string {
+	args := make([]string, 0, 8)
+	args = append(args, "-m", mIPRange.matchType.String())
+	if mIPRange.SrcIPMin != nil {
+		if mIPRange.SrcIPInvert {
+			args = append(args, "!")
+		}
+		if mIPRange.SrcIPMax != nil {
+			args = append(args, "--src-range",
+				mIPRange.SrcIPMin.String()+"-"+mIPRange.SrcIPMax.String())
+		} else {
+			args = append(args, "--src-range", mIPRange.SrcIPMin.String())
+		}
+	}
+	if mIPRange.DstIPMin != nil {
+		if mIPRange.DstIPInvert {
+			args = append(args, "!")
+		}
+		if mIPRange.DstIPMax != nil {
+			args = append(args, "--src-range",
+				mIPRange.DstIPMin.String()+"-"+mIPRange.DstIPMax.String())
+		} else {
+			args = append(args, "--src-range", mIPRange.DstIPMin.String())
+		}
+	}
+	return args
+}
+
+func (mIPRange *MatchIPRange) Long() string {
+	return mIPRange.Short()
+}
+
+func (mIPRange *MatchIPRange) LongArgs() []string {
+	return mIPRange.ShortArgs()
+}
+
 func (mIPRange *MatchIPRange) Parse(main []byte) (int, bool) {
 	// 1. "^ source|destination IP range (([0-9]{1,3}\.){3}[0-9]{1,3})?-(([0-9]{1,3}\.){3}[0-9]{1,3})?"
 	pattern := `^(source|destination) IP range ` +
@@ -3425,6 +4617,36 @@ type MatchIPv6Header struct {
 	IPHeaderTypes []IPHeaderType
 }
 
+func (mIPv6 *MatchIPv6Header) Short() string {
+	return strings.Join(mIPv6.ShortArgs(), " ")
+}
+
+func (mIPv6 *MatchIPv6Header) ShortArgs() []string {
+	args := make([]string, 0, 6)
+	args = append(args, "-m", mIPv6.matchType.String())
+	if mIPv6.Soft {
+		args = append(args, "--soft")
+	}
+	if mIPv6.IPHeaderTypes != nil && len(mIPv6.IPHeaderTypes) != 0 {
+		opts := ""
+		sep := ""
+		for _, head := range mIPv6.IPHeaderTypes {
+			opts += sep + head.String()
+			sep = ","
+		}
+		args = append(args, "--header", opts)
+	}
+	return args
+}
+
+func (mIPv6 *MatchIPv6Header) Long() string {
+	return mIPv6.Short()
+}
+
+func (mIPv6 *MatchIPv6Header) LongArgs() []string {
+	return mIPv6.ShortArgs()
+}
+
 func (mIPv6 *MatchIPv6Header) Parse(main []byte) (int, bool) {
 	// 1. "^ipv6header"
 	// 2. "(flag:(!)?(0x([0-9]+)|([0-9A-Za-z-,]+)))?" #1 #2 #3 #4 #5
@@ -3476,6 +4698,21 @@ func (mIPv6 *MatchIPv6Header) Parse(main []byte) (int, bool) {
 }
 
 type IPVSMethod int
+
+func (ipvsMethod IPVSMethod) String() string {
+	switch ipvsMethod {
+	case GATE:
+		return IPVSGATE
+	case IPIP:
+		return IPVSIPIP
+	case MASQ:
+		return IPVSMASQ
+	case UNKNOWN:
+		return IPVSUNKNOWN
+	default:
+		return ""
+	}
+}
 
 const (
 	GATE = 1 << iota
@@ -3562,6 +4799,11 @@ func NewMatchIPVS(opts ...OptionMatchIPVS) (*MatchIPVS, error) {
 		baseMatch: baseMatch{
 			matchType: MatchTypeIPVS,
 		},
+		VProto:   -1,
+		VPort:    -1,
+		VDir:     -1,
+		VMethod:  -1,
+		VPortCtl: -1,
 	}
 	for _, opt := range opts {
 		opt(match)
@@ -3586,6 +4828,63 @@ type MatchIPVS struct {
 	//VDirInvert     bool
 	VMethodInvert  bool
 	VPortCtlInvert bool
+}
+
+func (mIPVS *MatchIPVS) Short() string {
+	return strings.Join(mIPVS.ShortArgs(), " ")
+}
+
+func (mIPVS *MatchIPVS) ShortArgs() []string {
+	args := make([]string, 0, 19)
+	args = append(args, "-m", mIPVS.matchType.String())
+	if mIPVS.IPVS {
+		if mIPVS.IPVSInvert {
+			args = append(args, "!")
+		}
+		args = append(args, "--ipvs")
+	}
+	if mIPVS.VProto > -1 {
+		if mIPVS.VProtoInvert {
+			args = append(args, "!")
+		}
+		args = append(args, "--vproto", strconv.Itoa(int(mIPVS.VProto)))
+	}
+	if mIPVS.VAddr != nil {
+		if mIPVS.VAddrInvert {
+			args = append(args, "!")
+		}
+		args = append(args, "--vaddr", mIPVS.VAddr.String())
+	}
+	if mIPVS.VPort > -1 {
+		if mIPVS.VPortInvert {
+			args = append(args, "!")
+		}
+		args = append(args, "--vport", strconv.Itoa(int(mIPVS.VPort)))
+	}
+	if mIPVS.VDir > -1 {
+		args = append(args, "--vdir", mIPVS.VDir.String())
+	}
+	if mIPVS.VMethod > -1 {
+		if mIPVS.VMethodInvert {
+			args = append(args, "!")
+		}
+		args = append(args, "--vmethod", mIPVS.VMethod.String())
+	}
+	if mIPVS.VPortCtl > -1 {
+		if mIPVS.VPortCtlInvert {
+			args = append(args, "!")
+		}
+		args = append(args, "--vportctl", strconv.Itoa(int(mIPVS.VPortCtl)))
+	}
+	return args
+}
+
+func (mIPVS *MatchIPVS) Long() string {
+	return mIPVS.Short()
+}
+
+func (mIPVS *MatchIPVS) LongArgs() []string {
+	return mIPVS.ShortArgs()
 }
 
 func (mIPVS *MatchIPVS) Parse(main []byte) (int, bool) {
@@ -3684,6 +4983,8 @@ func NewMatchLength(yes bool, length ...int) (*MatchLength, error) {
 		baseMatch: baseMatch{
 			matchType: MatchTypeLength,
 		},
+		LengthMin: -1,
+		LengthMax: -1,
 	}
 	switch len(length) {
 	case 1:
@@ -3701,6 +5002,35 @@ type MatchLength struct {
 	baseMatch
 	LengthMin int
 	LengthMax int
+}
+
+func (mLength *MatchLength) Short() string {
+	return strings.Join(mLength.ShortArgs(), " ")
+}
+
+func (mLength *MatchLength) ShortArgs() []string {
+	args := make([]string, 0, 5)
+	args = append(args, "-m", mLength.matchType.String())
+	if mLength.LengthMin > -1 {
+		if mLength.invert {
+			args = append(args, "!")
+		}
+		if mLength.LengthMax > -1 {
+			args = append(args, "--length",
+				strconv.Itoa(mLength.LengthMin)+":"+strconv.Itoa(mLength.LengthMax))
+		} else {
+			args = append(args, "--length", strconv.Itoa(mLength.LengthMin))
+		}
+	}
+	return args
+}
+
+func (mLength *MatchLength) Long() string {
+	return mLength.Short()
+}
+
+func (mLength *MatchLength) LongArgs() []string {
+	return mLength.ShortArgs()
 }
 
 func (mLength *MatchLength) Parse(main []byte) (int, bool) {
@@ -3742,7 +5072,7 @@ func WithMatchLimit(rate Rate) OptionMatchLimit {
 }
 
 // Maximum initial number of packets to match.
-func WithMatchLimitBurst(burst Rate) OptionMatchLimit {
+func WithMatchLimitBurst(burst int) OptionMatchLimit {
 	return func(mLimit *MatchLimit) {
 		mLimit.Burst = burst
 	}
@@ -3753,6 +5083,7 @@ func NewMatchLimit(opts ...OptionMatchLimit) (*MatchLimit, error) {
 		baseMatch: baseMatch{
 			matchType: MatchTypeLimit,
 		},
+		Burst: -1,
 	}
 	for _, opt := range opts {
 		opt(match)
@@ -3763,7 +5094,31 @@ func NewMatchLimit(opts ...OptionMatchLimit) (*MatchLimit, error) {
 type MatchLimit struct {
 	baseMatch
 	Avg   Rate
-	Burst Rate
+	Burst int
+}
+
+func (mLimit *MatchLimit) Short() string {
+	return strings.Join(mLimit.ShortArgs(), " ")
+}
+
+func (mLimit *MatchLimit) ShortArgs() []string {
+	args := make([]string, 0, 6)
+	args = append(args, "-m", mLimit.matchType.String())
+	if (mLimit.Avg != Rate{}) {
+		args = append(args, "--limit", mLimit.Avg.String())
+	}
+	if mLimit.Burst > -1 {
+		args = append(args, "--limit-burst", strconv.Itoa(mLimit.Burst))
+	}
+	return args
+}
+
+func (mLimit *MatchLimit) Long() string {
+	return mLimit.Short()
+}
+
+func (mLimit *MatchLimit) LongArgs() []string {
+	return mLimit.ShortArgs()
 }
 
 func (mLimit *MatchLimit) Parse(main []byte) (int, bool) {
@@ -3799,9 +5154,7 @@ func (mLimit *MatchLimit) Parse(main []byte) (int, bool) {
 	mLimit.Avg = Rate{
 		avg, unit,
 	}
-	mLimit.Burst = Rate{
-		burst, unit,
-	}
+	mLimit.Burst = burst
 	return len(matches[0]), true
 }
 
@@ -3820,6 +5173,30 @@ func NewMatchMAC(yes bool, mac net.HardwareAddr) (*MatchMAC, error) {
 type MatchMAC struct {
 	baseMatch
 	SrcMac net.HardwareAddr
+}
+
+func (mMAC *MatchMAC) Short() string {
+	return strings.Join(mMAC.ShortArgs(), " ")
+}
+
+func (mMAC *MatchMAC) ShortArgs() []string {
+	args := make([]string, 0, 5)
+	args = append(args, "-m", mMAC.matchType.String())
+	if mMAC.SrcMac != nil {
+		if mMAC.invert {
+			args = append(args, "!")
+		}
+		args = append(args, "--mac-source", mMAC.SrcMac.String())
+	}
+	return args
+}
+
+func (mMAC *MatchMAC) Long() string {
+	return mMAC.Short()
+}
+
+func (mMAC *MatchMAC) LongArgs() []string {
+	return mMAC.ShortArgs()
 }
 
 func (mMAC *MatchMAC) Parse(main []byte) (int, bool) {
@@ -3847,6 +5224,8 @@ func NewMatchMark(yes bool, value ...int) (*MatchMark, error) {
 		baseMatch: baseMatch{
 			matchType: MatchTypeMark,
 		},
+		Value: -1,
+		Mask:  -1,
 	}
 	switch len(value) {
 	case 1:
@@ -3864,6 +5243,35 @@ type MatchMark struct {
 	baseMatch
 	Value int
 	Mask  int
+}
+
+func (mMark *MatchMark) Short() string {
+	return strings.Join(mMark.ShortArgs(), " ")
+}
+
+func (mMark *MatchMark) ShortArgs() []string {
+	args := make([]string, 0, 5)
+	args = append(args, "-m", mMark.matchType.String())
+	if mMark.Value > -1 {
+		if mMark.invert {
+			args = append(args, "!")
+		}
+		if mMark.Mask > -1 {
+			args = append(args, "--mark",
+				strconv.Itoa(mMark.Value)+"/"+strconv.Itoa(mMark.Mask))
+		} else {
+			args = append(args, "--mark", strconv.Itoa(mMark.Value))
+		}
+	}
+	return args
+}
+
+func (mMark *MatchMark) Long() string {
+	return mMark.Short()
+}
+
+func (mMark *MatchMark) LongArgs() []string {
+	return mMark.ShortArgs()
 }
 
 func (mMark *MatchMark) Parse(main []byte) (int, bool) {
@@ -3900,7 +5308,30 @@ func (mMark *MatchMark) Parse(main []byte) (int, bool) {
 	return len(matches[0]), true
 }
 
-type MHType uint8
+type MHType int
+
+func (mhType MHType) String() string {
+	switch mhType {
+	case BRR:
+		return "brr"
+	case HOTI:
+		return "hoti"
+	case COTI:
+		return "coti"
+	case HOT:
+		return "hot"
+	case COT:
+		return "cot"
+	case BU:
+		return "bu"
+	case BA:
+		return "ba"
+	case BE:
+		return "be"
+	default:
+		return ""
+	}
+}
 
 const (
 	BindingRefreshRequest  MHType = 0
@@ -3949,6 +5380,8 @@ func NewMatchMH(yes bool, types ...MHType) (*MatchMH, error) {
 			matchType: MatchTypeMH,
 			invert:    !yes,
 		},
+		TypeMin: -1,
+		TypeMax: -1,
 	}
 	switch len(types) {
 	case 1:
@@ -3966,6 +5399,35 @@ type MatchMH struct {
 	baseMatch
 	TypeMin MHType
 	TypeMax MHType
+}
+
+func (mMH *MatchMH) Short() string {
+	return strings.Join(mMH.ShortArgs(), " ")
+}
+
+func (mMH *MatchMH) ShortArgs() []string {
+	args := make([]string, 0, 5)
+	args = append(args, "-m", mMH.matchType.String())
+	if mMH.TypeMin > -1 {
+		if mMH.invert {
+			args = append(args, "!")
+		}
+		if mMH.TypeMax > -1 {
+			args = append(args, "--mh-type",
+				mMH.TypeMin.String()+":", mMH.TypeMax.String())
+		} else {
+			args = append(args, "--mh-type", mMH.TypeMin.String())
+		}
+	}
+	return args
+}
+
+func (mMH *MatchMH) Long() string {
+	return mMH.Short()
+}
+
+func (mMH *MatchMH) LongArgs() []string {
+	return mMH.ShortArgs()
 }
 
 func (mMH *MatchMH) Parse(main []byte) (int, bool) {
@@ -4059,6 +5521,98 @@ type MatchMultiPort struct {
 	Ports    []PortRange
 }
 
+func (mMultiPort *MatchMultiPort) Short() string {
+	return strings.Join(mMultiPort.ShortArgs(), " ")
+}
+
+func (mMultiPort *MatchMultiPort) ShortArgs() []string {
+	args := make([]string, 0, 11)
+	args = append(args, "-m", mMultiPort.matchType.String())
+	if mMultiPort.SrcPorts != nil && len(mMultiPort.SrcPorts) != 0 {
+		ports := ""
+		sep := ""
+		for _, port := range mMultiPort.SrcPorts {
+			ports += sep + strconv.Itoa(port.Start)
+			if port.End > 0 {
+				ports += ":" + strconv.Itoa(port.End)
+			}
+			sep = ","
+		}
+		args = append(args, "--sports", ports)
+	}
+	if mMultiPort.DstPorts != nil && len(mMultiPort.DstPorts) != 0 {
+		ports := ""
+		sep := ""
+		for _, port := range mMultiPort.DstPorts {
+			ports += sep + strconv.Itoa(port.Start)
+			if port.End > 0 {
+				ports += ":" + strconv.Itoa(port.End)
+			}
+			sep = ","
+		}
+		args = append(args, "--dports", ports)
+	}
+	if mMultiPort.Ports != nil && len(mMultiPort.Ports) != 0 {
+		ports := ""
+		sep := ""
+		for _, port := range mMultiPort.Ports {
+			ports += sep + strconv.Itoa(port.Start)
+			if port.End > 0 {
+				ports += ":" + strconv.Itoa(port.End)
+			}
+			sep = ","
+		}
+		args = append(args, "--ports", ports)
+	}
+	return args
+}
+
+func (mMultiPort *MatchMultiPort) Long() string {
+	return strings.Join(mMultiPort.LongArgs(), " ")
+}
+
+func (mMultiPort *MatchMultiPort) LongArgs() []string {
+	args := make([]string, 0, 11)
+	args = append(args, "-m", mMultiPort.matchType.String())
+	if mMultiPort.SrcPorts != nil && len(mMultiPort.SrcPorts) != 0 {
+		ports := ""
+		sep := ""
+		for _, port := range mMultiPort.SrcPorts {
+			ports += sep + strconv.Itoa(port.Start)
+			if port.End > 0 {
+				ports += ":" + strconv.Itoa(port.End)
+			}
+			sep = ","
+		}
+		args = append(args, "--source-ports", ports)
+	}
+	if mMultiPort.DstPorts != nil && len(mMultiPort.DstPorts) != 0 {
+		ports := ""
+		sep := ""
+		for _, port := range mMultiPort.DstPorts {
+			ports += sep + strconv.Itoa(port.Start)
+			if port.End > 0 {
+				ports += ":" + strconv.Itoa(port.End)
+			}
+			sep = ","
+		}
+		args = append(args, "--destination-ports", ports)
+	}
+	if mMultiPort.Ports != nil && len(mMultiPort.Ports) != 0 {
+		ports := ""
+		sep := ""
+		for _, port := range mMultiPort.Ports {
+			ports += sep + strconv.Itoa(port.Start)
+			if port.End > 0 {
+				ports += ":" + strconv.Itoa(port.End)
+			}
+			sep = ","
+		}
+		args = append(args, "--ports", ports)
+	}
+	return args
+}
+
 func (mMultiPort *MatchMultiPort) Parse(main []byte) (int, bool) {
 	// 1. "^multiport "
 	// 2. "(sports|dports|ports|ERROR)" #1
@@ -4134,6 +5688,27 @@ type MatchNFAcct struct {
 	AccountingName string
 }
 
+func (mNFAcct *MatchNFAcct) Short() string {
+	return strings.Join(mNFAcct.ShortArgs(), " ")
+}
+
+func (mNFAcct *MatchNFAcct) ShortArgs() []string {
+	args := make([]string, 0, 4)
+	args = append(args, "-m", mNFAcct.matchType.String())
+	if mNFAcct.AccountingName != "" {
+		args = append(args, "--nfacct-name", mNFAcct.AccountingName)
+	}
+	return args
+}
+
+func (mNFAcct *MatchNFAcct) Long() string {
+	return mNFAcct.Short()
+}
+
+func (mNFAcct *MatchNFAcct) LongArgs() []string {
+	return mNFAcct.ShortArgs()
+}
+
 func (mNFAcct *MatchNFAcct) Parse(main []byte) (int, bool) {
 	// 1. "^nfacct-name "
 	// 2. " ([0-9A-Za-z-_]+)"
@@ -4176,6 +5751,8 @@ func NewMatchOSF(opts ...OptionMatchOSF) (*MatchOSF, error) {
 		baseMatch: baseMatch{
 			matchType: MatchTypeOSF,
 		},
+		TTLLevel: -1,
+		LogLevel: -1,
 	}
 	for _, opt := range opts {
 		opt(match)
@@ -4188,6 +5765,36 @@ type MatchOSF struct {
 	Genre    string
 	TTLLevel int
 	LogLevel int
+}
+
+func (mOSF *MatchOSF) Short() string {
+	return strings.Join(mOSF.ShortArgs(), " ")
+}
+
+func (mOSF *MatchOSF) ShortArgs() []string {
+	args := make([]string, 0, 9)
+	args = append(args, "-m", mOSF.matchType.String())
+	if mOSF.Genre != "" {
+		if mOSF.invert {
+			args = append(args, "!")
+		}
+		args = append(args, "--genre", mOSF.Genre)
+	}
+	if mOSF.TTLLevel > -1 {
+		args = append(args, "--ttl", strconv.Itoa(mOSF.TTLLevel))
+	}
+	if mOSF.LogLevel > -1 {
+		args = append(args, "--log", strconv.Itoa(mOSF.LogLevel))
+	}
+	return args
+}
+
+func (mOSF *MatchOSF) Long() string {
+	return mOSF.Short()
+}
+
+func (mOSF *MatchOSF) LongArgs() []string {
+	return mOSF.ShortArgs()
 }
 
 func (mOSF *MatchOSF) Parse(main []byte) (int, bool) {
@@ -4208,9 +5815,15 @@ func (mOSF *MatchOSF) Parse(main []byte) (int, bool) {
 type OptionMatchOwner func(*MatchOwner)
 
 // Matches if the packet socket's file structure (if it has one) is owned by the given user.
-func WithMatchOwnerUid(yes bool, uid int) OptionMatchOwner {
+func WithMatchOwnerUid(yes bool, uid ...int) OptionMatchOwner {
 	return func(mOwner *MatchOwner) {
-		mOwner.UidOwner = uid
+		switch len(uid) {
+		case 1:
+			mOwner.UidOwnerMin = uid[0]
+		case 2:
+			mOwner.UidOwnerMin = uid[0]
+			mOwner.UidOwnerMax = uid[1]
+		}
 		mOwner.UidOwnerInvert = !yes
 	}
 }
@@ -4224,9 +5837,15 @@ func WithMatchOwnerUser(yes bool, name string) OptionMatchOwner {
 }
 
 // Matches if the packet socket's file structure is owned by the given group.
-func WithMatchOwnerGid(yes bool, gid int) OptionMatchOwner {
+func WithMatchOwnerGid(yes bool, gid ...int) OptionMatchOwner {
 	return func(mOwner *MatchOwner) {
-		mOwner.GidOwner = gid
+		switch len(gid) {
+		case 1:
+			mOwner.GidOwnerMin = gid[0]
+		case 2:
+			mOwner.GidOwnerMin = gid[0]
+			mOwner.GidOwnerMax = gid[1]
+		}
 		mOwner.GidOwnerInvert = !yes
 	}
 }
@@ -4259,6 +5878,10 @@ func NewMatchOwner(opts ...OptionMatchOwner) (*MatchOwner, error) {
 		baseMatch: baseMatch{
 			matchType: MatchTypeOwner,
 		},
+		UidOwnerMin: -1,
+		UidOwnerMax: -1,
+		GidOwnerMin: -1,
+		GidOwnerMax: -1,
 	}
 	for _, opt := range opts {
 		opt(match)
@@ -4268,9 +5891,11 @@ func NewMatchOwner(opts ...OptionMatchOwner) (*MatchOwner, error) {
 
 type MatchOwner struct {
 	baseMatch
-	UidOwner        int
+	UidOwnerMin     int
+	UidOwnerMax     int
 	User            string
-	GidOwner        int
+	GidOwnerMin     int
+	GidOwnerMax     int
 	Group           string
 	SupplGroups     bool
 	HasSocketExists bool
@@ -4278,6 +5903,67 @@ type MatchOwner struct {
 	UidOwnerInvert     bool
 	GidOwnerInvert     bool
 	SocketExistsInvert bool
+}
+
+func (mOwner *MatchOwner) Short() string {
+	return strings.Join(mOwner.ShortArgs(), " ")
+}
+
+func (mOwner *MatchOwner) ShortArgs() []string {
+	args := make([]string, 0, 7)
+	args = append(args, "-m", mOwner.matchType.String())
+	if mOwner.User != "" {
+		if mOwner.UidOwnerInvert {
+			args = append(args, "!")
+		}
+		args = append(args, "--uid-owner", mOwner.User)
+	}
+	if mOwner.UidOwnerMin > -1 {
+		if mOwner.UidOwnerInvert {
+			args = append(args, "!")
+		}
+		if mOwner.UidOwnerMax > -1 {
+			args = append(args, "--uid-owner",
+				strconv.Itoa(mOwner.UidOwnerMin)+"-"+strconv.Itoa(mOwner.UidOwnerMax))
+		} else {
+			args = append(args, "--uid-owner", strconv.Itoa(mOwner.UidOwnerMin))
+		}
+	}
+	if mOwner.Group != "" {
+		if mOwner.GidOwnerInvert {
+			args = append(args, "!")
+		}
+		args = append(args, "--gid-owner", mOwner.Group)
+	}
+	if mOwner.GidOwnerMin > -1 {
+		if mOwner.GidOwnerInvert {
+			args = append(args, "!")
+		}
+		if mOwner.GidOwnerMax > -1 {
+			args = append(args, "--gid-owner",
+				strconv.Itoa(mOwner.GidOwnerMin)+"-"+strconv.Itoa(mOwner.GidOwnerMax))
+		} else {
+			args = append(args, "--gid-owner", strconv.Itoa(mOwner.GidOwnerMin))
+		}
+	}
+	if mOwner.SupplGroups {
+		args = append(args, "--suppl-groups")
+	}
+	if mOwner.HasSocketExists {
+		if mOwner.SocketExistsInvert {
+			args = append(args, "!")
+		}
+		args = append(args, "--socket-exists")
+	}
+	return args
+}
+
+func (mOwner *MatchOwner) Long() string {
+	return mOwner.Short()
+}
+
+func (mOwner *MatchOwner) LongArgs() []string {
+	return mOwner.ShortArgs()
 }
 
 func (mOwner *MatchOwner) Parse(main []byte) (int, bool) {
@@ -4305,18 +5991,47 @@ func (mOwner *MatchOwner) Parse(main []byte) (int, bool) {
 			uidRaw := string(matches[4])
 			uid, err := strconv.Atoi(uidRaw)
 			if err != nil {
-				mOwner.User = uidRaw
+				minmax := strings.Split(uidRaw, "-")
+				if len(minmax) != 2 {
+					mOwner.User = uidRaw
+				} else {
+					min, err := strconv.Atoi(minmax[0])
+					if err != nil {
+						mOwner.User = uidRaw
+					}
+					max, err := strconv.Atoi(minmax[1])
+					if err != nil {
+						mOwner.User = uidRaw
+					}
+					mOwner.UidOwnerMin = min
+					mOwner.UidOwnerMax = max
+				}
 			} else {
-				mOwner.UidOwner = uid
+				mOwner.UidOwnerMin = uid
 			}
 			mOwner.UidOwnerInvert = invert
 		case "owner GID match":
 			gidRaw := string(matches[4])
 			gid, err := strconv.Atoi(gidRaw)
 			if err != nil {
-				mOwner.Group = gidRaw
+				minmax := strings.Split(gidRaw, "-")
+				if len(minmax) != 2 {
+					mOwner.Group = gidRaw
+				} else {
+					min, err := strconv.Atoi(minmax[0])
+					if err != nil {
+						mOwner.Group = gidRaw
+					}
+					max, err := strconv.Atoi(minmax[1])
+					if err != nil {
+						mOwner.Group = gidRaw
+					}
+					mOwner.GidOwnerMin = min
+					mOwner.GidOwnerMax = max
+				}
+
 			} else {
-				mOwner.GidOwner = gid
+				mOwner.GidOwnerMin = gid
 			}
 			mOwner.GidOwnerInvert = invert
 		case "incl. suppl.":
@@ -4337,39 +6052,39 @@ type OptionMatchPhysDev func(*MatchPhysDev)
 // Name of a bridge port via which a packet is received.
 func WithMatchPhysDevIn(yes bool, in string) OptionMatchPhysDev {
 	return func(mPhysDev *MatchPhysDev) {
-		mPhysDev.PhysdevIn = in
-		mPhysDev.PhysdevInInvert = !yes
+		mPhysDev.PhysDevIn = in
+		mPhysDev.PhysDevInInvert = !yes
 	}
 }
 
 // Name of a bridge port via which a packet is going to be sent.
 func WithMatchPhysDevOut(yes bool, out string) OptionMatchPhysDev {
 	return func(mPhysDev *MatchPhysDev) {
-		mPhysDev.PhysdevOut = out
-		mPhysDev.PhysdevOutInvert = !yes
+		mPhysDev.PhysDevOut = out
+		mPhysDev.PhysDevOutInvert = !yes
 	}
 }
 
 // Matches if the packet has entered through a bridge interface.
 func WithMatchPhysDevIsIn(yes bool) OptionMatchPhysDev {
 	return func(mPhysDev *MatchPhysDev) {
-		mPhysDev.PhysdevIsIn = true
-		mPhysDev.PhysdevIsInInvert = true
+		mPhysDev.PhysDevIsIn = true
+		mPhysDev.PhysDevIsInInvert = true
 	}
 }
 
 // Matches if the packet will leave through a bridge interface.
 func WithMatchPhysDevIsOut(yes bool) OptionMatchPhysDev {
 	return func(mPhysDev *MatchPhysDev) {
-		mPhysDev.PhysdevIsOut = true
-		mPhysDev.PhysdevIsOutInvert = true
+		mPhysDev.PhysDevIsOut = true
+		mPhysDev.PhysDevIsOutInvert = true
 	}
 }
 
 func WithMatchPhysDevIsBridged(yes bool) OptionMatchPhysDev {
 	return func(mPhysDev *MatchPhysDev) {
-		mPhysDev.PhysdevIsBridged = true
-		mPhysDev.PhysdevIsBridgedInvert = true
+		mPhysDev.PhysDevIsBridged = true
+		mPhysDev.PhysDevIsBridgedInvert = true
 	}
 }
 
@@ -4387,17 +6102,65 @@ func NewMatchPhysDev(opts ...OptionMatchPhysDev) (*MatchPhysDev, error) {
 
 type MatchPhysDev struct {
 	baseMatch
-	PhysdevIn        string
-	PhysdevOut       string
-	PhysdevIsIn      bool
-	PhysdevIsOut     bool
-	PhysdevIsBridged bool
+	PhysDevIn        string
+	PhysDevOut       string
+	PhysDevIsIn      bool
+	PhysDevIsOut     bool
+	PhysDevIsBridged bool
 	// invert
-	PhysdevInInvert        bool
-	PhysdevOutInvert       bool
-	PhysdevIsInInvert      bool
-	PhysdevIsOutInvert     bool
-	PhysdevIsBridgedInvert bool
+	PhysDevInInvert        bool
+	PhysDevOutInvert       bool
+	PhysDevIsInInvert      bool
+	PhysDevIsOutInvert     bool
+	PhysDevIsBridgedInvert bool
+}
+
+func (mPhysDev *MatchPhysDev) Short() string {
+	return strings.Join(mPhysDev.ShortArgs(), " ")
+}
+
+func (mPhysDev *MatchPhysDev) ShortArgs() []string {
+	args := make([]string, 0, 13)
+	args = append(args, "-m", mPhysDev.matchType.String())
+	if mPhysDev.PhysDevIn != "" {
+		if mPhysDev.PhysDevInInvert {
+			args = append(args, "!")
+		}
+		args = append(args, "--physdev-in", mPhysDev.PhysDevIn)
+	}
+	if mPhysDev.PhysDevOut != "" {
+		if mPhysDev.PhysDevOutInvert {
+			args = append(args, "!")
+		}
+		args = append(args, "--physdev-out", mPhysDev.PhysDevOut)
+	}
+	if mPhysDev.PhysDevIsIn {
+		if mPhysDev.PhysDevIsInInvert {
+			args = append(args, "!")
+		}
+		args = append(args, "--physdev-is-in")
+	}
+	if mPhysDev.PhysDevIsOut {
+		if mPhysDev.PhysDevIsOutInvert {
+			args = append(args, "!")
+		}
+		args = append(args, "--physdev-is-out")
+	}
+	if mPhysDev.PhysDevIsBridged {
+		if mPhysDev.PhysDevIsBridgedInvert {
+			args = append(args, "!")
+		}
+		args = append(args, "--physdev-is-bridged")
+	}
+	return args
+}
+
+func (mPhysDev *MatchPhysDev) Long() string {
+	return mPhysDev.Short()
+}
+
+func (mPhysDev *MatchPhysDev) LongArgs() []string {
+	return mPhysDev.ShortArgs()
 }
 
 func (mPhysDev *MatchPhysDev) Parse(main []byte) (int, bool) {
@@ -4419,39 +6182,52 @@ func (mPhysDev *MatchPhysDev) Parse(main []byte) (int, bool) {
 		return 0, false
 	}
 	if len(matches[1]) != 0 {
-		mPhysDev.PhysdevIsIn = true
+		mPhysDev.PhysDevIsIn = true
 		if len(matches[2]) != 0 {
-			mPhysDev.PhysdevIsInInvert = true
+			mPhysDev.PhysDevIsInInvert = true
 		}
 	}
 	if len(matches[5]) != 0 {
-		mPhysDev.PhysdevIn = string(matches[5])
+		mPhysDev.PhysDevIn = string(matches[5])
 		if len(matches[3]) != 0 {
-			mPhysDev.PhysdevInInvert = true
+			mPhysDev.PhysDevInInvert = true
 		}
 	}
 	if len(matches[6]) != 0 {
-		mPhysDev.PhysdevIsOut = true
+		mPhysDev.PhysDevIsOut = true
 		if len(matches[7]) != 0 {
-			mPhysDev.PhysdevIsOutInvert = true
+			mPhysDev.PhysDevIsOutInvert = true
 		}
 	}
 	if len(matches[10]) != 0 {
-		mPhysDev.PhysdevOut = string(matches[10])
+		mPhysDev.PhysDevOut = string(matches[10])
 		if len(matches[8]) != 0 {
-			mPhysDev.PhysdevOutInvert = true
+			mPhysDev.PhysDevOutInvert = true
 		}
 	}
 	if len(matches[11]) != 0 {
-		mPhysDev.PhysdevIsBridged = true
+		mPhysDev.PhysDevIsBridged = true
 		if len(matches[12]) != 0 {
-			mPhysDev.PhysdevIsBridgedInvert = true
+			mPhysDev.PhysDevIsBridgedInvert = true
 		}
 	}
 	return len(matches[0]), true
 }
 
 type PktType int
+
+func (pktType PktType) String() string {
+	switch pktType {
+	case Unicast:
+		return PktTypeUnicast
+	case Broadcast:
+		return PktTypeBroadcast
+	case Multicast:
+		return PktTypeMulticast
+	default:
+		return ""
+	}
+}
 
 const (
 	Unicast PktType = 1 << iota
@@ -4479,6 +6255,30 @@ func NewMatchPktType(yes bool, pktType PktType) (*MatchPktType, error) {
 type MatchPktType struct {
 	baseMatch
 	PktType PktType
+}
+
+func (mPktType *MatchPktType) Short() string {
+	return strings.Join(mPktType.ShortArgs(), " ")
+}
+
+func (mPktType *MatchPktType) ShortArgs() []string {
+	args := make([]string, 0, 5)
+	args = append(args, "-m", mPktType.matchType.String())
+	if mPktType.PktType > -1 {
+		if mPktType.invert {
+			args = append(args, "!")
+		}
+		args = append(args, "--pkt-type", mPktType.PktType.String())
+	}
+	return args
+}
+
+func (mPktType *MatchPktType) Long() string {
+	return mPktType.Short()
+}
+
+func (mPktType *MatchPktType) LongArgs() []string {
+	return mPktType.ShortArgs()
 }
 
 func (mPktType *MatchPktType) Parse(main []byte) (int, bool) {
@@ -4513,6 +6313,17 @@ const (
 
 type PolicyMode int
 
+func (policyMode PolicyMode) String() string {
+	switch policyMode {
+	case Tunnel:
+		return "tunnel"
+	case Transport:
+		return "transport"
+	default:
+		return ""
+	}
+}
+
 const (
 	_ PolicyMode = iota
 	Tunnel
@@ -4522,12 +6333,24 @@ const (
 
 type PolicyPol int
 
+func (policyPol PolicyPol) String() string {
+	switch policyPol {
+	case None:
+		return "none"
+	case IPSec:
+		return "ipsec"
+	default:
+		return ""
+	}
+}
+
 const (
 	_ PolicyPol = iota
 	None
 	IPSec
 )
 
+// The field won't be use must be set to -1
 type MatchPolicyElement struct {
 	ReqID     int
 	SPI       int
@@ -4580,6 +6403,8 @@ func NewMatchPolicy(opts ...OptionMatchPolicy) (*MatchPolicy, error) {
 		baseMatch: baseMatch{
 			matchType: MatchTypePolicy,
 		},
+		Dir: -1,
+		Pol: -1,
 	}
 	for _, opt := range opts {
 		opt(match)
@@ -4593,6 +6418,78 @@ type MatchPolicy struct {
 	Pol      PolicyPol
 	Strict   bool
 	Elements []*MatchPolicyElement
+}
+
+func (mPolicy *MatchPolicy) Short() string {
+	return strings.Join(mPolicy.ShortArgs(), " ")
+}
+
+func (mPolicy *MatchPolicy) ShortArgs() []string {
+	args := []string{}
+	args = append(args, "-m", mPolicy.matchType.String())
+	if mPolicy.Dir > -1 {
+		args = append(args, "--dir", mPolicy.Dir.String())
+	}
+	if mPolicy.Pol > -1 {
+		args = append(args, "--pol", mPolicy.Pol.String())
+	}
+	if mPolicy.Strict {
+		args = append(args, "--strict")
+	}
+	if mPolicy.Elements != nil && len(mPolicy.Elements) != 0 {
+		sep := ""
+		for _, elem := range mPolicy.Elements {
+			if sep != "" {
+				args = append(args, sep)
+			}
+			if elem.ReqID > -1 {
+				if elem.ReqIDInvert {
+					args = append(args, "!")
+				}
+				args = append(args, "--reqid", strconv.Itoa(elem.ReqID))
+			}
+			if elem.SPI > -1 {
+				if elem.SPIInvert {
+					args = append(args, "!")
+				}
+				args = append(args, "--spi", strconv.Itoa(elem.SPI))
+			}
+			if elem.Proto > -1 {
+				if elem.ProtoInvert {
+					args = append(args, "!")
+				}
+				args = append(args, "--proto", strconv.Itoa(int(elem.Proto)))
+			}
+			if elem.Mode > -1 {
+				if elem.ModeInvert {
+					args = append(args, "!")
+				}
+				args = append(args, "--mode", elem.Mode.String())
+			}
+			if elem.TunnelSrc != nil {
+				if elem.TunnelSrcInvert {
+					args = append(args, "!")
+				}
+				args = append(args, "--tunnel-src", elem.TunnelSrc.String())
+			}
+			if elem.TunnelDst != nil {
+				if elem.TunnelDstInvert {
+					args = append(args, "!")
+				}
+				args = append(args, "--tunnel-dst", elem.TunnelDst.String())
+			}
+			sep = "--next"
+		}
+	}
+	return args
+}
+
+func (mPolicy *MatchPolicy) Long() string {
+	return mPolicy.Short()
+}
+
+func (mPolicy *MatchPolicy) LongArgs() []string {
+	return mPolicy.ShortArgs()
 }
 
 func (mPolicy *MatchPolicy) Parse(main []byte) (int, bool) {
@@ -4761,6 +6658,28 @@ type MatchQuota struct {
 	Quota uint64
 }
 
+func (mQuota *MatchQuota) Short() string {
+	return strings.Join(mQuota.ShortArgs(), " ")
+}
+
+func (mQuota *MatchQuota) ShortArgs() []string {
+	args := make([]string, 0, 5)
+	args = append(args, "-m", mQuota.matchType.String())
+	if mQuota.invert {
+		args = append(args, "!")
+	}
+	args = append(args, "--quota", strconv.FormatUint(mQuota.Quota, 10))
+	return args
+}
+
+func (mQuota *MatchQuota) Long() string {
+	return mQuota.Short()
+}
+
+func (mQuota *MatchQuota) LongArgs() []string {
+	return mQuota.ShortArgs()
+}
+
 func (mQuota *MatchQuota) Parse(main []byte) (int, bool) {
 	// 1. "^quota: ([0-9]+) bytes"
 	pattern := `^quota: ([0-9]+) bytes *`
@@ -4817,6 +6736,18 @@ func WithMatchRateEst2(name string) OptionMatchRateEst {
 	}
 }
 
+func WithMatchRateBPS(value int) OptionMatchRateEst {
+	return func(mRateEst *MatchRateEst) {
+		mRateEst.RateestBPS = value
+	}
+}
+
+func WithMatchRatePPS(value int) OptionMatchRateEst {
+	return func(mRateEst *MatchRateEst) {
+		mRateEst.RateestPPS = value
+	}
+}
+
 func WithMatchRateBPS1(value int) OptionMatchRateEst {
 	return func(mRateEst *MatchRateEst) {
 		mRateEst.RateestBPS1 = value
@@ -4861,6 +6792,8 @@ type MatchRateEst struct {
 	Rateest1     string
 	Rateest2     string
 	Relative     bool
+	RateestBPS   int // in bytes
+	RateestPPS   int
 	RateestBPS1  int // in bytes
 	RateestPPS1  int
 	RateestBPS2  int // in bytes
@@ -4868,6 +6801,77 @@ type MatchRateEst struct {
 	//RateestLT    bool
 	//RateestGT    bool
 	//RateestEQ    bool
+}
+
+func (mRateEst *MatchRateEst) Short() string {
+	return strings.Join(mRateEst.ShortArgs(), " ")
+}
+
+func (mRateEst *MatchRateEst) ShortArgs() []string {
+	args := make([]string, 0, 27)
+	args = append(args, "-m", mRateEst.matchType.String())
+	if mRateEst.RateestDelta {
+		args = append(args, "--rateest-delta")
+	}
+	switch mRateEst.Operator {
+	case OperatorLT:
+		if mRateEst.invert {
+			args = append(args, "!")
+		}
+		args = append(args, "--rateest-lt")
+	case OperatorGT:
+		if mRateEst.invert {
+			args = append(args, "!")
+		}
+		args = append(args, "--rateest-gt")
+	case OperatorEQ:
+		if mRateEst.invert {
+			args = append(args, "!")
+		}
+		args = append(args, "--rateest-eq")
+	}
+	if mRateEst.Name != "" {
+		args = append(args, "--rateest", mRateEst.Name)
+	}
+	if mRateEst.Rateest1 != "" {
+		args = append(args, "--rateest1", mRateEst.Name)
+	}
+	if mRateEst.Rateest2 != "" {
+		args = append(args, "--rateest2", mRateEst.Name)
+	}
+	if mRateEst.RateestBPS > -1 {
+		args = append(args, "--rateest-bps",
+			strconv.Itoa(mRateEst.RateestBPS))
+	}
+	if mRateEst.RateestPPS > -1 {
+		args = append(args, "--rateest-pps",
+			strconv.Itoa(mRateEst.RateestPPS))
+	}
+	if mRateEst.RateestBPS1 > -1 {
+		args = append(args, "--rateest-bps1",
+			strconv.Itoa(mRateEst.RateestBPS1))
+	}
+	if mRateEst.RateestPPS1 > -1 {
+		args = append(args, "--rateest-pps1",
+			strconv.Itoa(mRateEst.RateestPPS1))
+	}
+	if mRateEst.RateestBPS2 > -1 {
+		args = append(args, "--rateest-bps2",
+			strconv.Itoa(mRateEst.RateestBPS1))
+	}
+	if mRateEst.RateestPPS2 > -1 {
+		args = append(args, "--rateest-pps2",
+			strconv.Itoa(mRateEst.RateestPPS1))
+	}
+	return args
+}
+
+func (mRateEst *MatchRateEst) Long() string {
+	return mRateEst.Short()
+}
+
+func (mRateEst *MatchRateEst) LongArgs() []string {
+	return mRateEst.ShortArgs()
 }
 
 func (mRateEst *MatchRateEst) Parse(main []byte) (int, bool) {
@@ -4975,6 +6979,12 @@ func (mRateEst *MatchRateEst) Parse(main []byte) (int, bool) {
 		}
 		mRateEst.RateestPPS2 = pps
 	}
+	if mRateEst.RateestBPS2 == -1 {
+		mRateEst.RateestBPS = mRateEst.RateestBPS1
+	}
+	if mRateEst.RateestPPS2 == -1 {
+		mRateEst.RateestPPS = mRateEst.RateestPPS1
+	}
 	return len(matches[0]), true
 }
 
@@ -5014,6 +7024,8 @@ func NewMatchRealm(yes bool, value ...int) (*MatchRealm, error) {
 		baseMatch: baseMatch{
 			matchType: MatchTypeRealm,
 		},
+		Value: -1,
+		Mask:  -1,
 	}
 	switch len(value) {
 	case 1:
