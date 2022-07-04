@@ -56,6 +56,19 @@ const (
 
 type MatchRange int
 
+func (matchRange MatchRange) String() string {
+	switch matchRange {
+	case ANY:
+		return "any"
+	case ALL:
+		return "all"
+	case ONLY:
+		return "only"
+	default:
+		return ""
+	}
+}
+
 const (
 	_ MatchRange = iota
 	ANY
