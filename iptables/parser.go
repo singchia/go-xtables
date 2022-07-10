@@ -111,7 +111,7 @@ func ParseRule(line []byte, head []string, chain *Chain) (*Rule, error) {
 				yes = false
 				iface = field[1:]
 			}
-			match, err := NewMatch(MatchTypeInInterface, yes, iface)
+			match, err := NewMatchInInterface(yes, iface)
 			if err != nil {
 				return nil, err
 			}
@@ -124,7 +124,7 @@ func ParseRule(line []byte, head []string, chain *Chain) (*Rule, error) {
 				yes = false
 				iface = field[1:]
 			}
-			match, err := NewMatch(MatchTypeOutInterface, yes, iface)
+			match, err := NewMatchOutInterface(yes, iface)
 			if err != nil {
 				return nil, err
 			}
@@ -142,7 +142,7 @@ func ParseRule(line []byte, head []string, chain *Chain) (*Rule, error) {
 			if err != nil {
 				return nil, err
 			}
-			match, err := NewMatch(MatchTypeSource, yes, ads)
+			match, err := NewMatchSource(yes, ads)
 			if err != nil {
 				return nil, err
 			}
@@ -160,7 +160,7 @@ func ParseRule(line []byte, head []string, chain *Chain) (*Rule, error) {
 			if err != nil {
 				return nil, err
 			}
-			match, err := NewMatch(MatchTypeDestination, yes, ads)
+			match, err := NewMatchDestination(yes, ads)
 			if err != nil {
 				return nil, err
 			}

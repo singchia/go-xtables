@@ -2,6 +2,7 @@ package iptables
 
 import (
 	"errors"
+	"fmt"
 	"strconv"
 	"strings"
 )
@@ -77,7 +78,37 @@ const (
 )
 
 // TCP related
-type TCPFlag uint8
+type TCPFlag int
+
+func (tcpFlag TCPFlag) String() string {
+	flag := ""
+	sep := ""
+	if tcpFlag&TCPFlagFIN != 0 {
+		flag += sep + "FIN"
+		sep = ","
+	}
+	if tcpFlag&TCPFlagSYN != 0 {
+		flag += sep + "SYN"
+		sep = ","
+	}
+	if tcpFlag&TCPFlagRST != 0 {
+		flag += sep + "RST"
+		sep = ","
+	}
+	if tcpFlag&TCPFlagPSH != 0 {
+		flag += sep + "PSH"
+		sep = ","
+	}
+	if tcpFlag&TCPFlagACK != 0 {
+		flag += sep + "ACK"
+		sep = ","
+	}
+	if tcpFlag&TCPFlagURG != 0 {
+		flag += sep + "URG"
+		sep = ","
+	}
+	return flag
+}
 
 const (
 	TCPFlagFIN TCPFlag = 1 << iota
@@ -142,88 +173,147 @@ const (
 )
 
 type Daytime struct {
-	Hour   uint8
-	Minute uint8
-	Second uint8
+	Hour   int8
+	Minute int8
+	Second int8
+	sets   int
 }
 
-func ParseDaytime(daytime string) (dt Daytime, err error) {
+func (dt *Daytime) String() string {
+	daytime := ""
+	sep := ""
+	if dt.Hour >= 0 && dt.Hour <= 23 {
+		daytime += sep + fmt.Sprintf("%2d", dt.Hour)
+		sep = ":"
+		dt.sets += 1
+	}
+	if dt.Minute >= 0 && dt.Minute <= 59 {
+		daytime += sep + fmt.Sprintf("%2d", dt.Minute)
+		sep = ":"
+		dt.sets += 1
+	}
+	if dt.Second >= 0 && dt.Second <= 59 {
+		daytime += sep + fmt.Sprintf("%2d", dt.Second)
+		sep = ":"
+		dt.sets += 1
+	}
+	return daytime
+}
+
+func ParseDaytime(daytime string) (*Daytime, error) {
+	dt := &Daytime{-1, -1, -1, 0}
+	err := error(nil)
 	parts := strings.Split(daytime, ":")
 	if len(parts) != 3 {
 		err = errors.New("wrong elems")
-		return
+		return dt, err
 	}
 	for index, part := range parts {
 		switch index {
 		case 0:
-			hour, err := strconv.ParseUint(part, 10, 8)
+			hour, err := strconv.ParseInt(part, 10, 8)
 			if err != nil {
 				return dt, err
 			}
-			dt.Hour = uint8(hour)
+			dt.Hour = int8(hour)
 		case 1:
-			minute, err := strconv.ParseUint(part, 10, 8)
+			minute, err := strconv.ParseInt(part, 10, 8)
 			if err != nil {
 				return dt, err
 			}
-			dt.Minute = uint8(minute)
+			dt.Minute = int8(minute)
 		case 2:
-			second, err := strconv.ParseUint(part, 10, 8)
+			second, err := strconv.ParseInt(part, 10, 8)
 			if err != nil {
 				return dt, err
 			}
-			dt.Second = uint8(second)
+			dt.Second = int8(second)
 		}
 	}
 	return dt, nil
 }
 
 type Yeartime struct {
-	Year  uint16
-	Month uint8
-	Day   uint8
+	Year  int16
+	Month int8
+	Day   int8
+	sets  int
 }
 
-func ParseYeartime(yeartime string) (yt Yeartime, err error) {
+func (yt *Yeartime) String() string {
+	yeartime := ""
+	sep := ""
+	if yt.Year > -1 {
+		yeartime += sep + fmt.Sprintf("%4d", yt.Year)
+		sep = ":"
+		yt.sets += 1
+	}
+	if yt.Month >= 1 && yt.Month <= 12 {
+		yeartime += sep + fmt.Sprintf("%2d", yt.Month)
+		sep = ":"
+		yt.sets += 1
+	}
+	if yt.Day >= 1 && yt.Day <= 31 {
+		yeartime += sep + fmt.Sprintf("%2d", yt.Day)
+		sep = ":"
+		yt.sets += 1
+	}
+	return yeartime
+}
+
+func ParseYeartime(yeartime string) (*Yeartime, error) {
+	yt := &Yeartime{-1, -1, -1, 0}
+	err := error(nil)
 	parts := strings.Split(yeartime, "-")
 	if len(parts) != 3 {
 		err = errors.New("wrong elems")
-		return
+		return yt, err
 	}
 	for index, part := range parts {
 		switch index {
 		case 0:
-			year, err := strconv.ParseUint(part, 10, 16)
+			year, err := strconv.ParseInt(part, 10, 16)
 			if err != nil {
 				return yt, err
 			}
-			yt.Year = uint16(year)
+			yt.Year = int16(year)
 		case 1:
-			month, err := strconv.ParseUint(part, 10, 8)
+			month, err := strconv.ParseInt(part, 10, 8)
 			if err != nil {
 				return yt, err
 			}
-			yt.Month = uint8(month)
+			yt.Month = int8(month)
 		case 2:
-			day, err := strconv.ParseUint(part, 10, 8)
+			day, err := strconv.ParseInt(part, 10, 8)
 			if err != nil {
 				return yt, err
 			}
-			yt.Day = uint8(day)
+			yt.Day = int8(day)
 		}
 	}
 	return yt, nil
 }
 
 type Date struct {
-	Yeartime
-	Daytime
+	*Yeartime
+	*Daytime
 }
 
-func ParseDate(date string) (de Date, err error) {
+func (date *Date) String() string {
+	yeartime := date.Yeartime.String()
+	daytime := date.Daytime.String()
+	if date.Yeartime.sets == 3 && date.Daytime.sets == 3 {
+		return yeartime + "T" + daytime
+	}
+	return yeartime
+}
+
+func ParseDate(date string) (*Date, error) {
+	de := &Date{}
+	err := error(nil)
 	if len(date) != 19 {
 		err = errors.New("wrong len")
-		return
+		return de, err
 	}
 	yeartime := date[:10]
 	daytime := date[11:]
@@ -240,11 +330,22 @@ func ParseDate(date string) (de Date, err error) {
 	return de, nil
 }
 
-type Weekday uint
+type Weekday int8
+
+func (weekday Weekday) String() string {
+	weekdays := ""
+	sep := ""
+	for i := 0; i <= 6; i++ {
+		if weekday&(1<<i) != 0 {
+			weekdays += sep + strconv.Itoa(i+1)
+			sep = ","
+		}
+	}
+	return weekdays
+}
 
 const (
-	_ Weekday = 1 << iota
-	Monday
+	Monday Weekday = 1 << iota
 	Tuesday
 	Wednesday
 	Thursday
@@ -265,7 +366,19 @@ var (
 	}
 )
 
-type Monthday uint32
+type Monthday int32
+
+func (monthday Monthday) String() string {
+	monthdays := ""
+	sep := ""
+	for i := 0; i <= 30; i++ {
+		if monthday&(1<<i) != 0 {
+			monthdays += sep + strconv.Itoa(i+1)
+			sep = ","
+		}
+	}
+	return monthdays
+}
 
 // IP related
 type IPType uint8
@@ -390,7 +503,7 @@ var (
 	}
 )
 
-type TOS uint8
+type TOS int8
 
 const (
 	_ TOS = 1 << iota
