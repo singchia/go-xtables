@@ -10,14 +10,6 @@ import (
 
 type TargetType int
 
-func (tt TargetType) Type() string {
-	return "TargetType"
-}
-
-func (tt TargetType) Value() string {
-	return strconv.Itoa(int(tt))
-}
-
 const (
 	TargetTypeUnknown TargetType = iota
 	TargetTypeAccept
@@ -160,6 +152,103 @@ var (
 	}
 )
 
+func (tt TargetType) Type() string {
+	return "TargetType"
+}
+
+func (tt TargetType) Value() string {
+	return strconv.Itoa(int(tt))
+}
+
+func (tt TargetType) String() string {
+	switch tt {
+	case TargetTypeAccept:
+		return "ACCEPT"
+	case TargetTypeDrop:
+		return "DROP"
+	case TargetTypeReturn:
+		return "RETURN"
+	case TargetTypeAudit:
+		return "AUDIT"
+	case TargetTypeCheckSum:
+		return "CHECKSUM"
+	case TargetTypeClassify:
+		return "CLASSIFY"
+	case TargetTypeClusterIP:
+		return "CLUSTERIP"
+	case TargetTypeConnMark:
+		return "CONNMARK"
+	case TargetTypeConnSecMark:
+		return "CONNSECMARK"
+	case TargetTypeCT:
+		return "CT"
+	case TargetTypeDNAT:
+		return "DNAT"
+	case TargetTypeDNPT:
+		return "DNPT"
+	case TargetTypeDSCP:
+		return "DSCP"
+	case TargetTypeECN:
+		return "ECN"
+	case TargetTypeHL:
+		return "HL"
+	case TargetTypeHMark:
+		return "HMARK"
+	case TargetTypeIdleTimer:
+		return "IDLETIMER"
+	case TargetTypeLED:
+		return "LED"
+	case TargetTypeLOG:
+		return "LOG"
+	case TargetTypeMark:
+		return "MARK"
+	case TargetTypeMasquerade:
+		return "MASQUDERDE"
+	case TargetTypeNetmap:
+		return "NETMAP"
+	case TargetTypeNFLog:
+		return "NFLOG"
+	case TargetTypeNFQueue:
+		return "NFQUEUE"
+	case TargetTypeRateEst:
+		return "RATEEST"
+	case TargetTypeRedirect:
+		return "REDIRECT"
+	case TargetTypeReject:
+		return "REJECT"
+	case TargetTypeSame:
+		return "SAME"
+	case TargetTypeSecMark:
+		return "SECMARK"
+	case TargetTypeSet:
+		return "SET"
+	case TargetTypeSNAT:
+		return "SNAT"
+	case TargetTypeSNPT:
+		return "SNPT"
+	case TargetTypeSYNProxy:
+		return "SYNPROXY"
+	case TargetTypeTCPMSS:
+		return "TCPMSS"
+	case TargetTypeTCPOptStrip:
+		return "TCPOPTSTRIP"
+	case TargetTypeTEE:
+		return "TEE"
+	case TargetTypeTOS:
+		return "TOS"
+	case TargetTypeTProxy:
+		return "TPROXY"
+	case TargetTypeTrace:
+		return "TRACE"
+	case TargetTypeTTL:
+		return "TTL"
+	case TargetTypeULOG:
+		return "ULOG"
+	default:
+		return ""
+	}
+}
+
 type Target interface {
 	Type() TargetType
 	Short() string
@@ -262,6 +351,14 @@ func (ta *TargetAccept) ShortArgs() []string {
 	return []string{"-j", "ACCEPT"}
 }
 
+func (ta *TargetAccept) Long() string {
+	return ta.Short()
+}
+
+func (ta *TargetAccept) LongArgs() []string {
+	return ta.ShortArgs()
+}
+
 type TargetDrop struct {
 	baseTarget
 }
@@ -274,6 +371,14 @@ func (ta *TargetDrop) ShortArgs() []string {
 	return []string{"-j", "ACCEPT"}
 }
 
+func (ta *TargetDrop) Long() string {
+	return ta.Short()
+}
+
+func (ta *TargetDrop) LongArgs() []string {
+	return ta.ShortArgs()
+}
+
 type TargetReturn struct {
 	baseTarget
 }
@@ -284,6 +389,14 @@ func (ta *TargetReturn) Short() string {
 
 func (ta *TargetReturn) ShortArgs() []string {
 	return []string{"-j", "RETURN"}
+}
+
+func (ta *TargetReturn) Long() string {
+	return ta.Short()
+}
+
+func (ta *TargetReturn) LongArgs() []string {
+	return ta.ShortArgs()
 }
 
 type TargetJumpChain struct {
@@ -308,6 +421,14 @@ func (ta *TargetJumpChain) ShortArgs() []string {
 	return []string{"-j", ta.chain}
 }
 
+func (ta *TargetJumpChain) Long() string {
+	return ta.Short()
+}
+
+func (ta *TargetJumpChain) LongArgs() []string {
+	return ta.ShortArgs()
+}
+
 type TargetGotoChain struct {
 	baseTarget
 	chain string
@@ -330,7 +451,28 @@ func (ta *TargetGotoChain) ShortArgs() []string {
 	return []string{"-g", ta.chain}
 }
 
-type AuditType uint8
+func (ta *TargetGotoChain) Long() string {
+	return ta.Short()
+}
+
+func (ta *TargetGotoChain) LongArgs() []string {
+	return ta.ShortArgs()
+}
+
+type AuditType int8
+
+func (auditType AuditType) String() string {
+	switch auditType {
+	case AuditAccept:
+		return "accetp"
+	case AuditDrop:
+		return "drop"
+	case AuditReject:
+		return "reject"
+	default:
+		return ""
+	}
+}
 
 const (
 	_ AuditType = iota
@@ -355,7 +497,22 @@ type TargetAudit struct {
 }
 
 func (tAudit *TargetAudit) Short() string {
-	return fmt.Sprintf("%v", tAudit.Type)
+	return strings.Join(tAudit.ShortArgs(), " ")
+}
+
+func (tAudit *TargetAudit) ShortArgs() []string {
+	args := make([]string, 0, 4)
+	args = append(args, "-j", tAudit.targetType.String())
+	args = append(args, "--type", tAudit.Type.String())
+	return args
+}
+
+func (tAudit *TargetAudit) Long() string {
+	return tAudit.Short()
+}
+
+func (tAudit *TargetAudit) LongArgs() []string {
+	return tAudit.ShortArgs()
 }
 
 func (tAudit *TargetAudit) Parse(main []byte) (int, bool) {
@@ -397,6 +554,25 @@ type TargetChecksum struct {
 	Fill bool
 }
 
+func (tChecksum *TargetChecksum) Short() string {
+	return strings.Join(tChecksum.ShortArgs(), " ")
+}
+
+func (tChecksum *TargetChecksum) ShortArgs() []string {
+	args := make([]string, 0, 3)
+	args = append(args, "-j", tChecksum.targetType.String())
+	args = append(args, "--checksum-fill")
+	return args
+}
+
+func (tChecksum *TargetChecksum) Long() string {
+	return tChecksum.Short()
+}
+
+func (tChecksum *TargetChecksum) LongArgs() []string {
+	return tChecksum.ShortArgs()
+}
+
 func (tChecksum *TargetChecksum) Parse(main []byte) (int, bool) {
 	pattern := `^CHECKSUM( fill)?`
 	reg := regexp.MustCompile(pattern)
@@ -427,6 +603,26 @@ type TargetClassify struct {
 	Minor int
 }
 
+func (tClassify *TargetClassify) Short() string {
+	return strings.Join(tClassify.ShortArgs(), " ")
+}
+
+func (tClassify *TargetClassify) ShortArgs() []string {
+	args := make([]string, 0, 4)
+	args = append(args, "-j", tClassify.targetType.String())
+	args = append(args, "--set-class",
+		strconv.Itoa(tClassify.Minor)+":"+strconv.Itoa(tClassify.Major))
+	return args
+}
+
+func (tClassify *TargetClassify) Long() string {
+	return tClassify.Short()
+}
+
+func (tClassify *TargetClassify) LongArgs() []string {
+	return tClassify.ShortArgs()
+}
+
 func (tClassify *TargetClassify) Parse(main []byte) (int, bool) {
 	// 1. "^CLASSIFY set"
 	// 2. " ([0-9A-Za-z]+):([0-9A-Za-z]+)"
@@ -450,7 +646,20 @@ func (tClassify *TargetClassify) Parse(main []byte) (int, bool) {
 	return len(matches[0]), true
 }
 
-type ClusterIPHashMode uint8
+type ClusterIPHashMode int8
+
+func (clusterIPHashMode ClusterIPHashMode) String() string {
+	switch clusterIPHashMode {
+	case ClusterIPHashModeSrcIP:
+		return "sourceip"
+	case ClusterIPHashModeSrcIPSrcPort:
+		return "sourceip-sourceport"
+	case ClusterIPHashModeSrcIPSrcPortDstPort:
+		return "sourceip-sourceport-destport"
+	default:
+		return ""
+	}
+}
 
 const (
 	_ ClusterIPHashMode = iota
@@ -508,6 +717,7 @@ func NewTargetClusterIP(opts ...OptionTargetClusterIP) (*TargetClusterIP, error)
 		baseTarget: baseTarget{
 			targetType: TargetTypeClusterIP,
 		},
+		HashMode:   -1,
 		TotalNodes: -1,
 		LocalNode:  -1,
 		HashInit:   -1,
@@ -527,6 +737,45 @@ type TargetClusterIP struct {
 	TotalNodes int
 	LocalNode  int
 	HashInit   int // randon seed
+}
+
+func (tClusterIP *TargetClusterIP) Short() string {
+	return strings.Join(tClusterIP.ShortArgs(), " ")
+}
+
+func (tClusterIP *TargetClusterIP) ShortArgs() []string {
+	args := make([]string, 0, 13)
+	args = append(args, "-j", tClusterIP.targetType.String())
+	if tClusterIP.New {
+		args = append(args, "--new")
+	}
+	if tClusterIP.HashMode > -1 {
+		args = append(args, "--hashmode", tClusterIP.HashMode.String())
+	}
+	if tClusterIP.Mac != nil {
+		args = append(args, "--clustermac", tClusterIP.Mac.String())
+	}
+	if tClusterIP.TotalNodes > -1 {
+		args = append(args, "--total-nodes",
+			strconv.Itoa(tClusterIP.TotalNodes))
+	}
+	if tClusterIP.LocalNode > -1 {
+		args = append(args, "--local-node",
+			strconv.Itoa(tClusterIP.LocalNode))
+	}
+	if tClusterIP.HashInit > -1 {
+		args = append(args, "--hash-init",
+			strconv.Itoa(tClusterIP.HashInit))
+	}
+	return args
+}
+
+func (tClusterIP *TargetClusterIP) Long() string {
+	return tClusterIP.Short()
+}
+
+func (tClusterIP *TargetClusterIP) LongArgs() []string {
+	return tClusterIP.ShortArgs()
 }
 
 func (tClusterIP *TargetClusterIP) Parse(main []byte) (int, bool) {
@@ -586,7 +835,7 @@ func (tClusterIP *TargetClusterIP) Parse(main []byte) (int, bool) {
 	return len(matches[0]), true
 }
 
-type TargetConnMarkMode uint8
+type TargetConnMarkMode int8
 
 const (
 	_ TargetConnMarkMode = iota
@@ -691,6 +940,7 @@ func NewTargetConnMark(opts ...OptionTargetConnMark) (*TargetConnMark, error) {
 		baseTarget: baseTarget{
 			targetType: TargetTypeConnMark,
 		},
+		Mode:   -1,
 		CTMark: -1,
 		CTMask: -1,
 		NFMask: -1,
@@ -707,6 +957,62 @@ type TargetConnMark struct {
 	CTMark int
 	CTMask int
 	NFMask int
+}
+
+func (tConnMark *TargetConnMark) Short() string {
+	return strings.Join(tConnMark.ShortArgs(), " ")
+}
+
+func (tConnMark *TargetConnMark) ShortArgs() []string {
+	args := make([]string, 0, 8)
+	args = append(args, "-j", tConnMark.targetType.String())
+	switch tConnMark.Mode {
+	case TargetConnMarkModeXSET:
+		if tConnMark.CTMask > -1 {
+			args = append(args, "--set-xmark",
+				strconv.Itoa(tConnMark.CTMark)+"/"+strconv.Itoa(tConnMark.CTMask))
+		} else {
+			args = append(args, "--set-xmark", strconv.Itoa(tConnMark.CTMark))
+		}
+	case TargetConnMarkModeSAVE:
+		args = append(args, "--save-mark")
+		if tConnMark.NFMask > -1 && tConnMark.CTMask > -1 {
+			args = append(args, "--nfmask", strconv.Itoa(tConnMark.NFMask))
+			args = append(args, "--ctmask", strconv.Itoa(tConnMark.CTMask))
+		} else if tConnMark.CTMask > -1 {
+			args = append(args, "--mask", strconv.Itoa(tConnMark.CTMask))
+		}
+	case TargetConnMarkModeRESTORE:
+		args = append(args, "--restore-mark")
+		if tConnMark.NFMask > -1 && tConnMark.CTMask > -1 {
+			args = append(args, "--nfmask", strconv.Itoa(tConnMark.NFMask))
+			args = append(args, "--ctmask", strconv.Itoa(tConnMark.CTMask))
+		} else if tConnMark.CTMask > -1 {
+			args = append(args, "--mask", strconv.Itoa(tConnMark.CTMask))
+		}
+	case TargetConnMarkModeAND:
+		args = append(args, "--and-mark", strconv.Itoa(tConnMark.CTMark))
+	case TargetConnMarkModeOR:
+		args = append(args, "--or-mark", strconv.Itoa(tConnMark.CTMark))
+	case TargetConnMarkModeXOR:
+		args = append(args, "--xor-mark", strconv.Itoa(tConnMark.CTMark))
+	case TargetConnMarkModeSET:
+		if tConnMark.CTMask > -1 {
+			args = append(args, "--set-mark",
+				strconv.Itoa(tConnMark.CTMark)+"/"+strconv.Itoa(tConnMark.CTMask))
+		} else {
+			args = append(args, "--set-mark", strconv.Itoa(tConnMark.CTMark))
+		}
+	}
+	return args
+}
+
+func (tConnMark *TargetConnMark) Long() string {
+	return tConnMark.Short()
+}
+
+func (tConnMark *TargetConnMark) LongArgs() []string {
+	return tConnMark.ShortArgs()
 }
 
 func (tConnMark *TargetConnMark) Parse(main []byte) (int, bool) {
@@ -860,6 +1166,30 @@ type TargetConnSecMark struct {
 	Mode TargetConnSecMarkMode
 }
 
+func (tConnSecMark *TargetConnSecMark) Short() string {
+	return strings.Join(tConnSecMark.ShortArgs(), " ")
+}
+
+func (tConnSecMark *TargetConnSecMark) ShortArgs() []string {
+	args := make([]string, 0, 4)
+	args = append(args, "-j", tConnSecMark.targetType.String())
+	switch tConnSecMark.Mode {
+	case TargetConnSecMarkModeSAVE:
+		args = append(args, "--save")
+	case TargetConnSecMarkModeRESTORE:
+		args = append(args, "--restore")
+	}
+	return args
+}
+
+func (tConnSecMark *TargetConnSecMark) Long() string {
+	return tConnSecMark.Short()
+}
+
+func (tConnSecMark *TargetConnSecMark) LongArgs() []string {
+	return tConnSecMark.ShortArgs()
+}
+
 func (tConnSecMark *TargetConnSecMark) Parse(main []byte) (int, bool) {
 	pattern := `^CONNSECMARK (save|restore)`
 	reg := regexp.MustCompile(pattern)
@@ -877,6 +1207,37 @@ func (tConnSecMark *TargetConnSecMark) Parse(main []byte) (int, bool) {
 }
 
 type CTEvent uint8
+
+func (ctEvent CTEvent) String() string {
+	switch ctEvent {
+	case CTEventNEW:
+		return "new"
+	case CTEventRELATED:
+		return "related"
+	case CTEventDESTROY:
+		return "destroy"
+	case CTEventREPLY:
+		return "reply"
+	case CTEventASSURED:
+		return "assured"
+	case CTEventPROTOINFO:
+		return "protoinfo"
+	case CTEventHELPER:
+		return "helper"
+	case CTEventMARK:
+		return "mark"
+	case CTEventSEQADJ:
+		return "natseqinfo"
+	case CTEventSECMARK:
+		return "secmark"
+	case CTEventLABEL:
+		return "label"
+	case CTEventSYNPROXY:
+		return "synproxy"
+	default:
+		return ""
+	}
+}
 
 const (
 	CTEventNEW CTEvent = iota
@@ -896,12 +1257,23 @@ const (
 
 type CTExpectEvent uint8
 
+func (ctExpectEvent CTExpectEvent) String() string {
+	switch ctExpectEvent {
+	case CTExpectEventNEW:
+		return "new"
+	case CTExpectEventDESTORY:
+		return "destroy"
+	default:
+		return ""
+	}
+}
+
 const (
 	CTExpectEventNEW CTExpectEvent = iota
 	CTExpectEventDESTORY
 )
 
-type CTZone uint8
+type CTZone int8
 
 const (
 	CTZoneOrig CTZone = 1 << iota
@@ -999,6 +1371,7 @@ func NewTargetCT(opts ...OptionTargetCT) (*TargetCT, error) {
 		baseTarget: baseTarget{
 			targetType: TargetTypeCT,
 		},
+		ZoneID: -1,
 	}
 	for _, opt := range opts {
 		opt(target)
@@ -1016,6 +1389,65 @@ type TargetCT struct {
 	Zone         CTZone
 	ZoneID       int
 	Mark         bool
+}
+
+func (tCT *TargetCT) Short() string {
+	return strings.Join(tCT.ShortArgs(), " ")
+}
+
+func (tCT *TargetCT) ShortArgs() []string {
+	args := make([]string, 0, 17)
+	args = append(args, "-j", tCT.targetType.String())
+	if tCT.NoTrack {
+		args = append(args, "--notrack")
+	}
+	if tCT.Helper != "" {
+		args = append(args, "--helper", tCT.Helper)
+	}
+	if tCT.Events != nil && len(tCT.Events) > 0 {
+		events := ""
+		sep := ""
+		for _, event := range tCT.Events {
+			events += sep + event.String()
+			sep = ","
+		}
+		args = append(args, "--ctevents", events)
+	}
+	if tCT.ExpectEvents != nil && len(tCT.ExpectEvents) > 0 {
+		events := ""
+		sep := ""
+		for _, event := range tCT.ExpectEvents {
+			events += sep + event.String()
+			sep = ","
+		}
+		args = append(args, "--expevents", events)
+	}
+	switch tCT.Zone {
+	case CTZoneOrig:
+		if tCT.Mark {
+			args = append(args, "--zone-orig", "mark")
+		} else {
+			args = append(args, "--zone-orig", strconv.Itoa(tCT.ZoneID))
+		}
+	case CTZoneReply:
+		if tCT.Mark {
+			args = append(args, "--zone-reply", "mark")
+		} else {
+			args = append(args, "--zone-reply", strconv.Itoa(tCT.ZoneID))
+		}
+	}
+	if tCT.Timeout != "" {
+		args = append(args, "--timeout", tCT.Timeout)
+	}
+	return args
+}
+
+func (tCT *TargetCT) Long() string {
+	return tCT.Short()
+}
+
+func (tCT *TargetCT) LongArgs() []string {
+	return tCT.ShortArgs()
 }
 
 func (tCT *TargetCT) Parse(main []byte) (int, bool) {
@@ -1162,6 +1594,43 @@ type TargetDNAT struct {
 	Persistent bool
 }
 
+func (tDNAT *TargetDNAT) Short() string {
+	return strings.Join(tDNAT.ShortArgs(), " ")
+}
+
+func (tDNAT *TargetDNAT) ShortArgs() []string {
+	args := make([]string, 0, 6)
+	args = append(args, "-j", tDNAT.targetType.String())
+	if tDNAT.AddrMin != nil {
+		dst := tDNAT.AddrMin.String()
+		if tDNAT.AddrMax != nil {
+			dst += "-" + tDNAT.AddrMax.String()
+		}
+		if tDNAT.PortMin > -1 {
+			dst += ":" + strconv.Itoa(tDNAT.PortMin)
+		}
+		if tDNAT.PortMax > -1 {
+			dst += "-" + strconv.Itoa(tDNAT.PortMax)
+		}
+		args = append(args, "--to-destination", dst)
+	}
+	if tDNAT.Random {
+		args = append(args, "--random")
+	}
+	if tDNAT.Persistent {
+		args = append(args, "--persistent")
+	}
+	return args
+}
+
+func (tDNAT *TargetDNAT) Long() string {
+	return tDNAT.Short()
+}
+
+func (tDNAT *TargetDNAT) LongArgs() []string {
+	return tDNAT.ShortArgs()
+}
+
 func (tDNAT *TargetDNAT) Parse(main []byte) (int, bool) {
 	// 1. "^to:"
 	// 2. "(\[?(([0-9A-Za-z_.]+(?:::)*)+)(-(([0-9A-Za-z_.]+(?:::)*)+)\]?)?)" #1 #2 #3 #4 #5 #6
@@ -1255,6 +1724,30 @@ type TargetDNPT struct {
 	DstPrefix *net.IPNet
 }
 
+func (tDNPT *TargetDNPT) Short() string {
+	return strings.Join(tDNPT.ShortArgs(), " ")
+}
+
+func (tDNPT *TargetDNPT) ShortArgs() []string {
+	args := make([]string, 0, 6)
+	args = append(args, "-j", tDNPT.targetType.String())
+	if tDNPT.SrcPrefix != nil {
+		args = append(args, "--src-pfx", tDNPT.SrcPrefix.String())
+	}
+	if tDNPT.DstPrefix != nil {
+		args = append(args, "--dst-pfx", tDNPT.DstPrefix.String())
+	}
+	return args
+}
+
+func (tDNPT *TargetDNPT) Long() string {
+	return tDNPT.Short()
+}
+
+func (tDNPT *TargetDNPT) LongArgs() []string {
+	return tDNPT.ShortArgs()
+}
+
 func (tDNPT *TargetDNPT) Parse(main []byte) (int, bool) {
 	// 1. "^DNPT"
 	// 2. " src-pfx ([0-9A-Za-z_.:]+/[0-9]+) dst-pfx ([0-9A-Za-z_.:]+/[0-9]+)"
@@ -1314,6 +1807,25 @@ type TargetDSCP struct {
 	Value int
 }
 
+func (tDSCP *TargetDSCP) Short() string {
+	return strings.Join(tDSCP.ShortArgs(), " ")
+}
+
+func (tDSCP *TargetDSCP) ShortArgs() []string {
+	args := make([]string, 0, 4)
+	args = append(args, "-j", tDSCP.targetType.String())
+	args = append(args, "--set-dscp", strconv.Itoa(tDSCP.Value))
+	return args
+}
+
+func (tDSCP *TargetDSCP) Long() string {
+	return tDSCP.Short()
+}
+
+func (tDSCP *TargetDSCP) LongArgs() []string {
+	return tDSCP.ShortArgs()
+}
+
 func (tDSCP *TargetDSCP) Parse(main []byte) (int, bool) {
 	pattern := `^DSCP set 0x([0-9A-Za-z]+) *`
 	reg := regexp.MustCompile(pattern)
@@ -1355,6 +1867,27 @@ func NewTargetECN(opts ...OptionTargetECN) (*TargetECN, error) {
 type TargetECN struct {
 	baseTarget
 	TCPRemove bool
+}
+
+func (tECN *TargetECN) Short() string {
+	return strings.Join(tECN.ShortArgs(), " ")
+}
+
+func (tECN *TargetECN) ShortArgs() []string {
+	args := make([]string, 0, 3)
+	args = append(args, "-j", tECN.targetType.String())
+	if tECN.TCPRemove {
+		args = append(args, "--ecn-tcp-remove")
+	}
+	return args
+}
+
+func (tECN *TargetECN) Long() string {
+	return tECN.Short()
+}
+
+func (tECN *TargetECN) LongArgs() []string {
+	return tECN.ShortArgs()
 }
 
 func (tECN *TargetECN) Parse(main []byte) (int, bool) {
@@ -1411,6 +1944,32 @@ type TargetHL struct {
 	baseTarget
 	Operator Operator
 	Value    int
+}
+
+func (tHL *TargetHL) Short() string {
+	return strings.Join(tHL.ShortArgs(), " ")
+}
+
+func (tHL *TargetHL) ShortArgs() []string {
+	args := make([]string, 0, 4)
+	args = append(args, "-j", tHL.targetType.String())
+	switch tHL.Operator {
+	case OperatorSET:
+		args = append(args, "--hl-set", strconv.Itoa(tHL.Value))
+	case OperatorDEC:
+		args = append(args, "--hl-dec", strconv.Itoa(tHL.Value))
+	case OperatorINC:
+		args = append(args, "--hl-inc", strconv.Itoa(tHL.Value))
+	}
+	return args
+}
+
+func (tHL *TargetHL) Long() string {
+	return tHL.Short()
+}
+
+func (tHL *TargetHL) LongArgs() []string {
+	return tHL.ShortArgs()
 }
 
 func (tHL *TargetHL) Parse(main []byte) (int, bool) {
