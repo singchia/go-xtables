@@ -32,6 +32,21 @@ type RateFloat struct {
 	Unit Unit
 }
 
+func (rateFloat RateFloat) Sting() string {
+	unit := "second"
+	switch rateFloat.Unit {
+	case Microsecond:
+		unit = "us"
+	case Millisecond:
+		unit = "ms"
+	case Second:
+		unit = "s"
+	default:
+		return ""
+	}
+	return strconv.FormatFloat(rateFloat.Rate, 'f', 2, 64) + unit
+}
+
 type PortRange struct {
 	Start int
 	End   int

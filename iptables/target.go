@@ -3043,6 +3043,27 @@ type TargetNetmap struct {
 	Addr *Address
 }
 
+func (tNetmap *TargetNetmap) Short() string {
+	return strings.Join(tNetmap.ShortArgs(), " ")
+}
+
+func (tNetmap *TargetNetmap) ShortArgs() []string {
+	args := make([]string, 0, 4)
+	args = append(args, "-j", tNetmap.targetType.String())
+	if tNetmap.Addr != nil {
+		args = append(args, "--to", tNetmap.Addr.String())
+	}
+	return args
+}
+
+func (tNetmap *TargetNetmap) Long() string {
+	return tNetmap.Short()
+}
+
+func (tNetmap *TargetNetmap) LongArgs() []string {
+	return tNetmap.ShortArgs()
+}
+
 func (tNetmap *TargetNetmap) Parse(main []byte) (int, bool) {
 	// 1. "to:([0-9A-Za-z.:]+)"
 	// 2. "/([0-9A-Za-z.:]+)"
@@ -3132,6 +3153,36 @@ type TargetNFLog struct {
 	Range     int
 	Size      int
 	Threshold int
+}
+
+func (tNFLog *TargetNFLog) Short() string {
+	return strings.Join(tNFLog.ShortArgs(), " ")
+}
+
+func (tNFLog *TargetNFLog) ShortArgs() []string {
+	args := make([]string, 0, 10)
+	args = append(args, "-j", tNFLog.targetType.String())
+	if tNFLog.Group > -1 {
+		args = append(args, "--nflog-group", strconv.Itoa(tNFLog.Group))
+	}
+	if tNFLog.Prefix != "" {
+		args = append(args, "--nflog-prefix", tNFLog.Prefix)
+	}
+	if tNFLog.Range > -1 {
+		args = append(args, "--nflog-range", strconv.Itoa(tNFLog.Range))
+	}
+	if tNFLog.Threshold > -1 {
+		args = append(args, "--nflog-threshold", strconv.Itoa(tNFLog.Threshold))
+	}
+	return args
+}
+
+func (tNFLog *TargetNFLog) Long() string {
+	return tNFLog.Short()
+}
+
+func (tNFLog *TargetNFLog) LongArgs() []string {
+	return tNFLog.ShortArgs()
 }
 
 func (tNFLog *TargetNFLog) Parse(main []byte) (int, bool) {
@@ -3246,6 +3297,38 @@ type TargetNFQueue struct {
 	CPUFanout bool
 }
 
+func (tNFQueue *TargetNFQueue) Short() string {
+	return strings.Join(tNFQueue.ShortArgs(), " ")
+}
+
+func (tNFQueue *TargetNFQueue) ShortArgs() []string {
+	args := make([]string, 0, 8)
+	args = append(args, "-j", tNFQueue.targetType.String())
+	if tNFQueue.QueueMin > -1 {
+		if tNFQueue.QueueMax > -1 {
+			args = append(args, "--queue-balance",
+				strconv.Itoa(tNFQueue.QueueMin)+":"+strconv.Itoa(tNFQueue.QueueMax))
+		} else {
+			args = append(args, "--queue-num", strconv.Itoa(tNFQueue.QueueMin))
+		}
+	}
+	if tNFQueue.Bypass {
+		args = append(args, "--queue-bypass")
+	}
+	if tNFQueue.CPUFanout {
+		args = append(args, "--queue-cpu-fanout")
+	}
+	return args
+}
+
+func (tNFQueue *TargetNFQueue) Long() string {
+	return tNFQueue.Short()
+}
+
+func (tNFQueue *TargetNFQueue) LongArgs() []string {
+	return tNFQueue.ShortArgs()
+}
+
 func (tNFQueue *TargetNFQueue) Parse(main []byte) (int, bool) {
 	// 1. "^NFQUEUE"
 	// 2. " (balance|num) ([0-9]+)(:([0-9]+))?" #1 #2 #3 #4
@@ -3298,7 +3381,7 @@ func WithTargetRateEstInterval(interval RateFloat) OptionTargetRateEst {
 }
 
 // Rate measurement averaging time constant.
-func WithTargetRateEstEwmalog(ewmalog RateFloat) OptionTargetRateEst {
+func WithTargetRateEstEwmalog(ewmalog float64) OptionTargetRateEst {
 	return func(tRateEst *TargetRateEst) {
 		tRateEst.Ewmalog = ewmalog
 	}
@@ -3309,6 +3392,7 @@ func NewTargetRateEst(opts ...OptionTargetRateEst) (*TargetRateEst, error) {
 		baseTarget: baseTarget{
 			targetType: TargetTypeRateEst,
 		},
+		Ewmalog: -1,
 	}
 	for _, opt := range opts {
 		opt(target)
@@ -3320,7 +3404,35 @@ type TargetRateEst struct {
 	baseTarget
 	Name     string
 	Interval RateFloat
-	Ewmalog  RateFloat
+	Ewmalog  float64
+}
+
+func (tRateEst *TargetRateEst) Short() string {
+	return strings.Join(tRateEst.ShortArgs(), " ")
+}
+
+func (tRateEst *TargetRateEst) ShortArgs() []string {
+	args := make([]string, 0, 8)
+	args = append(args, "-j", tRateEst.targetType.String())
+	if tRateEst.Name != "" {
+		args = append(args, "--rateest-name", tRateEst.Name)
+	}
+	if (tRateEst.Interval != RateFloat{}) {
+		args = append(args, "--rateest-interval", tRateEst.Interval.Sting())
+	}
+	if tRateEst.Ewmalog > -1 {
+		args = append(args, "--rateest-ewmalog",
+			strconv.FormatFloat(tRateEst.Ewmalog, 'f', 2, 64))
+	}
+	return args
+}
+
+func (tRateEst *TargetRateEst) Long() string {
+	return tRateEst.Short()
+}
+
+func (tRateEst *TargetRateEst) LongArgs() []string {
+	return tRateEst.ShortArgs()
 }
 
 func (tRateEst *TargetRateEst) Parse(main []byte) (int, bool) {
@@ -3361,9 +3473,7 @@ func (tRateEst *TargetRateEst) Parse(main []byte) (int, bool) {
 	case "s":
 		unit = Second
 	}
-	tRateEst.Ewmalog = RateFloat{
-		ewmalog, unit,
-	}
+	tRateEst.Ewmalog = ewmalog
 	return len(matches[0]), true
 }
 
