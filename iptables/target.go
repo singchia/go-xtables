@@ -2000,7 +2000,26 @@ func (tHL *TargetHL) Parse(main []byte) (int, bool) {
 	return len(matches[0]), true
 }
 
-type HMarkTuple uint8
+type HMarkTuple int8
+
+func (tuple HMarkTuple) String() string {
+	switch tuple {
+	case HMarkTupleSrc:
+		return "src"
+	case HMarkTupleDst:
+		return "dst"
+	case HMarkTupleSport:
+		return "sport"
+	case HMarkTupleDport:
+		return "dport"
+	case HMarkTupleSPI:
+		return "spi"
+	case HMarkTupleCT:
+		return "ct"
+	default:
+		return ""
+	}
+}
 
 const (
 	HMarkTupleSrc HMarkTuple = 1 << iota
@@ -2089,6 +2108,7 @@ func NewTargetHMark(opts ...OptionTargetHMark) (*TargetHMark, error) {
 		},
 		Modulus:     -1,
 		Offset:      -1,
+		Tuple:       -1,
 		SrcPrefix:   -1,
 		DstPrefix:   -1,
 		SrcPortMask: -1,
@@ -2121,6 +2141,54 @@ type TargetHMark struct {
 	SPI         int
 	ProtoMask   int
 	Random      int
+}
+
+func (tHMark *TargetHMark) Short() string {
+	return strings.Join(tHMark.ShortArgs(), " ")
+}
+
+func (tHMark *TargetHMark) ShortArgs() []string {
+	args := make([]string, 0, 22)
+	args = append(args, "-j", tHMark.targetType.String())
+	if tHMark.Tuple > -1 {
+		args = append(args, "--hmark-tuple", tHMark.Tuple.String())
+	}
+	if tHMark.Modulus > -1 {
+		args = append(args, "--hmark-mod", strconv.Itoa(tHMark.Modulus))
+	}
+	if tHMark.Offset > -1 {
+		args = append(args, "--hmark-offset", strconv.Itoa(tHMark.Offset))
+	}
+	if tHMark.SrcPrefix > -1 {
+		args = append(args, "--hmark-src-prefix", strconv.Itoa(tHMark.SrcPrefix))
+	}
+	if tHMark.DstPrefix > -1 {
+		args = append(args, "--hmark-dst-prefix", strconv.Itoa(tHMark.DstPrefix))
+	}
+	if tHMark.SrcPortMask > -1 {
+		args = append(args, "--hmark-sport-mask", strconv.Itoa(tHMark.SrcPortMask))
+	}
+	if tHMark.DstPortMask > -1 {
+		args = append(args, "--hmark-dport-mask", strconv.Itoa(tHMark.DstPortMask))
+	}
+	if tHMark.SPI > -1 {
+		args = append(args, "--hmark-spi-mask", strconv.Itoa(tHMark.SPI))
+	}
+	if tHMark.ProtoMask > -1 {
+		args = append(args, "--hmark-proto-mask", strconv.Itoa(tHMark.ProtoMask))
+	}
+	if tHMark.Random > -1 {
+		args = append(args, "--hmark-proto-mask", strconv.Itoa(tHMark.ProtoMask))
+	}
+	return args
+}
+
+func (tHMark *TargetHMark) Long() string {
+	return tHMark.Short()
+}
+
+func (tHMark *TargetHMark) LongArgs() []string {
+	return tHMark.ShortArgs()
 }
 
 func (tHMark *TargetHMark) Parse(main []byte) (int, bool) {
@@ -2285,6 +2353,30 @@ type TargetIdleTimer struct {
 	Alarm   bool
 }
 
+func (tIdleTimer *TargetIdleTimer) Short() string {
+	return strings.Join(tIdleTimer.ShortArgs(), " ")
+}
+
+func (tIdleTimer *TargetIdleTimer) ShortArgs() []string {
+	args := make([]string, 0, 6)
+	args = append(args, "-j", tIdleTimer.targetType.String())
+	if tIdleTimer.Timeout > -1 {
+		args = append(args, "--timeout", strconv.Itoa(tIdleTimer.Timeout))
+	}
+	if tIdleTimer.Label != "" {
+		args = append(args, "--label", tIdleTimer.Label)
+	}
+	return args
+}
+
+func (tIdleTimer *TargetIdleTimer) Long() string {
+	return tIdleTimer.Short()
+}
+
+func (tIdleTimer *TargetIdleTimer) LongArgs() []string {
+	return tIdleTimer.ShortArgs()
+}
+
 func (tIdleTimer *TargetIdleTimer) Parse(main []byte) (int, bool) {
 	// 1. "timeout:([0-9]+)"
 	// 2. " label:([0-9A-Za-z-._]+)"
@@ -2358,6 +2450,35 @@ type TargetLED struct {
 	AlwaysBlink bool
 }
 
+func (tLED *TargetLED) Short() string {
+	return strings.Join(tLED.ShortArgs(), " ")
+}
+
+func (tLED *TargetLED) ShortArgs() []string {
+	args := make([]string, 0, 7)
+	args = append(args, "-j", tLED.targetType.String())
+	if tLED.TriggerID != "" {
+		args = append(args, "--led-trigger-id", tLED.TriggerID)
+	}
+	if tLED.Delay > -1 {
+		args = append(args, "--led-delay", strconv.Itoa(tLED.Delay))
+	} else if tLED.Delay == -1 {
+		args = append(args, "--led-delay", "inf")
+	}
+	if tLED.AlwaysBlink {
+		args = append(args, "--led-always-blink")
+	}
+	return args
+}
+
+func (tLED *TargetLED) Long() string {
+	return tLED.Short()
+}
+
+func (tLED *TargetLED) LongArgs() []string {
+	return tLED.ShortArgs()
+}
+
 func (tLED *TargetLED) Parse(main []byte) (int, bool) {
 	// 1. "^led-trigger-id:\"([!-~]+)\"" #1
 	// 2. "( led-delay:inf)?" #2
@@ -2403,7 +2524,7 @@ const (
 	LOGFlagMASK      LOGFlag = 0x2f
 )
 
-type LOGLevel uint8
+type LOGLevel int8
 
 const (
 	LOGLevelEMERG   LOGLevel = 0 /* system is unusable */
@@ -2459,6 +2580,7 @@ func NewTargetLOG(opts ...OptionTargetLOG) (*TargetLOG, error) {
 		baseTarget: baseTarget{
 			targetType: TargetTypeLOG,
 		},
+		Level: -1,
 	}
 	for _, opt := range opts {
 		opt(target)
@@ -2474,6 +2596,42 @@ type TargetLOG struct {
 	TCPOptions  bool
 	IPOptions   bool
 	UID         bool
+}
+
+func (tLOG *TargetLOG) Short() string {
+	return strings.Join(tLOG.ShortArgs(), " ")
+}
+
+func (tLOG *TargetLOG) ShortArgs() []string {
+	args := make([]string, 0, 10)
+	args = append(args, "-j", tLOG.targetType.String())
+	if tLOG.Level > -1 {
+		args = append(args, "--log-level", strconv.Itoa(int(tLOG.Level)))
+	}
+	if tLOG.Prefix != "" {
+		args = append(args, "--log-prefix", tLOG.Prefix)
+	}
+	if tLOG.TCPSequence {
+		args = append(args, "--log-tcp-sequence")
+	}
+	if tLOG.TCPOptions {
+		args = append(args, "--log-tcp-options")
+	}
+	if tLOG.IPOptions {
+		args = append(args, "--log-ip-options")
+	}
+	if tLOG.UID {
+		args = append(args, "--log-uid")
+	}
+	return args
+}
+
+func (tLOG *TargetLOG) Long() string {
+	return tLOG.Short()
+}
+
+func (tLOG *TargetLOG) LongArgs() []string {
+	return tLOG.ShortArgs()
 }
 
 func (tLOG *TargetLOG) Parse(main []byte) (int, bool) {
@@ -2528,7 +2686,7 @@ func (tLOG *TargetLOG) Parse(main []byte) (int, bool) {
 		if err != nil {
 			return 0, false
 		}
-		tLOG.Level = LOGLevel(uint8(level))
+		tLOG.Level = LOGLevel(int8(level))
 	}
 	if len(matches[5]) != 0 {
 		switch string(matches[5]) {
@@ -2651,6 +2809,46 @@ type TargetMark struct {
 	Mask     int
 }
 
+func (tMark *TargetMark) Short() string {
+	return strings.Join(tMark.ShortArgs(), " ")
+}
+
+func (tMark *TargetMark) ShortArgs() []string {
+	args := make([]string, 0, 12)
+	args = append(args, "-j", tMark.targetType.String())
+	switch tMark.Operator {
+	case OperatorXSET:
+		if tMark.Mask > -1 {
+			args = append(args, "--set-xmark",
+				strconv.Itoa(tMark.Mark)+"/"+strconv.Itoa(tMark.Mask))
+		} else {
+			args = append(args, "--set-xmark", strconv.Itoa(tMark.Mark))
+		}
+	case OperatorSET:
+		if tMark.Mask > -1 {
+			args = append(args, "--set-mark",
+				strconv.Itoa(tMark.Mark)+"/"+strconv.Itoa(tMark.Mask))
+		} else {
+			args = append(args, "--set-mark", strconv.Itoa(tMark.Mark))
+		}
+	case OperatorAND:
+		args = append(args, "--and-mark", strconv.Itoa(tMark.Mark))
+	case OperatorOR:
+		args = append(args, "--or-mark", strconv.Itoa(tMark.Mark))
+	case OperatorXOR:
+		args = append(args, "--xor-mark", strconv.Itoa(tMark.Mark))
+	}
+	return args
+}
+
+func (tMark *TargetMark) Long() string {
+	return tMark.Short()
+}
+
+func (tMark *TargetMark) LongArgs() []string {
+	return tMark.ShortArgs()
+}
+
 func (tMark *TargetMark) Parse(main []byte) (int, bool) {
 	// 1. "^MARK"
 	// 2. " (set|and|or|xor|xset)" #1
@@ -2739,6 +2937,35 @@ type TargetMasquerade struct {
 	PortMax     int
 	Random      bool
 	RandomFully bool
+}
+
+func (tMasquerade *TargetMasquerade) Short() string {
+	return strings.Join(tMasquerade.ShortArgs(), " ")
+}
+
+func (tMasquerade *TargetMasquerade) ShortArgs() []string {
+	args := make([]string, 0, 5)
+	args = append(args, "-j", tMasquerade.targetType.String())
+	if tMasquerade.PortMin > -1 {
+		if tMasquerade.PortMax > -1 {
+			args = append(args, "--to-ports",
+				strconv.Itoa(tMasquerade.PortMin)+"-"+strconv.Itoa(tMasquerade.PortMax))
+		} else {
+			args = append(args, "--to-ports", strconv.Itoa(tMasquerade.PortMin))
+		}
+	}
+	if tMasquerade.Random {
+		args = append(args, "--random")
+	}
+	return args
+}
+
+func (tMasquerade *TargetMasquerade) Long() string {
+	return tMasquerade.Short()
+}
+
+func (tMasquerade *TargetMasquerade) LongArgs() []string {
+	return tMasquerade.ShortArgs()
 }
 
 func (tMasquerade *TargetMasquerade) Parse(main []byte) (int, bool) {
