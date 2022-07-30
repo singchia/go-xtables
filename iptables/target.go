@@ -3519,6 +3519,35 @@ type TargetRedirect struct {
 	Random  bool
 }
 
+func (tRedirect *TargetRedirect) Short() string {
+	return strings.Join(tRedirect.ShortArgs(), " ")
+}
+
+func (tRedirect *TargetRedirect) ShortArgs() []string {
+	args := make([]string, 0, 5)
+	args = append(args, "-j", tRedirect.targetType.String())
+	if tRedirect.PortMin > -1 {
+		if tRedirect.PortMax > -1 {
+			args = append(args, "--to-ports",
+				strconv.Itoa(tRedirect.PortMin)+"-"+strconv.Itoa(tRedirect.PortMax))
+		} else {
+			args = append(args, "--to-ports", strconv.Itoa(tRedirect.PortMin))
+		}
+	}
+	if tRedirect.Random {
+		args = append(args, "--random")
+	}
+	return args
+}
+
+func (tRedirect *TargetRedirect) Long() string {
+	return tRedirect.Short()
+}
+
+func (tRedirect *TargetRedirect) LongArgs() []string {
+	return tRedirect.ShortArgs()
+}
+
 func (tRedirect *TargetRedirect) Parse(main []byte) (int, bool) {
 	index := 0
 	pattern := `^redir ports ([0-9]+)(-([0-9]+))? *`
@@ -3553,7 +3582,44 @@ func (tRedirect *TargetRedirect) Parse(main []byte) (int, bool) {
 	return index, true
 }
 
-type RejectType uint8
+type RejectType int8
+
+func (rejectType RejectType) String() string {
+	switch rejectType {
+	case Icmp6NoRoute:
+		return "icmp6-no-route"
+	case NoRoute:
+		return "no-route"
+	case Icmp6AdmProhibited:
+		return "icmp6-adm-prohibited"
+	case AdmProhibited:
+		return "addr-unreach"
+	case Icmp6AddrUnreachable:
+		return "icmp6-addr-unreachable"
+	case AddrUnreachable:
+		return "addr-unreach"
+	case Icmp6PortUnreachable:
+		return "icmp6-port-unreachable"
+	case IcmpNetUnreachable:
+		return "icmp-net-unreachable"
+	case IcmpHostUnreachable:
+		return "icmp-host-unreachable"
+	case IcmpPortUnreachable:
+		return "icmp-port-unreachable"
+	case IcmpProtoUnreachable:
+		return "icmp-proto-unreachable"
+	case IcmpNetProhibited:
+		return "icmp-net-prohibited"
+	case IcmpHostProhibited:
+		return "icmp-host-prohibited"
+	case IcmpAdminProhibited:
+		return "icmp-admin-prohibited"
+	case TcpReset:
+		return "tcp-reset"
+	default:
+		return ""
+	}
+}
 
 const (
 	_ RejectType = iota
@@ -3610,6 +3676,7 @@ func NewTargetReject(opts ...OptionTargetReject) (*TargetReject, error) {
 		baseTarget: baseTarget{
 			targetType: TargetTypeReject,
 		},
+		Type: -1,
 	}
 	for _, opt := range opts {
 		opt(target)
@@ -3620,6 +3687,27 @@ func NewTargetReject(opts ...OptionTargetReject) (*TargetReject, error) {
 type TargetReject struct {
 	baseTarget
 	Type RejectType
+}
+
+func (tReject *TargetReject) Short() string {
+	return strings.Join(tReject.ShortArgs(), " ")
+}
+
+func (tReject *TargetReject) ShortArgs() []string {
+	args := make([]string, 0, 4)
+	args = append(args, "-j", tReject.targetType.String())
+	if tReject.Type > -1 {
+		args = append(args, "--reject-with", tReject.Type.String())
+	}
+	return args
+}
+
+func (tReject *TargetReject) Long() string {
+	return tReject.Short()
+}
+
+func (tReject *TargetReject) LongArgs() []string {
+	return tReject.ShortArgs()
 }
 
 func (tReject *TargetReject) Parse(main []byte) (int, bool) {
@@ -3687,6 +3775,38 @@ type TargetSame struct {
 	Random  bool
 }
 
+func (tSame *TargetSame) Short() string {
+	return strings.Join(tSame.ShortArgs(), " ")
+}
+
+func (tSame *TargetSame) ShortArgs() []string {
+	args := make([]string, 0, 6)
+	args = append(args, "-j", tSame.targetType.String())
+	if tSame.AddrMin != nil {
+		if tSame.AddrMax != nil {
+			args = append(args, "--to",
+				tSame.AddrMin.String()+"-"+tSame.AddrMax.String())
+		} else {
+			args = append(args, "--to", tSame.AddrMin.String())
+		}
+	}
+	if tSame.NoDst {
+		args = append(args, "--nodes")
+	}
+	if tSame.Random {
+		args = append(args, "--random")
+	}
+	return args
+}
+
+func (tSame *TargetSame) Long() string {
+	return tSame.Short()
+}
+
+func (tSame *TargetSame) LongArgs() []string {
+	return tSame.ShortArgs()
+}
+
 func (tSame *TargetSame) Parse(main []byte) (int, bool) {
 	// 1. "^same:"
 	// 2. "(([!-~]+)(-([!-~]+))? )?" #1 #2 #3 #4
@@ -3750,6 +3870,27 @@ type TargetSecMark struct {
 	SelCtx string
 }
 
+func (tSecMark *TargetSecMark) Short() string {
+	return strings.Join(tSecMark.ShortArgs(), " ")
+}
+
+func (tSecMark *TargetSecMark) ShortArgs() []string {
+	args := make([]string, 0, 4)
+	args = append(args, "-j", tSecMark.targetType.String())
+	if tSecMark.SelCtx != "" {
+		args = append(args, "--selctx", tSecMark.SelCtx)
+	}
+	return args
+}
+
+func (tSecMark *TargetSecMark) Long() string {
+	return tSecMark.Short()
+}
+
+func (tSecMark *TargetSecMark) LongArgs() []string {
+	return tSecMark.ShortArgs()
+}
+
 func (tSecMark *TargetSecMark) Parse(main []byte) (int, bool) {
 	// 1. "^SECMARK "
 	// 2. "selctx ([!-~]+)|invalid mode [0-9]+"
@@ -3775,6 +3916,17 @@ const (
 )
 
 type SetFlag uint8
+
+func (setFlag SetFlag) String() string {
+	switch setFlag {
+	case SetFlagSrc:
+		return "src"
+	case SetFlagDst:
+		return "dst"
+	default:
+		return ""
+	}
+}
 
 const (
 	SetFlagSrc SetFlag = 1 << iota
@@ -3860,6 +4012,45 @@ type TargetSet struct {
 	MapMark  bool
 	MapPrio  bool
 	MapQueue bool
+}
+
+func (tSet *TargetSet) Short() string {
+	return strings.Join(tSet.ShortArgs(), " ")
+}
+
+func (tSet *TargetSet) ShortArgs() []string {
+	args := make([]string, 0, 9)
+	args = append(args, "-j", tSet.targetType.String())
+
+	flags := ""
+	sep := ""
+	if tSet.Flags != nil && len(tSet.Flags) != 0 {
+		for _, flag := range tSet.Flags {
+			flags += sep + flag.String()
+			sep = ","
+		}
+	}
+	switch tSet.Mode {
+	case SetModeAdd:
+		args = append(args, "--add-set", tSet.Name, flags)
+	case SetModeDel:
+		args = append(args, "--del-set", tSet.Name, flags)
+	}
+	if tSet.Timeout > -1 {
+		args = append(args, "--timeout", strconv.Itoa(tSet.Timeout))
+	}
+	if tSet.Exist {
+		args = append(args, "--exist")
+	}
+	return args
+}
+
+func (tSet *TargetSet) Long() string {
+	return tSet.Short()
+}
+
+func (tSet *TargetSet) LongArgs() []string {
+	return tSet.ShortArgs()
 }
 
 func (tSet *TargetSet) Parse(main []byte) (int, bool) {
@@ -3975,6 +4166,42 @@ type TargetSNAT struct {
 	Persistent bool
 }
 
+func (tSNAT *TargetSNAT) Short() string {
+	return strings.Join(tSNAT.ShortArgs(), " ")
+}
+
+func (tSNAT *TargetSNAT) ShortArgs() []string {
+	args := make([]string, 0, 6)
+	args = append(args, "-j", tSNAT.targetType.String())
+	if tSNAT.AddrMin != nil {
+		source := tSNAT.AddrMin.String()
+		if tSNAT.AddrMax != nil {
+			source += "-" + tSNAT.AddrMax.String()
+		}
+		if tSNAT.PortMin > -1 {
+			source += ":" + strconv.Itoa(tSNAT.PortMin)
+		}
+		if tSNAT.PortMax > -1 {
+			source += "-" + strconv.Itoa(tSNAT.PortMax)
+		}
+	}
+	if tSNAT.Random {
+		args = append(args, "--random")
+	}
+	if tSNAT.Persistent {
+		args = append(args, "--persistent")
+	}
+	return args
+}
+
+func (tSNAT *TargetSNAT) Long() string {
+	return tSNAT.Short()
+}
+
+func (tSNAT *TargetSNAT) LongArgs() []string {
+	return tSNAT.ShortArgs()
+}
+
 func (tSNAT *TargetSNAT) Parse(main []byte) (int, bool) {
 	// 1. "^to:"
 	// 2. "(\[?(([0-9A-Za-z_.]+(?:::)*)+)(-(([0-9A-Za-z_.]+(?:::)*)+)\]?)?)" #1 #2 #3 #4 #5 #6
@@ -4068,6 +4295,30 @@ type TargetSNPT struct {
 	DstPrefix *net.IPNet
 }
 
+func (tSNPT *TargetSNPT) Short() string {
+	return strings.Join(tSNPT.ShortArgs(), " ")
+}
+
+func (tSNPT *TargetSNPT) ShortArgs() []string {
+	args := make([]string, 0, 6)
+	args = append(args, "-j", tSNPT.targetType.String())
+	if tSNPT.SrcPrefix != nil {
+		args = append(args, "--src-pfx", tSNPT.SrcPrefix.String())
+	}
+	if tSNPT.DstPrefix != nil {
+		args = append(args, "--dst-pfx", tSNPT.DstPrefix.String())
+	}
+	return args
+}
+
+func (tSNPT *TargetSNPT) Long() string {
+	return tSNPT.Short()
+}
+
+func (tSNPT *TargetSNPT) LongArgs() []string {
+	return tSNPT.ShortArgs()
+}
+
 func (tSNPT *TargetSNPT) Parse(main []byte) (int, bool) {
 	// 1. "^SNPT"
 	// 2. " src-pfx ([0-9A-Za-z_.:]+/[0-9]+) dst-pfx ([0-9A-Za-z_.:]+/[0-9]+)"
@@ -4153,6 +4404,12 @@ type TargetSYNProxy struct {
 	SockPerm    bool
 	Timestamp   bool
 	ECN         bool
+}
+
+func (tSYNProxy *TargetSYNProxy) ShortArgs() []string {
+	args := make([]string, 0, 8)
+	args = append(args, "-j", tSYNProxy.targetType.String())
+	return args
 }
 
 func (tSYNProxy *TargetSYNProxy) Parse(main []byte) (int, bool) {
