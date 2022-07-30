@@ -151,6 +151,25 @@ var (
 
 type TCPOpt uint8
 
+func (tcpOpt TCPOpt) String() string {
+	switch tcpOpt {
+	case TCPOptMD5:
+		return "md5"
+	case TCPOptMSS:
+		return "mss"
+	case TCPOptWindowScale:
+		return "wscale"
+	case TCPOptSACKPermitted:
+		return "sack-permitted"
+	case TCPOptSACK:
+		return "sack"
+	case TCPOptTimestamp:
+		return "timestamp"
+	default:
+		return ""
+	}
+}
+
 const (
 	TCPOptMD5           TCPOpt = 19
 	TCPOptMSS           TCPOpt = 2
