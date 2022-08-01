@@ -301,7 +301,7 @@ func MatchFactory(matchType MatchType) Match {
 		match, _ := NewMatchFrag()
 		return match
 	case MatchTypeHBH:
-		match, _ := NewMatchFrag()
+		match, _ := NewMatchHBH()
 		return match
 	case MatchTypeHelper:
 		match, _ := NewMatchHelper("")
