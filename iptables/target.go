@@ -35,10 +35,11 @@ const (
 	TargetTypeLOG
 	TargetTypeMark
 	TargetTypeMasquerade
+	TargetTypeMirror // unsupport
 	TargetTypeNetmap
 	TargetTypeNFLog
 	TargetTypeNFQueue
-	//TargetTypeNoTrack
+	TargetTypeNoTrack // unsupport
 	TargetTypeRateEst
 	TargetTypeRedirect
 	TargetTypeReject
@@ -55,7 +56,7 @@ const (
 	TargetTypeTProxy
 	TargetTypeTrace
 	TargetTypeTTL
-	TargetTypeULOG
+	TargetTypeULog
 )
 
 var (
@@ -102,7 +103,7 @@ var (
 		TargetTypeTProxy:      "TPROXY",
 		TargetTypeTrace:       "TRACE",
 		TargetTypeTTL:         "TTL",
-		TargetTypeULOG:        "ULOG",
+		TargetTypeULog:        "ULOG",
 	}
 
 	TargetValueType = map[string]TargetType{
@@ -148,7 +149,7 @@ var (
 		"TPROXY":      TargetTypeTProxy,
 		"TRACE":       TargetTypeTrace,
 		"TTL":         TargetTypeTTL,
-		"ULOG":        TargetTypeULOG,
+		"ULOG":        TargetTypeULog,
 	}
 )
 
@@ -242,7 +243,7 @@ func (tt TargetType) String() string {
 		return "TRACE"
 	case TargetTypeTTL:
 		return "TTL"
-	case TargetTypeULOG:
+	case TargetTypeULog:
 		return "ULOG"
 	default:
 		return ""
@@ -343,6 +344,14 @@ type TargetAccept struct {
 	baseTarget
 }
 
+func NewTargetAccept() *TargetAccept {
+	return &TargetAccept{
+		baseTarget: baseTarget{
+			targetType: TargetTypeAccept,
+		},
+	}
+}
+
 func (ta *TargetAccept) Short() string {
 	return "-j ACCEPT"
 }
@@ -363,6 +372,14 @@ type TargetDrop struct {
 	baseTarget
 }
 
+func NewTargetDrop() *TargetDrop {
+	return &TargetDrop{
+		baseTarget: baseTarget{
+			targetType: TargetTypeDrop,
+		},
+	}
+}
+
 func (ta *TargetDrop) Short() string {
 	return "-j DROP"
 }
@@ -381,6 +398,14 @@ func (ta *TargetDrop) LongArgs() []string {
 
 type TargetReturn struct {
 	baseTarget
+}
+
+func NewTargetReturn() *TargetReturn {
+	return &TargetReturn{
+		baseTarget: baseTarget{
+			targetType: TargetTypeReturn,
+		},
+	}
 }
 
 func (ta *TargetReturn) Short() string {
@@ -487,13 +512,13 @@ func NewTargetAudit(typ AuditType) (*TargetAudit, error) {
 		baseTarget: baseTarget{
 			targetType: TargetTypeAudit,
 		},
-		Type: typ,
+		AuditType: typ,
 	}, nil
 }
 
 type TargetAudit struct {
 	baseTarget
-	Type AuditType
+	AuditType AuditType
 }
 
 func (tAudit *TargetAudit) Short() string {
@@ -503,7 +528,7 @@ func (tAudit *TargetAudit) Short() string {
 func (tAudit *TargetAudit) ShortArgs() []string {
 	args := make([]string, 0, 4)
 	args = append(args, "-j", tAudit.targetType.String())
-	args = append(args, "--type", tAudit.Type.String())
+	args = append(args, "--type", tAudit.AuditType.String())
 	return args
 }
 
@@ -527,11 +552,11 @@ func (tAudit *TargetAudit) Parse(main []byte) (int, bool) {
 	if len(matches[1]) != 0 {
 		switch string(matches[1]) {
 		case "accept":
-			tAudit.Type = AuditAccept
+			tAudit.AuditType = AuditAccept
 		case "drop":
-			tAudit.Type = AuditDrop
+			tAudit.AuditType = AuditDrop
 		case "reject":
-			tAudit.Type = AuditReject
+			tAudit.AuditType = AuditReject
 		}
 	}
 	return len(matches[0]), true
@@ -2537,46 +2562,46 @@ const (
 	LOGLevelDEBUG   LOGLevel = 7 /* debug-level messages */
 )
 
-type OptionTargetLOG func(*TargetLOG)
+type OptionTargetLog func(*TargetLog)
 
-func WithTargetLOGLevel(level LOGLevel) OptionTargetLOG {
-	return func(tLOG *TargetLOG) {
+func WithTargetLogLevel(level LOGLevel) OptionTargetLog {
+	return func(tLOG *TargetLog) {
 		tLOG.Level = level
 	}
 }
 
-func WithTargetLOGPrefix(prefix string) OptionTargetLOG {
-	return func(tLOG *TargetLOG) {
+func WithTargetLogPrefix(prefix string) OptionTargetLog {
+	return func(tLOG *TargetLog) {
 		tLOG.Prefix = prefix
 	}
 }
 
-func WithTargetLOGTCPSequence() OptionTargetLOG {
-	return func(tLOG *TargetLOG) {
+func WithTargetLogTCPSequence() OptionTargetLog {
+	return func(tLOG *TargetLog) {
 		tLOG.TCPSequence = true
 	}
 }
 
-func WithTargetLOGTCPOptions() OptionTargetLOG {
-	return func(tLOG *TargetLOG) {
+func WithTargetLogTCPOptions() OptionTargetLog {
+	return func(tLOG *TargetLog) {
 		tLOG.TCPOptions = true
 	}
 }
 
-func WithTargetLOGIPOptions() OptionTargetLOG {
-	return func(tLOG *TargetLOG) {
+func WithTargetLogIPOptions() OptionTargetLog {
+	return func(tLOG *TargetLog) {
 		tLOG.IPOptions = true
 	}
 }
 
-func WithTargetLOGUID() OptionTargetLOG {
-	return func(tLOG *TargetLOG) {
+func WithTargetLogUID() OptionTargetLog {
+	return func(tLOG *TargetLog) {
 		tLOG.UID = true
 	}
 }
 
-func NewTargetLOG(opts ...OptionTargetLOG) (*TargetLOG, error) {
-	target := &TargetLOG{
+func NewTargetLog(opts ...OptionTargetLog) (*TargetLog, error) {
+	target := &TargetLog{
 		baseTarget: baseTarget{
 			targetType: TargetTypeLOG,
 		},
@@ -2588,7 +2613,7 @@ func NewTargetLOG(opts ...OptionTargetLOG) (*TargetLOG, error) {
 	return target, nil
 }
 
-type TargetLOG struct {
+type TargetLog struct {
 	baseTarget
 	Level       LOGLevel
 	Prefix      string
@@ -2598,11 +2623,11 @@ type TargetLOG struct {
 	UID         bool
 }
 
-func (tLOG *TargetLOG) Short() string {
+func (tLOG *TargetLog) Short() string {
 	return strings.Join(tLOG.ShortArgs(), " ")
 }
 
-func (tLOG *TargetLOG) ShortArgs() []string {
+func (tLOG *TargetLog) ShortArgs() []string {
 	args := make([]string, 0, 10)
 	args = append(args, "-j", tLOG.targetType.String())
 	if tLOG.Level > -1 {
@@ -2626,15 +2651,15 @@ func (tLOG *TargetLOG) ShortArgs() []string {
 	return args
 }
 
-func (tLOG *TargetLOG) Long() string {
+func (tLOG *TargetLog) Long() string {
 	return tLOG.Short()
 }
 
-func (tLOG *TargetLOG) LongArgs() []string {
+func (tLOG *TargetLog) LongArgs() []string {
 	return tLOG.ShortArgs()
 }
 
-func (tLOG *TargetLOG) Parse(main []byte) (int, bool) {
+func (tLOG *TargetLog) Parse(main []byte) (int, bool) {
 	// 1. "^LOG"
 	// 2. "( flags ([0-9]+) level ([0-9]+))?" #1 #2 #3
 	// 3. "( level (alert|crit|debug|emerg|error|info|notice|panic|warning))?" #4 #5
@@ -3667,7 +3692,7 @@ type OptionTargetReject func(*TargetReject)
 
 func WithTargetRejectType(typ RejectType) OptionTargetReject {
 	return func(tReject *TargetReject) {
-		tReject.Type = typ
+		tReject.RejectType = typ
 	}
 }
 
@@ -3676,7 +3701,7 @@ func NewTargetReject(opts ...OptionTargetReject) (*TargetReject, error) {
 		baseTarget: baseTarget{
 			targetType: TargetTypeReject,
 		},
-		Type: -1,
+		RejectType: -1,
 	}
 	for _, opt := range opts {
 		opt(target)
@@ -3686,7 +3711,7 @@ func NewTargetReject(opts ...OptionTargetReject) (*TargetReject, error) {
 
 type TargetReject struct {
 	baseTarget
-	Type RejectType
+	RejectType RejectType
 }
 
 func (tReject *TargetReject) Short() string {
@@ -3696,8 +3721,8 @@ func (tReject *TargetReject) Short() string {
 func (tReject *TargetReject) ShortArgs() []string {
 	args := make([]string, 0, 4)
 	args = append(args, "-j", tReject.targetType.String())
-	if tReject.Type > -1 {
-		args = append(args, "--reject-with", tReject.Type.String())
+	if tReject.RejectType > -1 {
+		args = append(args, "--reject-with", tReject.RejectType.String())
 	}
 	return args
 }
@@ -3722,7 +3747,7 @@ func (tReject *TargetReject) Parse(main []byte) (int, bool) {
 	if !ok {
 		return 0, false
 	}
-	tReject.Type = typ
+	tReject.RejectType = typ
 	return len(matches[0]), true
 }
 
@@ -5000,7 +5025,7 @@ func WithTargetTTLInc(value int) OptionTargetTTL {
 	}
 }
 
-func NewTargetTTl(opts ...OptionTargetTTL) (*TargetTTL, error) {
+func NewTargetTTL(opts ...OptionTargetTTL) (*TargetTTL, error) {
 	target := &TargetTTL{
 		baseTarget: baseTarget{
 			targetType: TargetTypeTTL,
@@ -5074,44 +5099,44 @@ func (tTTL *TargetTTL) Parse(main []byte) (int, bool) {
 	return len(matches[0]), true
 }
 
-type OptionTargetULOG func(*TargetULOG)
+type OptionTargetULog func(*TargetULog)
 
 // This specifies the netlink group (1-32) to which the packet is sent.
 // Default value is 1.
-func WithTargetULOGNetlinkGroup(group int) OptionTargetULOG {
-	return func(tULOG *TargetULOG) {
-		tULOG.NetlinkGroup = group
+func WithTargetULogNetlinkGroup(group int) OptionTargetULog {
+	return func(tULog *TargetULog) {
+		tULog.NetlinkGroup = group
 	}
 }
 
 // Prefix log messages with the specified prefix; up to 32 characters long,
 // and useful for distinguishing messages in the logs.
-func WithTargetULOGPrefix(prefix string) OptionTargetULOG {
-	return func(tULOG *TargetULOG) {
-		tULOG.Prefix = prefix
+func WithTargetULogPrefix(prefix string) OptionTargetULog {
+	return func(tULog *TargetULog) {
+		tULog.Prefix = prefix
 	}
 }
 
 // Number of bytes to be copied to userspace.
 // A value of 0 always copies the entire packet,
 // regardless of its size.  Default is 0.
-func WithTargetULOGCopyRange(rg int) OptionTargetULOG {
-	return func(tULOG *TargetULOG) {
-		tULOG.CopyRange = rg
+func WithTargetULogCopyRange(rg int) OptionTargetULog {
+	return func(tULog *TargetULog) {
+		tULog.CopyRange = rg
 	}
 }
 
 // Number of packet to queue inside kernel.
-func WithTargetULOGQueueThreshold(threshold int) OptionTargetULOG {
-	return func(tULOG *TargetULOG) {
-		tULOG.QueueThreshold = threshold
+func WithTargetULogQueueThreshold(threshold int) OptionTargetULog {
+	return func(tULog *TargetULog) {
+		tULog.QueueThreshold = threshold
 	}
 }
 
-func NewTargetULOG(opts ...OptionTargetULOG) (*TargetULOG, error) {
-	target := &TargetULOG{
+func NewTargetULog(opts ...OptionTargetULog) (*TargetULog, error) {
+	target := &TargetULog{
 		baseTarget: baseTarget{
-			targetType: TargetTypeULOG,
+			targetType: TargetTypeULog,
 		},
 		NetlinkGroup:   -1,
 		CopyRange:      -1,
@@ -5126,7 +5151,7 @@ func NewTargetULOG(opts ...OptionTargetULOG) (*TargetULOG, error) {
 // TODO untested in the real world
 // IPv4 specific
 // Deprecated
-type TargetULOG struct {
+type TargetULog struct {
 	baseTarget
 	NetlinkGroup   int
 	Prefix         string
@@ -5134,42 +5159,42 @@ type TargetULOG struct {
 	QueueThreshold int
 }
 
-func (tULOG *TargetULOG) Short() string {
-	return strings.Join(tULOG.ShortArgs(), " ")
+func (tULog *TargetULog) Short() string {
+	return strings.Join(tULog.ShortArgs(), " ")
 }
 
-func (tULOG *TargetULOG) ShortArgs() []string {
+func (tULog *TargetULog) ShortArgs() []string {
 	args := make([]string, 0, 10)
-	args = append(args, "-j", tULOG.targetType.String())
-	if tULOG.NetlinkGroup > -1 {
-		args = append(args, "--ulog-nlgroup", strconv.Itoa(tULOG.NetlinkGroup))
+	args = append(args, "-j", tULog.targetType.String())
+	if tULog.NetlinkGroup > -1 {
+		args = append(args, "--ulog-nlgroup", strconv.Itoa(tULog.NetlinkGroup))
 	}
-	if tULOG.Prefix != "" {
-		args = append(args, "--ulog-prefix", tULOG.Prefix)
+	if tULog.Prefix != "" {
+		args = append(args, "--ulog-prefix", tULog.Prefix)
 	}
-	if tULOG.CopyRange > -1 {
-		args = append(args, "--ulog-cprange", strconv.Itoa(tULOG.CopyRange))
+	if tULog.CopyRange > -1 {
+		args = append(args, "--ulog-cprange", strconv.Itoa(tULog.CopyRange))
 	}
-	if tULOG.QueueThreshold > -1 {
-		args = append(args, "--ulog-qthreshold", strconv.Itoa(tULOG.QueueThreshold))
+	if tULog.QueueThreshold > -1 {
+		args = append(args, "--ulog-qthreshold", strconv.Itoa(tULog.QueueThreshold))
 	}
 	return args
 }
 
-func (tULOG *TargetULOG) Long() string {
-	return tULOG.Short()
+func (tULog *TargetULog) Long() string {
+	return tULog.Short()
 }
 
-func (tULOG *TargetULOG) LongArgs() []string {
-	return tULOG.ShortArgs()
+func (tULog *TargetULog) LongArgs() []string {
+	return tULog.ShortArgs()
 }
 
-func (tULOG *TargetULOG) Parse(main []byte) (int, bool) {
-	// 1. "^ULOG"
+func (tULog *TargetULog) Parse(main []byte) (int, bool) {
+	// 1. "^ULog"
 	// 2. " copy_range ([0-9]+) nlgroup ([0-9]+)"
 	// 3. "( prefix "([!-~]+)")?"
 	// 4. " queue_threshold ([0-9]+)"
-	pattern := `^ULOG` +
+	pattern := `^ULog` +
 		` copy_range ([0-9]+) nlgroup ([0-9]+)` +
 		`( prefix "([!-~]+)")?` +
 		` queue_threshold ([0-9]+) *`
@@ -5183,24 +5208,24 @@ func (tULOG *TargetULOG) Parse(main []byte) (int, bool) {
 	if err != nil {
 		return 0, false
 	}
-	tULOG.CopyRange = rg
+	tULog.CopyRange = rg
 	// group
 	group, err := strconv.Atoi(string(matches[2]))
 	if err != nil {
 		return 0, false
 	}
-	tULOG.NetlinkGroup = group
+	tULog.NetlinkGroup = group
 	// prefix
 	if len(matches[4]) != 0 {
 		str := string(matches[4])
 		str = strings.ReplaceAll(str, `\\`, `\`)
-		tULOG.Prefix = strings.ReplaceAll(str, `\"`, `"`)
+		tULog.Prefix = strings.ReplaceAll(str, `\"`, `"`)
 	}
 	// threshold
 	threshold, err := strconv.Atoi(string(matches[5]))
 	if err != nil {
 		return 0, false
 	}
-	tULOG.QueueThreshold = threshold
+	tULog.QueueThreshold = threshold
 	return len(matches[0]), true
 }

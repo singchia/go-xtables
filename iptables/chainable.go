@@ -24,6 +24,7 @@ func (iptables *IPTables) UserDefinedChain(chain string) *IPTables {
 	return iptables
 }
 
+// matches
 func (iptables *IPTables) MatchIPv4() *IPTables {
 	if iptables.statement.err != nil {
 		return iptables
@@ -969,15 +970,12 @@ func (iptables *IPTables) OptionWaitInterval(microseconds uint64) *IPTables {
 	return iptables
 }
 
-func (iptables *IPTables) TargetAccetp() *IPTables {
+// targets
+func (iptables *IPTables) TargetAccept() *IPTables {
 	if iptables.statement.err != nil {
 		return iptables
 	}
-	target := &TargetAccept{
-		baseTarget: baseTarget{
-			targetType: TargetTypeAccept,
-		},
-	}
+	target := NewTargetAccept()
 	iptables.statement.target = target
 	return iptables
 }
@@ -986,11 +984,7 @@ func (iptables *IPTables) TargetDrop() *IPTables {
 	if iptables.statement.err != nil {
 		return iptables
 	}
-	target := &TargetAccept{
-		baseTarget: baseTarget{
-			targetType: TargetTypeDrop,
-		},
-	}
+	target := NewTargetDrop()
 	iptables.statement.target = target
 	return iptables
 }
@@ -999,11 +993,7 @@ func (iptables *IPTables) TargetReturn() *IPTables {
 	if iptables.statement.err != nil {
 		return iptables
 	}
-	target := &TargetAccept{
-		baseTarget: baseTarget{
-			targetType: TargetTypeReturn,
-		},
-	}
+	target := NewTargetAccept()
 	iptables.statement.target = target
 	return iptables
 }
@@ -1012,177 +1002,512 @@ func (iptables *IPTables) TargetJumpChain(chain string) *IPTables {
 	if iptables.statement.err != nil {
 		return iptables
 	}
-	target := &TargetJumpChain{
-		baseTarget: baseTarget{
-			targetType: TargetTypeJumpChain,
-		},
-		chain: chain,
+	target := NewTargetJumpChain(chain)
+	//iptables.statement.chain = ChainTypeUserDefined
+	iptables.statement.target = target
+	return iptables
+}
+
+func (iptables *IPTables) TargetGotoChain(chain string) *IPTables {
+	if iptables.statement.err != nil {
+		return iptables
 	}
+	target := NewTargetGotoChain(chain)
 	iptables.statement.chain = ChainTypeUserDefined
 	iptables.statement.target = target
 	return iptables
 }
 
-func (iptables *IPTables) TargetGotoChain() *IPTables {
-	return nil
-}
-
-func (iptables *IPTables) TargetAudit() *IPTables {
-	return nil
+func (iptables *IPTables) TargetAudit(typ AuditType) *IPTables {
+	if iptables.statement.err != nil {
+		return iptables
+	}
+	target, err := NewTargetAudit(typ)
+	if err != nil {
+		iptables.statement.err = err
+		return iptables
+	}
+	iptables.statement.target = target
+	return iptables
 }
 
 func (iptables *IPTables) TargetCheckSum() *IPTables {
-	return nil
+	if iptables.statement.err != nil {
+		return iptables
+	}
+	target, err := NewTargetCheckSum()
+	if err != nil {
+		iptables.statement.err = err
+		return iptables
+	}
+	iptables.statement.target = target
+	return iptables
 }
 
-func (iptables *IPTables) TargetClassify() *IPTables {
-	return nil
+func (iptables *IPTables) TargetClassify(major, minor int) *IPTables {
+	if iptables.statement.err != nil {
+		return iptables
+	}
+	target, err := NewTargetClassify(major, minor)
+	if err != nil {
+		iptables.statement.err = err
+		return iptables
+	}
+	iptables.statement.target = target
+	return iptables
 }
 
-func (iptables *IPTables) TargetClusterIP() *IPTables {
-	return nil
+func (iptables *IPTables) TargetClusterIP(opts ...OptionTargetClusterIP) *IPTables {
+	if iptables.statement.err != nil {
+		return iptables
+	}
+	target, err := NewTargetClusterIP(opts...)
+	if err != nil {
+		iptables.statement.err = err
+		return iptables
+	}
+	iptables.statement.target = target
+	return iptables
 }
 
-func (iptables *IPTables) TargetConnMark() *IPTables {
-	return nil
+func (iptables *IPTables) TargetConnMark(opts ...OptionTargetConnMark) *IPTables {
+	if iptables.statement.err != nil {
+		return iptables
+	}
+	target, err := NewTargetConnMark(opts...)
+	if err != nil {
+		iptables.statement.err = err
+		return iptables
+	}
+	iptables.statement.target = target
+	return iptables
 }
 
-func (iptables *IPTables) TargetConnSecMark() *IPTables {
-	return nil
+func (iptables *IPTables) TargetConnSecMark(mode TargetConnSecMarkMode) *IPTables {
+	if iptables.statement.err != nil {
+		return iptables
+	}
+	target, err := NewTargetConnSecMark(mode)
+	if err != nil {
+		iptables.statement.err = err
+		return iptables
+	}
+	iptables.statement.target = target
+	return iptables
 }
 
-func (iptables *IPTables) TargetCT() *IPTables {
-	return nil
+func (iptables *IPTables) TargetCT(opts ...OptionTargetCT) *IPTables {
+	if iptables.statement.err != nil {
+		return iptables
+	}
+	target, err := NewTargetCT(opts...)
+	if err != nil {
+		iptables.statement.err = err
+		return iptables
+	}
+	iptables.statement.target = target
+	return iptables
 }
 
-func (iptables *IPTables) TargetDNAT() *IPTables {
-	return nil
+func (iptables *IPTables) TargetDNAT(opts ...OptionTargetDNAT) *IPTables {
+	if iptables.statement.err != nil {
+		return iptables
+	}
+	target, err := NewTargetDNAT(opts...)
+	if err != nil {
+		iptables.statement.err = err
+		return iptables
+	}
+	iptables.statement.target = target
+	return iptables
 }
 
-func (iptables *IPTables) TargetDNPT() *IPTables {
-	return nil
+func (iptables *IPTables) TargetDNPT(opts ...OptionTargetDNPT) *IPTables {
+	if iptables.statement.err != nil {
+		return iptables
+	}
+	target, err := NewTargetDNPT(opts...)
+	if err != nil {
+		iptables.statement.err = err
+		return iptables
+	}
+	iptables.statement.target = target
+	return iptables
 }
 
-func (iptables *IPTables) TargetDSCP() *IPTables {
-	return nil
+func (iptables *IPTables) TargetDSCP(opts ...OptionTargetDSCP) *IPTables {
+	if iptables.statement.err != nil {
+		return iptables
+	}
+	target, err := NewTargetDSCP(opts...)
+	if err != nil {
+		iptables.statement.err = err
+		return iptables
+	}
+	iptables.statement.target = target
+	return iptables
 }
 
-func (iptables *IPTables) TargetECN() *IPTables {
-	return nil
+func (iptables *IPTables) TargetECN(opts ...OptionTargetECN) *IPTables {
+	if iptables.statement.err != nil {
+		return iptables
+	}
+	target, err := NewTargetECN(opts...)
+	if err != nil {
+		iptables.statement.err = err
+		return iptables
+	}
+	iptables.statement.target = target
+	return iptables
 }
 
-func (iptables *IPTables) TargetHL() *IPTables {
-	return nil
+func (iptables *IPTables) TargetHL(opts ...OptionTargetHL) *IPTables {
+	if iptables.statement.err != nil {
+		return iptables
+	}
+	target, err := NewTargetHL(opts...)
+	if err != nil {
+		iptables.statement.err = err
+		return iptables
+	}
+	iptables.statement.target = target
+	return iptables
 }
 
-func (iptables *IPTables) TargetHMark() *IPTables {
-	return nil
+func (iptables *IPTables) TargetHMark(opts ...OptionTargetHMark) *IPTables {
+	if iptables.statement.err != nil {
+		return iptables
+	}
+	target, err := NewTargetHMark(opts...)
+	if err != nil {
+		iptables.statement.err = err
+		return iptables
+	}
+	iptables.statement.target = target
+	return iptables
 }
 
-func (iptables *IPTables) TargetIdleTimer() *IPTables {
-	return nil
+func (iptables *IPTables) TargetIdleTimer(opts ...OptionTargetIdleTimer) *IPTables {
+	if iptables.statement.err != nil {
+		return iptables
+	}
+	target, err := NewTargetIdleTimer(opts...)
+	if err != nil {
+		iptables.statement.err = err
+		return iptables
+	}
+	iptables.statement.target = target
+	return iptables
 }
 
-func (iptables *IPTables) TargetLED() *IPTables {
-	return nil
+func (iptables *IPTables) TargetLED(opts ...OptionTargetLED) *IPTables {
+	if iptables.statement.err != nil {
+		return iptables
+	}
+	target, err := NewTargetLED(opts...)
+	if err != nil {
+		iptables.statement.err = err
+		return iptables
+	}
+	iptables.statement.target = target
+	return iptables
 }
 
-func (iptables *IPTables) TargetLog() *IPTables {
-	return nil
+func (iptables *IPTables) TargetLog(opts ...OptionTargetLog) *IPTables {
+	if iptables.statement.err != nil {
+		return iptables
+	}
+	target, err := NewTargetLog(opts...)
+	if err != nil {
+		iptables.statement.err = err
+		return iptables
+	}
+	iptables.statement.target = target
+	return iptables
 }
 
-func (iptables *IPTables) TargetMark() *IPTables {
-	return nil
+func (iptables *IPTables) TargetMark(opts ...OptionTargetMark) *IPTables {
+	if iptables.statement.err != nil {
+		return iptables
+	}
+	target, err := NewTargetMark(opts...)
+	if err != nil {
+		iptables.statement.err = err
+		return iptables
+	}
+	iptables.statement.target = target
+	return iptables
 }
 
-func (iptables *IPTables) TargetMasquerade() *IPTables {
-	return nil
+func (iptables *IPTables) TargetMasquerade(opts ...OptionTargetMasquerade) *IPTables {
+	if iptables.statement.err != nil {
+		return iptables
+	}
+	target, err := NewTargetMasquerade(opts...)
+	if err != nil {
+		iptables.statement.err = err
+		return iptables
+	}
+	iptables.statement.target = target
+	return iptables
 }
 
-func (iptables *IPTables) TargetMirror() *IPTables {
-	return nil
+func (iptables *IPTables) TargetNetMap(opts ...OptionTargetNetmap) *IPTables {
+	if iptables.statement.err != nil {
+		return iptables
+	}
+	target, err := NewTargetNetmap(opts...)
+	if err != nil {
+		iptables.statement.err = err
+		return iptables
+	}
+	iptables.statement.target = target
+	return iptables
 }
 
-func (iptables *IPTables) TargetNetMap() *IPTables {
-	return nil
+func (iptables *IPTables) TargetNFLog(opts ...OptionTargetNFLog) *IPTables {
+	if iptables.statement.err != nil {
+		return iptables
+	}
+	target, err := NewTargetNFLog(opts...)
+	if err != nil {
+		iptables.statement.err = err
+		return iptables
+	}
+	iptables.statement.target = target
+	return iptables
 }
 
-func (iptables *IPTables) TargetNFLog() *IPTables {
-	return nil
+func (iptables *IPTables) TargetNFQueue(opts ...OptionTargetNFQueue) *IPTables {
+	if iptables.statement.err != nil {
+		return iptables
+	}
+	target, err := NewTargetNFQueue(opts...)
+	if err != nil {
+		iptables.statement.err = err
+		return iptables
+	}
+	iptables.statement.target = target
+	return iptables
 }
 
-func (iptables *IPTables) TargetNFQueue() *IPTables {
-	return nil
+func (iptables *IPTables) TargetRateEst(opts ...OptionTargetRateEst) *IPTables {
+	if iptables.statement.err != nil {
+		return iptables
+	}
+	target, err := NewTargetRateEst(opts...)
+	if err != nil {
+		iptables.statement.err = err
+		return iptables
+	}
+	iptables.statement.target = target
+	return iptables
 }
 
-func (iptables *IPTables) TargetNoTrack() *IPTables {
-	return nil
+func (iptables *IPTables) TargetRedirect(opts ...OptionTargetRedirect) *IPTables {
+	if iptables.statement.err != nil {
+		return iptables
+	}
+	target, err := NewTargetRedirect(opts...)
+	if err != nil {
+		iptables.statement.err = err
+		return iptables
+	}
+	iptables.statement.target = target
+	return iptables
 }
 
-func (iptables *IPTables) TargetRateEst() *IPTables {
-	return nil
+func (iptables *IPTables) TargetReject(opts ...OptionTargetReject) *IPTables {
+	if iptables.statement.err != nil {
+		return iptables
+	}
+	target, err := NewTargetReject(opts...)
+	if err != nil {
+		iptables.statement.err = err
+		return iptables
+	}
+	iptables.statement.target = target
+	return iptables
 }
 
-func (iptables *IPTables) TargetRedirect() *IPTables {
-	return nil
+func (iptables *IPTables) TargetSame(opts ...OptionTargetSame) *IPTables {
+	if iptables.statement.err != nil {
+		return iptables
+	}
+	target, err := NewTargetSame(opts...)
+	if err != nil {
+		iptables.statement.err = err
+		return iptables
+	}
+	iptables.statement.target = target
+	return iptables
 }
 
-func (iptables *IPTables) TargetReject() *IPTables {
-	return nil
+func (iptables *IPTables) TargetSecMark(opts ...OptionTargetSecMark) *IPTables {
+	if iptables.statement.err != nil {
+		return iptables
+	}
+	target, err := NewTargetSecMark(opts...)
+	if err != nil {
+		iptables.statement.err = err
+		return iptables
+	}
+	iptables.statement.target = target
+	return iptables
 }
 
-func (iptables *IPTables) TargetSame() *IPTables {
-	return nil
+func (iptables *IPTables) TargetSet(opts ...OptionTargetSet) *IPTables {
+	if iptables.statement.err != nil {
+		return iptables
+	}
+	target, err := NewTargetSet(opts...)
+	if err != nil {
+		iptables.statement.err = err
+		return iptables
+	}
+	iptables.statement.target = target
+	return iptables
 }
 
-func (iptables *IPTables) TargetSecMark() *IPTables {
-	return nil
+func (iptables *IPTables) TargetSNAT(opts ...OptionTargetSNAT) *IPTables {
+	if iptables.statement.err != nil {
+		return iptables
+	}
+	target, err := NewTargetSNAT(opts...)
+	if err != nil {
+		iptables.statement.err = err
+		return iptables
+	}
+	iptables.statement.target = target
+	return iptables
 }
 
-func (iptables *IPTables) TargetSet() *IPTables {
-	return nil
+func (iptables *IPTables) TargetSNPT(opts ...OptionTargetSNPT) *IPTables {
+	if iptables.statement.err != nil {
+		return iptables
+	}
+	target, err := NewTargetSNPT(opts...)
+	if err != nil {
+		iptables.statement.err = err
+		return iptables
+	}
+	iptables.statement.target = target
+	return iptables
 }
 
-func (iptables *IPTables) TargetSNAT() *IPTables {
-	return nil
+func (iptables *IPTables) TargetSynProxy(opts ...OptionTargetSYNProxy) *IPTables {
+	if iptables.statement.err != nil {
+		return iptables
+	}
+	target, err := NewTargetSYNProxy(opts...)
+	if err != nil {
+		iptables.statement.err = err
+		return iptables
+	}
+	iptables.statement.target = target
+	return iptables
 }
 
-func (iptables *IPTables) TargetSNPT() *IPTables {
-	return nil
+func (iptables *IPTables) TargetTCPMSS(opts ...OptionTargetTCPMSS) *IPTables {
+	if iptables.statement.err != nil {
+		return iptables
+	}
+	target, err := NewTargetTCPMSS(opts...)
+	if err != nil {
+		iptables.statement.err = err
+		return iptables
+	}
+	iptables.statement.target = target
+	return iptables
 }
 
-func (iptables *IPTables) TargetSynProxy() *IPTables {
-	return nil
+func (iptables *IPTables) TargetTCPOptStrip(opts ...OptionTargetTCPOptStrip) *IPTables {
+	if iptables.statement.err != nil {
+		return iptables
+	}
+	target, err := NewTargetTCPOptStrip(opts...)
+	if err != nil {
+		iptables.statement.err = err
+		return iptables
+	}
+	iptables.statement.target = target
+	return iptables
 }
 
-func (iptables *IPTables) TargetTCPMSS() *IPTables {
-	return nil
+func (iptables *IPTables) TargetTEE(gateway net.IP) *IPTables {
+	if iptables.statement.err != nil {
+		return iptables
+	}
+	target, err := NewTargetTEE(gateway)
+	if err != nil {
+		iptables.statement.err = err
+		return iptables
+	}
+	iptables.statement.target = target
+	return iptables
 }
 
-func (iptables *IPTables) TargetTCPOptStrip() *IPTables {
-	return nil
+func (iptables *IPTables) TargetTOS(opts ...OptionTargetTOS) *IPTables {
+	if iptables.statement.err != nil {
+		return iptables
+	}
+	target, err := NewTargetTOS(opts...)
+	if err != nil {
+		iptables.statement.err = err
+		return iptables
+	}
+	iptables.statement.target = target
+	return iptables
 }
 
-func (iptables *IPTables) TargetTEE() *IPTables {
-	return nil
-}
-
-func (iptables *IPTables) TargetTOS() *IPTables {
-	return nil
-}
-
-func (iptables *IPTables) TargetTProxy() *IPTables {
-	return nil
+func (iptables *IPTables) TargetTProxy(opts ...OptionTargetTProxy) *IPTables {
+	if iptables.statement.err != nil {
+		return iptables
+	}
+	target, err := NewTargetTProxy(opts...)
+	if err != nil {
+		iptables.statement.err = err
+		return iptables
+	}
+	iptables.statement.target = target
+	return iptables
 }
 
 func (iptables *IPTables) TargetTrace() *IPTables {
-	return nil
+	if iptables.statement.err != nil {
+		return iptables
+	}
+	target, err := NewTargetTrace()
+	if err != nil {
+		iptables.statement.err = err
+		return iptables
+	}
+	iptables.statement.target = target
+	return iptables
 }
 
-func (iptables *IPTables) TargetTTL() *IPTables {
-	return nil
+func (iptables *IPTables) TargetTTL(opts ...OptionTargetTTL) *IPTables {
+	if iptables.statement.err != nil {
+		return iptables
+	}
+	target, err := NewTargetTTL(opts...)
+	if err != nil {
+		iptables.statement.err = err
+		return iptables
+	}
+	iptables.statement.target = target
+	return iptables
 }
 
-func (iptables *IPTables) TargetULog() *IPTables {
-	return nil
+func (iptables *IPTables) TargetULog(opts ...OptionTargetULog) *IPTables {
+	if iptables.statement.err != nil {
+		return iptables
+	}
+	target, err := NewTargetULog(opts...)
+	if err != nil {
+		iptables.statement.err = err
+		return iptables
+	}
+	iptables.statement.target = target
+	return iptables
 }

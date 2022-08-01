@@ -5524,7 +5524,7 @@ var (
 )
 
 // This option takes mostly 2 types, (min) or (min, max)
-func NewMatchMH(yes bool, types ...MHType) (*MatchMH, error) {
+func NewMatchMH(yes bool, typ ...MHType) (*MatchMH, error) {
 	match := &MatchMH{
 		baseMatch: baseMatch{
 			matchType: MatchTypeMH,
@@ -5533,12 +5533,12 @@ func NewMatchMH(yes bool, types ...MHType) (*MatchMH, error) {
 		TypeMin: -1,
 		TypeMax: -1,
 	}
-	switch len(types) {
+	switch len(typ) {
 	case 1:
-		match.TypeMin = types[0]
+		match.TypeMin = typ[0]
 	case 2:
-		match.TypeMin = types[0]
-		match.TypeMax = types[1]
+		match.TypeMin = typ[0]
+		match.TypeMax = typ[1]
 	}
 	return match, nil
 }
