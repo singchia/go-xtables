@@ -13,4 +13,5 @@ var (
 	ErrArgs                     = errors.New("wrong args")
 	ErrMatchParams              = errors.New("illegal match params")
 	ErrAtLeastOneOptionRequired = errors.New("at least one option required")
+	ErrTargetParseFailed        = errors.New("terget parse failed")
 )

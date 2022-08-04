@@ -10266,33 +10266,36 @@ var (
 )
 
 // see https://git.netfilter.org/iptables/tree/extensions
-func ParseMatch(params []byte) ([]Match, error) {
+func ParseMatch(params []byte) ([]Match, int, error) {
+	index := 0
 	trie := tree.NewTrie()
 	for prefix, typ := range matchPrefixes {
 		ok := trie.Add(prefix, typ)
 		if !ok {
-			return nil, ErrMatchParams
+			return nil, 0, ErrMatchParams
 		}
 	}
 	matches := []Match{}
 	for len(params) > 0 {
 		node, ok := trie.LPM(string(params))
 		if !ok {
-			return nil, ErrMatchParams
+			break
+			//return nil, ErrMatchParams
 		}
 		typ := node.Value().(MatchType)
 		// get match by match type
 		match := MatchFactory(typ)
 		if match != nil {
-			return nil, ErrMatchParams
+			return matches, index, ErrMatchParams
 		}
 		// index meaning the end of this match
-		index, ok := match.Parse(params)
+		offset, ok := match.Parse(params)
 		if !ok {
-			return nil, ErrMatchParams
+			return matches, index, ErrMatchParams
 		}
+		index += offset
 		matches = append(matches, match)
-		params = params[index:]
+		params = params[offset:]
 	}
-	return matches, nil
+	return matches, index, nil
 }

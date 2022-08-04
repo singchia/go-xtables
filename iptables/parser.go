@@ -63,6 +63,13 @@ func ParseRule(line []byte, head []string, chain *Chain) (*Rule, error) {
 	for i, name := range head {
 		field := string(fields[i])
 		switch name {
+		case "num":
+			num, err := strconv.Atoi(field)
+			if err != nil {
+				return nil, err
+			}
+			rule.lineNumber = num
+
 		case "pkts":
 			num, err := unfoldDecimal(field)
 			if err != nil {
@@ -85,7 +92,7 @@ func ParseRule(line []byte, head []string, chain *Chain) (*Rule, error) {
 				}
 				rule.target = target
 			} else {
-				target, err := NewTarget(value, field)
+				target, err := NewTarget(value)
 				if err != nil {
 					return nil, err
 				}
@@ -200,7 +207,7 @@ func ParseRule(line []byte, head []string, chain *Chain) (*Rule, error) {
 	}
 
 	// then matches
-	matches, err := ParseMatch(params)
+	matches, index, err := ParseMatch(params)
 	if err != nil {
 		return nil, err
 	}
@@ -208,8 +215,13 @@ func ParseRule(line []byte, head []string, chain *Chain) (*Rule, error) {
 	for _, match := range matches {
 		rule.matchMap[match.Type()] = match
 	}
+	params = params[index:]
 
 	// then target
+	_, ok := rule.target.Parse(params)
+	if !ok {
+		return nil, ErrTargetParseFailed
+	}
 	return rule, nil
 }
 

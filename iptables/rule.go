@@ -2,9 +2,11 @@ package iptables
 
 type Rule struct {
 	tableType TableType
-
 	// chain info
 	chain *Chain
+
+	// line number
+	lineNumber int
 
 	// matches
 	matches  []Match

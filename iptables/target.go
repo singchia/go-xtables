@@ -32,7 +32,7 @@ const (
 	TargetTypeHMark
 	TargetTypeIdleTimer
 	TargetTypeLED
-	TargetTypeLOG
+	TargetTypeLog
 	TargetTypeMark
 	TargetTypeMasquerade
 	TargetTypeMirror // unsupport
@@ -57,6 +57,7 @@ const (
 	TargetTypeTrace
 	TargetTypeTTL
 	TargetTypeULog
+	TargetTypeEmpty
 )
 
 var (
@@ -81,7 +82,7 @@ var (
 		TargetTypeHMark:       "HMARK",
 		TargetTypeIdleTimer:   "IDLETIMER",
 		TargetTypeLED:         "LED",
-		TargetTypeLOG:         "LOG",
+		TargetTypeLog:         "LOG",
 		TargetTypeMark:        "MARK",
 		TargetTypeMasquerade:  "MASQUDERDE",
 		TargetTypeNetmap:      "NETMAP",
@@ -127,7 +128,7 @@ var (
 		"HMARK":       TargetTypeHMark,
 		"IDLETIMER":   TargetTypeIdleTimer,
 		"LED":         TargetTypeLED,
-		"LOG":         TargetTypeLOG,
+		"LOG":         TargetTypeLog,
 		"MARK":        TargetTypeMark,
 		"MASQUDERDE":  TargetTypeMasquerade,
 		"NETMAP":      TargetTypeNetmap,
@@ -199,7 +200,7 @@ func (tt TargetType) String() string {
 		return "IDLETIMER"
 	case TargetTypeLED:
 		return "LED"
-	case TargetTypeLOG:
+	case TargetTypeLog:
 		return "LOG"
 	case TargetTypeMark:
 		return "MARK"
@@ -270,6 +271,12 @@ func NewTarget(targetType TargetType, args ...interface{}) (Target, error) {
 			goto Err
 		}
 		return NewTargetUnknown(name), nil
+	case TargetTypeAccept:
+		return NewTargetAccept(), nil
+	case TargetTypeDrop:
+		return NewTargetDrop(), nil
+	case TargetTypeReturn:
+		return NewTargetReturn(), nil
 	case TargetTypeJumpChain:
 		if len(args) != 1 {
 			goto Err
@@ -288,6 +295,84 @@ func NewTarget(targetType TargetType, args ...interface{}) (Target, error) {
 			goto Err
 		}
 		return NewTargetGotoChain(chain), nil
+	case TargetTypeAudit:
+		return NewTargetAudit(-1)
+	case TargetTypeCheckSum:
+		return NewTargetCheckSum()
+	case TargetTypeClassify:
+		return NewTargetClassify(-1, -1)
+	case TargetTypeClusterIP:
+		return NewTargetClusterIP()
+	case TargetTypeConnMark:
+		return NewTargetConnMark()
+	case TargetTypeConnSecMark:
+		return NewTargetConnSecMark(-1)
+	case TargetTypeCT:
+		return NewTargetCT()
+	case TargetTypeDNAT:
+		return NewTargetDNAT()
+	case TargetTypeDNPT:
+		return NewTargetDNPT()
+	case TargetTypeDSCP:
+		return NewTargetDSCP()
+	case TargetTypeECN:
+		return NewTargetECN()
+	case TargetTypeHL:
+		return NewTargetHL()
+	case TargetTypeHMark:
+		return NewTargetHMark()
+	case TargetTypeIdleTimer:
+		return NewTargetIdleTimer()
+	case TargetTypeLED:
+		return NewTargetLED()
+	case TargetTypeLog:
+		return NewTargetLog()
+	case TargetTypeMark:
+		return NewTargetMark()
+	case TargetTypeMasquerade:
+		return NewTargetMasquerade()
+	case TargetTypeNetmap:
+		return NewTargetNetmap()
+	case TargetTypeNFLog:
+		return NewTargetNFLog()
+	case TargetTypeNFQueue:
+		return NewTargetNFQueue()
+	case TargetTypeRateEst:
+		return NewTargetRateEst()
+	case TargetTypeRedirect:
+		return NewTargetRedirect()
+	case TargetTypeReject:
+		return NewTargetReject()
+	case TargetTypeSame:
+		return NewTargetSame()
+	case TargetTypeSecMark:
+		return NewTargetSecMark()
+	case TargetTypeSet:
+		return NewTargetSet()
+	case TargetTypeSNAT:
+		return NewTargetSNAT()
+	case TargetTypeSNPT:
+		return NewTargetSNPT()
+	case TargetTypeSYNProxy:
+		return NewTargetSYNProxy()
+	case TargetTypeTCPMSS:
+		return NewTargetTCPMSS()
+	case TargetTypeTCPOptStrip:
+		return NewTargetTCPOptStrip()
+	case TargetTypeTEE:
+		return NewTargetTEE(nil)
+	case TargetTypeTOS:
+		return NewTargetTOS()
+	case TargetTypeTProxy:
+		return NewTargetTProxy()
+	case TargetTypeTrace:
+		return NewTargetTrace()
+	case TargetTypeTTL:
+		return NewTargetTTL()
+	case TargetTypeULog:
+		return NewTargetULog()
+	default:
+		return NewTargetEmpty()
 	}
 
 Err:
@@ -320,6 +405,18 @@ func (bt baseTarget) LongArgs() []string {
 
 func (bt baseTarget) Parse([]byte) (int, bool) {
 	return 0, false
+}
+
+type TargetEmpty struct {
+	baseTarget
+}
+
+func NewTargetEmpty() (*TargetEmpty, error) {
+	return &TargetEmpty{
+		baseTarget: baseTarget{
+			targetType: TargetTypeEmpty,
+		},
+	}, nil
 }
 
 type TargetUnknown struct {
@@ -1168,7 +1265,7 @@ func (tConnMark *TargetConnMark) Parse(main []byte) (int, bool) {
 	return len(matches[0]), true
 }
 
-type TargetConnSecMarkMode uint8
+type TargetConnSecMarkMode int8
 
 const (
 	_ TargetConnSecMarkMode = iota
@@ -2603,7 +2700,7 @@ func WithTargetLogUID() OptionTargetLog {
 func NewTargetLog(opts ...OptionTargetLog) (*TargetLog, error) {
 	target := &TargetLog{
 		baseTarget: baseTarget{
-			targetType: TargetTypeLOG,
+			targetType: TargetTypeLog,
 		},
 		Level: -1,
 	}
