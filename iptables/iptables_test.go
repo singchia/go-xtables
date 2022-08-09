@@ -11,7 +11,7 @@ func TestIptables(t *testing.T) {
 		ChainType(ChainTypeINPUT).
 		OptionFragment(true).
 		MatchIPv4().
-		TargetAccetp().Insert(0)
+		TargetAccept().Insert(0)
 	if err != nil {
 		t.Error(err)
 		return

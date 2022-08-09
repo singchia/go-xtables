@@ -817,6 +817,7 @@ func NewMatchAddrType(opts ...OptionMatchAddrType) (*MatchAddrType, error) {
 	return match, nil
 }
 
+// Non-numeric unsupported
 type MatchAddrType struct {
 	baseMatch
 	// src type
@@ -1135,6 +1136,7 @@ func NewMatchBPF(opts ...OptionMatchBPF) (*MatchBPF, error) {
 	return match, nil
 }
 
+// Non-numeric unsupported
 type MatchBPF struct {
 	baseMatch
 	BPF    []BPFSockFilter
@@ -1261,6 +1263,7 @@ func NewMatchCGroup(opts ...OptionMatchCGroup) (*MatchCGroup, error) {
 	return match, nil
 }
 
+// Non-numeric unsupported
 type MatchCGroup struct {
 	baseMatch
 	Path    string
@@ -1379,6 +1382,7 @@ func NewMatchCluster(opts ...OptionMatchCluster) (*MatchCluster, error) {
 	return match, nil
 }
 
+// Non-numeric unsupported
 type MatchCluster struct {
 	baseMatch
 	TotalNodes    int
@@ -1471,6 +1475,7 @@ func NewMatchComment(comment string) (*MatchComment, error) {
 	return match, nil
 }
 
+// Non-numeric unsupported
 type MatchComment struct {
 	baseMatch
 	Comment string
@@ -1562,6 +1567,7 @@ func NewMatchConnBytes(opts ...OptionMatchConnBytes) (*MatchConnBytes, error) {
 	return match, nil
 }
 
+// Non-numeric unsupported
 type MatchConnBytes struct {
 	baseMatch
 	From      int64
@@ -1690,6 +1696,7 @@ func NewMatchConnLabel(opts ...OptionMatchConnLabel) (*MatchConnLabel, error) {
 	return match, nil
 }
 
+// Numeric unsupported
 type MatchConnLabel struct {
 	baseMatch
 	Label     int
@@ -1819,6 +1826,7 @@ func NewMatchConnLimit(opts ...OptionMatchConnLimit) (*MatchConnLimit, error) {
 	return match, nil
 }
 
+// Non-numeric unsupported
 type MatchConnLimit struct {
 	baseMatch
 	Upto  int
@@ -1920,6 +1928,7 @@ func NewMatchConnMark(yes bool, value ...int) (*MatchConnMark, error) {
 	return mConnMark, nil
 }
 
+// Non-numeric unsupported
 type MatchConnMark struct {
 	baseMatch
 	Value int
