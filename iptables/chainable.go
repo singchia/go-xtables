@@ -6,7 +6,11 @@
  */
 package iptables
 
-import "net"
+import (
+	"net"
+
+	"github.com/singchia/go-xtables/pkg/netdb"
+)
 
 func (iptables *IPTables) TableType(table TableType) *IPTables {
 	iptables.statement.table = table
@@ -51,7 +55,7 @@ func (iptables *IPTables) MatchIPv6() *IPTables {
 	return iptables
 }
 
-func (iptables *IPTables) MatchProtocol(yes bool, protocol Protocol) *IPTables {
+func (iptables *IPTables) MatchProtocol(yes bool, protocol netdb.Protocol) *IPTables {
 	if iptables.statement.err != nil {
 		return iptables
 	}

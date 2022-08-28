@@ -18,6 +18,7 @@ import (
 	"strings"
 
 	"github.com/singchia/go-hammer/tree"
+	"github.com/singchia/go-xtables/pkg/netdb"
 )
 
 type MatchType int
@@ -499,7 +500,7 @@ func (mIPv6 *MatchIPv6) LongArgs() []string {
 
 type MatchProtocol struct {
 	baseMatch
-	Protocol Protocol
+	Protocol netdb.Protocol
 }
 
 func (mProtocol *MatchProtocol) Short() string {
@@ -2133,7 +2134,7 @@ func WithMatchConnTrackStatus(statuses ...ConnTrackStatus) OptionMatchConnTrack 
 }
 
 // Layer-4 protocol to match
-func WithMatchConnTrackProtocol(proto Protocol) OptionMatchConnTrack {
+func WithMatchConnTrackProtocol(proto netdb.Protocol) OptionMatchConnTrack {
 	return func(mConnTrack *MatchConnTrack) {
 		mConnTrack.Proto = proto
 	}
@@ -2284,7 +2285,7 @@ type MatchConnTrack struct {
 	State          ConnTrackState
 	Status         ConnTrackStatus
 	Direction      ConnTrackDir
-	Proto          Protocol
+	Proto          netdb.Protocol
 	OrigSrc        *Address
 	OrigDst        *Address
 	ReplSrc        *Address
@@ -2437,20 +2438,17 @@ func (mConnTrack *MatchConnTrack) LongArgs() []string {
 
 func (mConnTrack *MatchConnTrack) Parse(main []byte) (int, bool) {
 	pattern :=
-		`^(! )?(state|ctstate|ctproto|ctstatus|ctexpire|ctdir|` +
+		`^(! )?(state|ctstate|ctproto|ctstatus|ctexpire|ctdir|` + // #1 #2
 			`ctorigsrc|ctorigdst|ctreplsrc|ctrepldst|` +
 			`ctorigsrcport|ctorigdstport|ctreplsrcport|ctrepldstport)` +
 			` +` +
-			`((([0-9]{1,3}\.){3}[0-9]{1,3}(\/([1-2][0-9]|3[0-2]|[0-9]))?)|` +
-			`(anywhere)|` +
-			`(REPLY|ORIGINAL)|` +
-			`([0-9]+)(:([0-9]+))?|` +
-			`([A-Za-z/,]+)) *`
+			`((REPLY|ORIGINAL)|` + // #3 #4
+			`(([0-9A-Za-z:/.,-]+)?)) *` // #5 #6
 	reg := regexp.MustCompile(pattern)
 	index := 0
 	for len(main) > 0 {
 		matches := reg.FindSubmatch(main)
-		if len(matches) != 14 {
+		if len(matches) != 7 {
 			goto END
 		}
 		if len(matches[2]) == 0 {
@@ -2461,9 +2459,11 @@ func (mConnTrack *MatchConnTrack) Parse(main []byte) (int, bool) {
 			invert = true
 		}
 		opt := string(matches[2])
+
 		switch opt {
 		case CTStateAlias, CTState:
-			states := strings.Split(string(matches[13]), ",")
+			statesRow := string(matches[6])
+			states := strings.Split(statesRow, ",")
 			for _, state := range states {
 				switch state {
 				case CTStateINVALID:
@@ -2485,15 +2485,19 @@ func (mConnTrack *MatchConnTrack) Parse(main []byte) (int, bool) {
 				}
 			}
 			mConnTrack.StateInvert = invert
+
 		case CTProto:
-			proto, err := strconv.Atoi(string(matches[10]))
+			protoRow := string(matches[6])
+			proto, err := strconv.Atoi(protoRow)
 			if err != nil {
 				goto END
 			}
-			mConnTrack.Proto = Protocol(proto)
+			mConnTrack.Proto = netdb.Protocol(proto)
 			mConnTrack.ProtoInvert = invert
+
 		case CTStatus:
-			statuses := strings.Split(string(matches[13]), ",")
+			statusRow := string(matches[6])
+			statuses := strings.Split(statusRow, ",")
 			for _, status := range statuses {
 				switch status {
 				case CTStatusNONE:
@@ -2511,21 +2515,26 @@ func (mConnTrack *MatchConnTrack) Parse(main []byte) (int, bool) {
 				}
 			}
 			mConnTrack.StatusInvert = invert
+
 		case CTExpire:
-			min, err := strconv.Atoi(string(matches[10]))
-			if err != nil {
-				goto END
+			expiresRow := string(matches[6])
+			expires := strings.Split(expiresRow, ":")
+			if len(expires) == 2 {
+				max, err := strconv.Atoi(expires[1])
+				if err != nil {
+					goto END
+				}
+				mConnTrack.ExpireMax = max
 			}
-			max, err := strconv.Atoi(string(matches[12]))
+			min, err := strconv.Atoi(expires[0])
 			if err != nil {
 				goto END
 			}
 			mConnTrack.ExpireMin = min
-			mConnTrack.ExpireMax = max
 			mConnTrack.ExpireInvert = invert
 
 		case CTDir:
-			dir := string(matches[9])
+			dir := string(matches[4])
 			if dir == CTDirREPLY {
 				mConnTrack.Direction = REPLY
 			} else if dir == CTDirORIGINAL {
@@ -2534,85 +2543,133 @@ func (mConnTrack *MatchConnTrack) Parse(main []byte) (int, bool) {
 				goto END
 			}
 			mConnTrack.DirectionInvert = invert
+
 		case CTOrigSrc:
-			src := string(matches[4])
-			addr, err := ParseAddress(src)
-			if err != nil {
-				goto END
+			src := string(matches[6])
+			if src == "anywhere" {
+				addr := &Address{}
+				addr.SetAnywhere(mConnTrack.ipType)
+				mConnTrack.OrigSrc = addr
+			} else {
+				addr, err := ParseAddress(src)
+				if err != nil {
+					goto END
+				}
+				mConnTrack.OrigSrc = addr
 			}
-			mConnTrack.OrigSrc = addr
 			mConnTrack.OrigSrcInvert = invert
+
 		case CTOrigDst:
-			dst := string(matches[4])
-			addr, err := ParseAddress(dst)
-			if err != nil {
-				goto END
+			dst := string(matches[6])
+			if dst == "anywhere" {
+				addr := &Address{}
+				addr.SetAnywhere(mConnTrack.ipType)
+				mConnTrack.OrigSrc = addr
+			} else {
+				addr, err := ParseAddress(dst)
+				if err != nil {
+					goto END
+				}
+				mConnTrack.OrigDst = addr
 			}
-			mConnTrack.OrigDst = addr
 			mConnTrack.OrigDstInvert = invert
+
 		case CTReplSrc:
-			src := string(matches[4])
-			addr, err := ParseAddress(src)
-			if err != nil {
-				goto END
+			src := string(matches[6])
+			if src == "anywhere" {
+				addr := &Address{}
+				addr.SetAnywhere(mConnTrack.ipType)
+				mConnTrack.OrigSrc = addr
+			} else {
+				addr, err := ParseAddress(src)
+				if err != nil {
+					goto END
+				}
+				mConnTrack.ReplSrc = addr
 			}
-			mConnTrack.ReplSrc = addr
 			mConnTrack.ReplSrcInvert = invert
+
 		case CTReplDst:
-			dst := string(matches[4])
-			addr, err := ParseAddress(dst)
-			if err != nil {
-				goto END
+			dst := string(matches[6])
+			if dst == "anywhere" {
+				addr := &Address{}
+				addr.SetAnywhere(mConnTrack.ipType)
+				mConnTrack.OrigSrc = addr
+			} else {
+				addr, err := ParseAddress(dst)
+				if err != nil {
+					goto END
+				}
+				mConnTrack.ReplDst = addr
 			}
-			mConnTrack.ReplDst = addr
 			mConnTrack.ReplDstInvert = invert
+
 		case CTOrigSrcPort:
-			min, err := strconv.Atoi(string(matches[10]))
-			if err != nil {
-				goto END
+			portsRow := string(matches[6])
+			ports := strings.Split(portsRow, ":")
+			if len(ports) == 2 {
+				max, err := strconv.Atoi(ports[1])
+				if err != nil {
+					goto END
+				}
+				mConnTrack.OrigSrcPortMax = max
 			}
-			max, err := strconv.Atoi(string(matches[12]))
+			min, err := strconv.Atoi(ports[0])
 			if err != nil {
 				goto END
 			}
 			mConnTrack.OrigSrcPortMin = min
-			mConnTrack.OrigSrcPortMax = max
 			mConnTrack.OrigSrcPortInvert = invert
+
 		case CTOrigDstPort:
-			min, err := strconv.Atoi(string(matches[10]))
-			if err != nil {
-				goto END
+			portsRow := string(matches[6])
+			ports := strings.Split(portsRow, ":")
+			if len(ports) == 2 {
+				max, err := strconv.Atoi(ports[1])
+				if err != nil {
+					goto END
+				}
+				mConnTrack.OrigDstPortMax = max
 			}
-			max, err := strconv.Atoi(string(matches[12]))
+			min, err := strconv.Atoi(ports[0])
 			if err != nil {
 				goto END
 			}
 			mConnTrack.OrigDstPortMin = min
-			mConnTrack.OrigDstPortMax = max
 			mConnTrack.OrigDstPortInvert = invert
+
 		case CTReplSrcPort:
-			min, err := strconv.Atoi(string(matches[10]))
-			if err != nil {
-				goto END
+			portsRow := string(matches[6])
+			ports := strings.Split(portsRow, ":")
+			if len(ports) == 2 {
+				max, err := strconv.Atoi(ports[1])
+				if err != nil {
+					goto END
+				}
+				mConnTrack.ReplSrcPortMax = max
 			}
-			max, err := strconv.Atoi(string(matches[12]))
+			min, err := strconv.Atoi(ports[0])
 			if err != nil {
 				goto END
 			}
 			mConnTrack.ReplSrcPortMin = min
-			mConnTrack.ReplSrcPortMax = max
 			mConnTrack.ReplSrcPortInvert = invert
+
 		case CTReplDstPort:
-			min, err := strconv.Atoi(string(matches[10]))
-			if err != nil {
-				goto END
+			portsRow := string(matches[6])
+			ports := strings.Split(portsRow, ":")
+			if len(ports) == 2 {
+				max, err := strconv.Atoi(ports[1])
+				if err != nil {
+					goto END
+				}
+				mConnTrack.ReplDstPortMax = max
 			}
-			max, err := strconv.Atoi(string(matches[12]))
+			min, err := strconv.Atoi(ports[0])
 			if err != nil {
 				goto END
 			}
 			mConnTrack.ReplDstPortMin = min
-			mConnTrack.ReplDstPortMax = max
 			mConnTrack.ReplDstPortInvert = invert
 		}
 		index += len(matches[0])
@@ -4907,7 +4964,7 @@ func WithMatchIPVS(yes bool) OptionMatchIPVS {
 }
 
 // VIP protocol to match.
-func WithMatchVProto(yes bool, proto Protocol) OptionMatchIPVS {
+func WithMatchVProto(yes bool, proto netdb.Protocol) OptionMatchIPVS {
 	return func(mIPVS *MatchIPVS) {
 		mIPVS.VProto = proto
 		mIPVS.VProtoInvert = !yes
@@ -4973,7 +5030,7 @@ func NewMatchIPVS(opts ...OptionMatchIPVS) (*MatchIPVS, error) {
 type MatchIPVS struct {
 	baseMatch
 	IPVS     bool
-	VProto   Protocol
+	VProto   netdb.Protocol
 	VAddr    *Address
 	VPort    int
 	VDir     ConnTrackDir
@@ -5079,7 +5136,7 @@ func (mIPVS *MatchIPVS) Parse(main []byte) (int, bool) {
 			if err != nil {
 				goto END
 			}
-			mIPVS.VProto = Protocol(proto)
+			mIPVS.VProto = netdb.Protocol(proto)
 			mIPVS.VProtoInvert = invert
 		case IPVSVAddr:
 			vaddr := string(matches[4])
@@ -6513,7 +6570,7 @@ const (
 type MatchPolicyElement struct {
 	ReqID     int
 	SPI       int
-	Proto     Protocol
+	Proto     netdb.Protocol
 	Mode      PolicyMode
 	TunnelSrc *Address
 	TunnelDst *Address
@@ -6733,17 +6790,17 @@ func (mPolicy *MatchPolicy) Parse(main []byte) (int, bool) {
 			protocol := string(matches[10])
 			switch protocol {
 			case AH:
-				elem.Proto = ProtocolAH
+				elem.Proto = netdb.ProtocolAH
 			case ESP:
-				elem.Proto = ProtocolESP
+				elem.Proto = netdb.ProtocolESP
 			case IPComp:
-				elem.Proto = ProtocolIPComp
+				elem.Proto = netdb.ProtocolIPComp
 			default:
 				proto, err := strconv.Atoi(protocol)
 				if err != nil {
 					goto END
 				}
-				elem.Proto = Protocol(proto)
+				elem.Proto = netdb.Protocol(proto)
 			}
 			if len(matches[9]) != 0 {
 				elem.ProtoInvert = true

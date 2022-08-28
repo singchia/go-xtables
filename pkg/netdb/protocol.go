@@ -1,18 +1,30 @@
-/*
- * Apache License 2.0
- *
- * Copyright (c) 2022, Austin Zhai
- * All rights reserved.
- */
+//
+// Apache License 2.0
+//
+// Copyright (c) 2022, Austin Zhai
+// All rights reserved.
+//
 
-package iptables
+package netdb
 
 import "strconv"
 
 // Created by gen.go, don't edit manually
-// Generated at 2022-04-06 15:56:52
+// Generated at 2022-08-28 20:04:30
+
+func GetProtocolByName(name string) Protocol {
+	protocol, ok := ProtocolUpperNameType[name]
+	if !ok {
+		return ProtocolUnknown
+	}
+	return protocol
+}
 
 type Protocol int
+
+var (
+	ProtocolUnknown Protocol = -1
+)
 
 func (proto Protocol) Type() string {
 	return "Protocol"
@@ -309,148 +321,5 @@ var (
 		"Shim6":           ProtocolShim6,
 		"WESP":            ProtocolWESP,
 		"ROHC":            ProtocolROHC,
-	}
-	ProtocolLowerNameType = map[string]Protocol{
-		"ip":              ProtocolIP,
-		"hopopt":          ProtocolHOPOPT,
-		"icmp":            ProtocolICMP,
-		"igmp":            ProtocolIGMP,
-		"ggp":             ProtocolGGP,
-		"ipv4":            ProtocolIPv4,
-		"st":              ProtocolST,
-		"tcp":             ProtocolTCP,
-		"cbt":             ProtocolCBT,
-		"egp":             ProtocolEGP,
-		"igp":             ProtocolIGP,
-		"bbn-rcc":         ProtocolBBN_RCC_MON,
-		"nvp":             ProtocolNVP_II,
-		"pup":             ProtocolPUP,
-		"argus":           ProtocolARGUS,
-		"emcon":           ProtocolEMCON,
-		"xnet":            ProtocolXNET,
-		"chaos":           ProtocolCHAOS,
-		"udp":             ProtocolUDP,
-		"mux":             ProtocolMUX,
-		"dcn":             ProtocolDCN_MEAS,
-		"hmp":             ProtocolHMP,
-		"prm":             ProtocolPRM,
-		"xns-idp":         ProtocolXNS_IDP,
-		"trunk-1":         ProtocolTRUNK_1,
-		"trunk-2":         ProtocolTRUNK_2,
-		"leaf-1":          ProtocolLEAF_1,
-		"leaf-2":          ProtocolLEAF_2,
-		"rdp":             ProtocolRDP,
-		"irtp":            ProtocolIRTP,
-		"iso-tp4":         ProtocolISO_TP4,
-		"netblt":          ProtocolNETBLT,
-		"mfe-nsp":         ProtocolMFE_NSP,
-		"merit-inp":       ProtocolMERIT_INP,
-		"dccp":            ProtocolDCCP,
-		"3pc":             Protocol3PC,
-		"idpr":            ProtocolIDPR,
-		"xtp":             ProtocolXTP,
-		"ddp":             ProtocolDDP,
-		"idpr-cmtp":       ProtocolIDPR_CMTP,
-		"tp++":            ProtocolTPPlusPlus,
-		"il":              ProtocolIL,
-		"ipv6":            ProtocolIPv6,
-		"sdrp":            ProtocolSDRP,
-		"ipv6-route":      ProtocolIPv6_Route,
-		"ipv6-frag":       ProtocolIPv6_Frag,
-		"idrp":            ProtocolIDRP,
-		"rsvp":            ProtocolRSVP,
-		"gre":             ProtocolGRE,
-		"dsr":             ProtocolDSR,
-		"bna":             ProtocolBNA,
-		"esp":             ProtocolESP,
-		"ipv6-crypt":      ProtocolIPv6_Crypt,
-		"ah":              ProtocolAH,
-		"ipv6-auth":       ProtocolIPv6_Auth,
-		"i-nlsp":          ProtocolI_NLSP,
-		"swipe":           ProtocolSWIPE,
-		"narp":            ProtocolNARP,
-		"mobile":          ProtocolMOBILE,
-		"tlsp":            ProtocolTLSP,
-		"skip":            ProtocolSKIP,
-		"ipv6-icmp":       ProtocolIPv6_ICMP,
-		"ipv6-nonxt":      ProtocolIPv6_NoNxt,
-		"ipv6-opts":       ProtocolIPv6_Opts,
-		"cftp":            ProtocolCFTP,
-		"sat-expak":       ProtocolSAT_EXPAK,
-		"kryptolan":       ProtocolKRYPTOLAN,
-		"rvd":             ProtocolRVD,
-		"ippc":            ProtocolIPPC,
-		"sat-mon":         ProtocolSAT_MON,
-		"visa":            ProtocolVISA,
-		"ipcv":            ProtocolIPCV,
-		"cpnx":            ProtocolCPNX,
-		"cphb":            ProtocolCPHB,
-		"wsn":             ProtocolWSN,
-		"pvp":             ProtocolPVP,
-		"br-sat-mon":      ProtocolBR_SAT_MON,
-		"sun-nd":          ProtocolSUN_ND,
-		"wb-mon":          ProtocolWB_MON,
-		"wb-expak":        ProtocolWB_EXPAK,
-		"iso-ip":          ProtocolISO_IP,
-		"vmtp":            ProtocolVMTP,
-		"secure-vmtp":     ProtocolSECURE_VMTP,
-		"vines":           ProtocolVINES,
-		"ttp":             ProtocolTTP,
-		"nsfnet-igp":      ProtocolNSFNET_IGP,
-		"dgp":             ProtocolDGP,
-		"tcf":             ProtocolTCF,
-		"eigrp":           ProtocolEIGRP,
-		"ospf":            ProtocolOSPFIGP,
-		"sprite-rpc":      ProtocolSprite_RPC,
-		"larp":            ProtocolLARP,
-		"mtp":             ProtocolMTP,
-		"ax.25":           ProtocolAXDot25,
-		"ipip":            ProtocolIPIP,
-		"micp":            ProtocolMICP,
-		"scc-sp":          ProtocolSCC_SP,
-		"etherip":         ProtocolETHERIP,
-		"encap":           ProtocolENCAP,
-		"gmtp":            ProtocolGMTP,
-		"ifmp":            ProtocolIFMP,
-		"pnni":            ProtocolPNNI,
-		"pim":             ProtocolPIM,
-		"aris":            ProtocolARIS,
-		"scps":            ProtocolSCPS,
-		"qnx":             ProtocolQNX,
-		"a/n":             ProtocolA_N,
-		"ipcomp":          ProtocolIPComp,
-		"snp":             ProtocolSNP,
-		"compaq-peer":     ProtocolCompaq_Peer,
-		"ipx-in-ip":       ProtocolIPX_in_IP,
-		"vrrp":            ProtocolVRRP,
-		"pgm":             ProtocolPGM,
-		"l2tp":            ProtocolL2TP,
-		"ddx":             ProtocolDDX,
-		"iatp":            ProtocolIATP,
-		"stp":             ProtocolSTP,
-		"srp":             ProtocolSRP,
-		"uti":             ProtocolUTI,
-		"smp":             ProtocolSMP,
-		"sm":              ProtocolSM,
-		"ptp":             ProtocolPTP,
-		"isis":            ProtocolISIS,
-		"fire":            ProtocolFIRE,
-		"crtp":            ProtocolCRTP,
-		"crdup":           ProtocolCRUDP,
-		"sscopmce":        ProtocolSSCOPMCE,
-		"iplt":            ProtocolIPLT,
-		"sps":             ProtocolSPS,
-		"pipe":            ProtocolPIPE,
-		"sctp":            ProtocolSCTP,
-		"fc":              ProtocolFC,
-		"rsvp-e2e-ignore": ProtocolRSVP_E2E_IGNORE,
-		"mobility-header": ProtocolMobility_Header,
-		"udplite":         ProtocolUDPLite,
-		"mpls-in-ip":      ProtocolMPLS_in_IP,
-		"manet":           Protocolmanet,
-		"hip":             ProtocolHIP,
-		"shim6":           ProtocolShim6,
-		"wesp":            ProtocolWESP,
-		"rohc":            ProtocolROHC,
 	}
 )

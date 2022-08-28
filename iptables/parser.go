@@ -5,6 +5,8 @@ import (
 	"bytes"
 	"strconv"
 	"strings"
+
+	"github.com/singchia/go-xtables/pkg/netdb"
 )
 
 type OnChainLine func(line []byte) (*Chain, error)
@@ -99,15 +101,15 @@ func ParseRule(line []byte, head []string, chain *Chain) (*Rule, error) {
 				rule.target = target
 			}
 		case "prot":
-			prot, ok := ProtocolUpperNameType[field]
-			if ok {
+			prot := netdb.GetProtocolByName(strings.ToUpper(field))
+			if prot != netdb.ProtocolUnknown {
 				rule.prot = prot
 			} else {
 				id, err := strconv.Atoi(field)
 				if err != nil {
 					return nil, err
 				}
-				rule.prot = Protocol(id)
+				rule.prot = netdb.Protocol(id)
 			}
 		case "opt":
 			rule.opt = field

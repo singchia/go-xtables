@@ -1,5 +1,7 @@
 package iptables
 
+import "github.com/singchia/go-xtables/pkg/netdb"
+
 type Rule struct {
 	tableType TableType
 	// chain info
@@ -21,7 +23,7 @@ type Rule struct {
 
 	packets int64
 	bytes   int64
-	prot    Protocol
+	prot    netdb.Protocol
 	opt     string
 }
 

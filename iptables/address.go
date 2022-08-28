@@ -26,6 +26,16 @@ type Address struct {
 	host     string
 }
 
+func (address *Address) SetAnywhere(ipType IPType) {
+	address.addrType = addrTypeIPNet
+	switch ipType {
+	case IPv4:
+		_, address.ipNet, _ = net.ParseCIDR("0.0.0.0/0")
+	case IPv6:
+		_, address.ipNet, _ = net.ParseCIDR("::/0")
+	}
+}
+
 func (address *Address) String() string {
 	switch address.addrType {
 	case addrTypeHost:
@@ -93,6 +103,7 @@ func parseAddress(address string) (addrType, interface{}, error) {
 		return addrTypeIP, ip, nil
 	}
 
+	// host
 	head, tail := 0, 0
 	for i := 0; i < len(address); i++ {
 		t := address[i]
