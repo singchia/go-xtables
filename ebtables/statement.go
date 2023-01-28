@@ -1,18 +1,10 @@
-/*
- * Apache License 2.0
- *
- * Copyright (c) 2022, Austin Zhai
- * All rights reserved.
- */
-package iptables
+package ebtables
 
 import (
-	"fmt"
 	"strconv"
 	"strings"
 
 	"github.com/singchia/go-xtables/internal/xerror"
-	"github.com/singchia/go-xtables/pkg/constraint"
 )
 
 type Statement struct {
@@ -24,24 +16,16 @@ type Statement struct {
 	options          map[OptionType]Option
 	target           Target
 	command          Command
-	dump             bool
 
 	// TODO
-	constraints *constraint.Constraints
+	// constraints *constraints
 }
 
 func NewStatement() *Statement {
 	state := &Statement{
-		table:       TableTypeFilter,
-		matches:     make(map[MatchType]Match),
-		options:     make(map[OptionType]Option),
-		constraints: constraint.NewConstraints(),
-	}
-	option, err := NewOptionNumeric()
-	if err != nil {
-		state.err = err
-	} else {
-		state.addOption(option)
+		table:   TableTypeFilter,
+		matches: make(map[MatchType]Match),
+		options: make(map[OptionType]Option),
 	}
 	return state
 }
@@ -62,12 +46,6 @@ func (statement *Statement) Elems() ([]string, error) {
 	switch statement.table {
 	case TableTypeNat:
 		tableName = "nat"
-	case TableTypeMangle:
-		tableName = "mangle"
-	case TableTypeRaw:
-		tableName = "raw"
-	case TableTypeSecurity:
-		tableName = "security"
 	}
 	elems = append(elems, tableName)
 
@@ -117,9 +95,6 @@ func (statement *Statement) Elems() ([]string, error) {
 		if args != nil {
 			elems = append(elems, args...)
 		}
-		if option.Type() == OptionTypeNotNumeric {
-			delete(statement.options, OptionTypeNotNumeric)
-		}
 	}
 
 	// matches
@@ -146,22 +121,4 @@ func (statement *Statement) String() (string, error) {
 		return "", err
 	}
 	return strings.Join(elems, " "), nil
-}
-
-func (statement *Statement) Conflict() error {
-	constraints := statement.constraints
-	// table-chain
-	conflict := constraints.Conflict(
-		statement.table.Type(),
-		statement.table.Value(),
-		statement.chain.Type(),
-		statement.chain.Value(),
-	)
-	if conflict {
-		return fmt.Errorf("table %s conflict with chain %s",
-			statement.table.Value(),
-			statement.chain.Value(),
-		)
-	}
-	return nil
 }

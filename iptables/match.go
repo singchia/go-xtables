@@ -18,7 +18,12 @@ import (
 	"strings"
 
 	"github.com/singchia/go-hammer/tree"
-	"github.com/singchia/go-xtables/pkg/netdb"
+	"github.com/singchia/go-xtables/internal/direction"
+	"github.com/singchia/go-xtables/internal/operator"
+	"github.com/singchia/go-xtables/internal/rate"
+	"github.com/singchia/go-xtables/internal/xerror"
+	"github.com/singchia/go-xtables/internal/xtime"
+	"github.com/singchia/go-xtables/pkg/network"
 )
 
 type MatchType int
@@ -423,7 +428,7 @@ func MatchFactory(matchType MatchType) Match {
 type baseMatch struct {
 	matchType MatchType
 	invert    bool
-	ipType    IPType
+	addrType  network.AddressType
 }
 
 func (bm baseMatch) Type() MatchType {
@@ -450,8 +455,8 @@ func (bm *baseMatch) Parse(params []byte) (int, bool) {
 	return 0, false
 }
 
-func (bm *baseMatch) IPType() IPType {
-	return bm.ipType
+func (bm *baseMatch) AddrType() network.AddressType {
+	return bm.addrType
 }
 
 func (bm *baseMatch) Depends() []MatchType {
@@ -500,7 +505,7 @@ func (mIPv6 *MatchIPv6) LongArgs() []string {
 
 type MatchProtocol struct {
 	baseMatch
-	Protocol netdb.Protocol
+	Protocol network.Protocol
 }
 
 func (mProtocol *MatchProtocol) Short() string {
@@ -533,10 +538,10 @@ func (mProtocol *MatchProtocol) LongArgs() []string {
 
 type MatchSource struct {
 	baseMatch
-	address *Address
+	address network.Address
 }
 
-func NewMatchSource(yes bool, address *Address) (*MatchSource, error) {
+func NewMatchSource(yes bool, address network.Address) (*MatchSource, error) {
 	return &MatchSource{
 		baseMatch: baseMatch{
 			matchType: MatchTypeSource,
@@ -575,10 +580,10 @@ func (mSrc *MatchSource) LongArgs() []string {
 
 type MatchDestination struct {
 	baseMatch
-	address *Address
+	address network.Address
 }
 
-func NewMatchDestination(yes bool, address *Address) (*MatchDestination, error) {
+func NewMatchDestination(yes bool, address network.Address) (*MatchDestination, error) {
 	return &MatchDestination{
 		baseMatch: baseMatch{
 			matchType: MatchTypeDestination,
@@ -811,10 +816,6 @@ func NewMatchAddrType(opts ...OptionMatchAddrType) (*MatchAddrType, error) {
 	for _, opt := range opts {
 		opt(match)
 	}
-	//if !match.HasSrcType && !match.HasDstType &&
-	//	!match.LimitIfaceIn && !match.LimitIfaceOut {
-	//	return nil, ErrAtLeastOneOptionRequired
-	//}
 	return match, nil
 }
 
@@ -1908,7 +1909,7 @@ func (mConnLimit *MatchConnLimit) Parse(main []byte) (int, bool) {
 	return len(matches[0]), true
 }
 
-// Takes mostly 2 value, (mark) or (mark, mask)
+// Takes mostly 2 values, (mark) or (mark, mask)
 // Matches packets in connections with the given mark value.
 // If a mask is specified, this is logically ANDed with the mark before the comparison.
 func NewMatchConnMark(yes bool, value ...int) (*MatchConnMark, error) {
@@ -2134,7 +2135,7 @@ func WithMatchConnTrackStatus(statuses ...ConnTrackStatus) OptionMatchConnTrack 
 }
 
 // Layer-4 protocol to match
-func WithMatchConnTrackProtocol(proto netdb.Protocol) OptionMatchConnTrack {
+func WithMatchConnTrackProtocol(proto network.Protocol) OptionMatchConnTrack {
 	return func(mConnTrack *MatchConnTrack) {
 		mConnTrack.Proto = proto
 	}
@@ -2142,7 +2143,7 @@ func WithMatchConnTrackProtocol(proto netdb.Protocol) OptionMatchConnTrack {
 
 func WithMatchConnTrackOriginSrc(yes bool, addr *net.IPNet) OptionMatchConnTrack {
 	return func(mConnTrack *MatchConnTrack) {
-		addr, _ := ParseAddress(addr)
+		addr, _ := network.ParseAddress(addr)
 		mConnTrack.OrigSrc = addr
 		mConnTrack.OrigSrcInvert = !yes
 	}
@@ -2150,7 +2151,7 @@ func WithMatchConnTrackOriginSrc(yes bool, addr *net.IPNet) OptionMatchConnTrack
 
 func WithMatchConnTrackOriginDst(yes bool, addr *net.IPNet) OptionMatchConnTrack {
 	return func(mConnTrack *MatchConnTrack) {
-		addr, _ := ParseAddress(addr)
+		addr, _ := network.ParseAddress(addr)
 		mConnTrack.OrigDst = addr
 		mConnTrack.OrigDstInvert = !yes
 	}
@@ -2158,7 +2159,7 @@ func WithMatchConnTrackOriginDst(yes bool, addr *net.IPNet) OptionMatchConnTrack
 
 func WithMatchConnTrackReplySrc(yes bool, addr *net.IPNet) OptionMatchConnTrack {
 	return func(mConnTrack *MatchConnTrack) {
-		addr, _ := ParseAddress(addr)
+		addr, _ := network.ParseAddress(addr)
 		mConnTrack.ReplSrc = addr
 		mConnTrack.ReplSrcInvert = !yes
 	}
@@ -2166,7 +2167,7 @@ func WithMatchConnTrackReplySrc(yes bool, addr *net.IPNet) OptionMatchConnTrack 
 
 func WithMatchConnTrackReplyDst(yes bool, addr *net.IPNet) OptionMatchConnTrack {
 	return func(mConnTrack *MatchConnTrack) {
-		addr, _ := ParseAddress(addr)
+		addr, _ := network.ParseAddress(addr)
 		mConnTrack.ReplDst = addr
 		mConnTrack.ReplDstInvert = !yes
 	}
@@ -2280,16 +2281,17 @@ func NewMatchConnTrack(opts ...OptionMatchConnTrack) (*MatchConnTrack, error) {
 	return match, nil
 }
 
+// Non-numeric supported
 type MatchConnTrack struct {
 	baseMatch
 	State          ConnTrackState
 	Status         ConnTrackStatus
 	Direction      ConnTrackDir
-	Proto          netdb.Protocol
-	OrigSrc        *Address
-	OrigDst        *Address
-	ReplSrc        *Address
-	ReplDst        *Address
+	Proto          network.Protocol
+	OrigSrc        network.Address
+	OrigDst        network.Address
+	ReplSrc        network.Address
+	ReplDst        network.Address
 	OrigSrcPortMin int
 	OrigSrcPortMax int
 	OrigDstPortMin int
@@ -2492,7 +2494,7 @@ func (mConnTrack *MatchConnTrack) Parse(main []byte) (int, bool) {
 			if err != nil {
 				goto END
 			}
-			mConnTrack.Proto = netdb.Protocol(proto)
+			mConnTrack.Proto = network.Protocol(proto)
 			mConnTrack.ProtoInvert = invert
 
 		case CTStatus:
@@ -2547,11 +2549,11 @@ func (mConnTrack *MatchConnTrack) Parse(main []byte) (int, bool) {
 		case CTOrigSrc:
 			src := string(matches[6])
 			if src == "anywhere" {
-				addr := &Address{}
-				addr.SetAnywhere(mConnTrack.ipType)
+				addr := network.NewIP(nil)
+				addr.SetAnywhere(mConnTrack.addrType)
 				mConnTrack.OrigSrc = addr
 			} else {
-				addr, err := ParseAddress(src)
+				addr, err := network.ParseAddress(src)
 				if err != nil {
 					goto END
 				}
@@ -2562,11 +2564,11 @@ func (mConnTrack *MatchConnTrack) Parse(main []byte) (int, bool) {
 		case CTOrigDst:
 			dst := string(matches[6])
 			if dst == "anywhere" {
-				addr := &Address{}
-				addr.SetAnywhere(mConnTrack.ipType)
+				addr := network.NewIP(nil)
+				addr.SetAnywhere(mConnTrack.addrType)
 				mConnTrack.OrigSrc = addr
 			} else {
-				addr, err := ParseAddress(dst)
+				addr, err := network.ParseAddress(dst)
 				if err != nil {
 					goto END
 				}
@@ -2577,11 +2579,11 @@ func (mConnTrack *MatchConnTrack) Parse(main []byte) (int, bool) {
 		case CTReplSrc:
 			src := string(matches[6])
 			if src == "anywhere" {
-				addr := &Address{}
-				addr.SetAnywhere(mConnTrack.ipType)
+				addr := network.NewIP(nil)
+				addr.SetAnywhere(mConnTrack.addrType)
 				mConnTrack.OrigSrc = addr
 			} else {
-				addr, err := ParseAddress(src)
+				addr, err := network.ParseAddress(src)
 				if err != nil {
 					goto END
 				}
@@ -2592,11 +2594,11 @@ func (mConnTrack *MatchConnTrack) Parse(main []byte) (int, bool) {
 		case CTReplDst:
 			dst := string(matches[6])
 			if dst == "anywhere" {
-				addr := &Address{}
-				addr.SetAnywhere(mConnTrack.ipType)
+				addr := network.NewIP(nil)
+				addr.SetAnywhere(mConnTrack.addrType)
 				mConnTrack.OrigSrc = addr
 			} else {
-				addr, err := ParseAddress(dst)
+				addr, err := network.ParseAddress(dst)
 				if err != nil {
 					goto END
 				}
@@ -2696,6 +2698,7 @@ func NewMatchCPU(yes bool, cpu int) (*MatchCPU, error) {
 	return mCPU, nil
 }
 
+// Non-numeric unsupport
 type MatchCPU struct {
 	baseMatch
 	CPU int
@@ -2870,6 +2873,7 @@ func NewMatchDCCP(opts ...OptionMatchDCCP) (*MatchDCCP, error) {
 	return match, nil
 }
 
+// Non-numeric support
 type MatchDCCP struct {
 	baseMatch
 	SrcPortMin int
@@ -2965,6 +2969,7 @@ func (mDCCP *MatchDCCP) LongArgs() []string {
 	return args
 }
 
+// the service name may match patten '[0-9a-z/.*_+-]+'
 func (mDCCP *MatchDCCP) Parse(main []byte) (int, bool) {
 	// 1. "^dccp"
 	// 2. "( spt(:(!)?([0-9]+))?(s:(!)?([0-9]+):([0-9]+))?)?" #1 #2 #3 #4 #5 #6 #7 #8
@@ -2972,9 +2977,9 @@ func (mDCCP *MatchDCCP) Parse(main []byte) (int, bool) {
 	// 4. "(( !)? ([0-9,]+))?" #17 #18 #19
 	// 5. "( option=(!)?([0-9]+))?" #20 #21 #22
 	pattern := `^dccp` +
-		`( spt(:(!)?([0-9]+))?(s:(!)?([0-9]+):([0-9]+))?)?` +
-		`( dpt(:(!)?([0-9]+))?(s:(!)?([0-9]+):([0-9]+))?)?` +
-		`(( !)? ([0-9,]+))?` +
+		`( spt(:(!)?([0-9]+))?(s:(!)?([0-9a-z/.*_+-]+):([0-9a-z/.*_+-]+))?)?` +
+		`( dpt(:(!)?([0-9]+))?(s:(!)?([0-9a-z/.*_+-]+):([0-9a-z/.*_+-]+))?)?` +
+		`(( !)? ([0-9a-z/.*_+-,]+))?` +
 		`( option=(!)?([0-9]+))? *`
 	reg := regexp.MustCompile(pattern)
 	matches := reg.FindSubmatch(main)
@@ -2982,9 +2987,13 @@ func (mDCCP *MatchDCCP) Parse(main []byte) (int, bool) {
 		return 0, false
 	}
 	if len(matches[4]) != 0 {
-		spt, err := strconv.Atoi(string(matches[4]))
+		sptRow := string(matches[4])
+		spt, err := strconv.Atoi(sptRow)
 		if err != nil {
-			return 0, false
+			spt = network.GetPortByServiceAndProtocol(network.Service(sptRow), network.ProtocolDCCP)
+			if spt == -1 {
+				return 0, false
+			}
 		}
 		mDCCP.SrcPortMin = spt
 		if len(matches[3]) != 0 {
@@ -2992,13 +3001,21 @@ func (mDCCP *MatchDCCP) Parse(main []byte) (int, bool) {
 		}
 	}
 	if len(matches[7]) != 0 {
-		min, err := strconv.Atoi(string(matches[7]))
+		minRow := string(matches[7])
+		min, err := strconv.Atoi(minRow)
 		if err != nil {
-			return 0, false
+			min = network.GetPortByServiceAndProtocol(network.Service(minRow), network.ProtocolDCCP)
+			if min == -1 {
+				return 0, false
+			}
 		}
-		max, err := strconv.Atoi(string(matches[8]))
+		maxRow := string(matches[8])
+		max, err := strconv.Atoi(maxRow)
 		if err != nil {
-			return 0, false
+			max = network.GetPortByServiceAndProtocol(network.Service(maxRow), network.ProtocolDCCP)
+			if max == -1 {
+				return 0, false
+			}
 		}
 		if len(matches[6]) != 0 {
 			mDCCP.SrcPortInvert = true
@@ -3007,9 +3024,13 @@ func (mDCCP *MatchDCCP) Parse(main []byte) (int, bool) {
 		mDCCP.SrcPortMax = max
 	}
 	if len(matches[12]) != 0 {
-		dpt, err := strconv.Atoi(string(matches[12]))
+		dptRow := string(matches[12])
+		dpt, err := strconv.Atoi(dptRow)
 		if err != nil {
-			return 0, false
+			dpt = network.GetPortByServiceAndProtocol(network.Service(dptRow), network.ProtocolDCCP)
+			if dpt == -1 {
+				return 0, false
+			}
 		}
 		mDCCP.DstPortMin = dpt
 		if len(matches[11]) != 0 {
@@ -3017,13 +3038,21 @@ func (mDCCP *MatchDCCP) Parse(main []byte) (int, bool) {
 		}
 	}
 	if len(matches[15]) != 0 {
-		min, err := strconv.Atoi(string(matches[15]))
+		minRow := string(matches[15])
+		min, err := strconv.Atoi(minRow)
 		if err != nil {
-			return 0, false
+			min = network.GetPortByServiceAndProtocol(network.Service(minRow), network.ProtocolDCCP)
+			if min == -1 {
+				return 0, false
+			}
 		}
-		max, err := strconv.Atoi(string(matches[16]))
+		maxRow := string(matches[16])
+		max, err := strconv.Atoi(maxRow)
 		if err != nil {
-			return 0, false
+			max = network.GetPortByServiceAndProtocol(network.Service(maxRow), network.ProtocolDCCP)
+			if max == -1 {
+				return 0, false
+			}
 		}
 		if len(matches[14]) != 0 {
 			mDCCP.DstPortInvert = true
@@ -3036,9 +3065,14 @@ func (mDCCP *MatchDCCP) Parse(main []byte) (int, bool) {
 		for _, elem := range elems {
 			typ, err := strconv.Atoi(elem)
 			if err != nil {
-				return 0, false
+				value, ok := DCCPTypes[elem]
+				if !ok {
+					return 0, false
+				}
+				mDCCP.DCCPType |= value
+			} else {
+				mDCCP.DCCPType |= 1 << typ
 			}
-			mDCCP.DCCPType |= 1 << typ
 		}
 		if len(matches[18]) != 0 {
 			mDCCP.TypeInvert = true
@@ -3291,7 +3325,7 @@ func WithMatchDstLen(yes bool, length int) OptionMatchDst {
 }
 
 // Numeric type of option and the length of the option data in octets.
-func WithMatchDstOpts(opts ...IPv6Option) OptionMatchDst {
+func WithMatchDstOpts(opts ...network.IPv6Option) OptionMatchDst {
 	return func(mDst *MatchDst) {
 		mDst.Options = opts
 	}
@@ -3315,7 +3349,7 @@ func NewMatchDst(opts ...OptionMatchDst) (*MatchDst, error) {
 type MatchDst struct {
 	baseMatch
 	Length  int
-	Options []IPv6Option
+	Options []network.IPv6Option
 }
 
 func (mDst *MatchDst) Short() string {
@@ -3378,11 +3412,11 @@ func (mDst *MatchDst) Parse(main []byte) (int, bool) {
 			mDst.invert = true
 		}
 	}
-	mDst.Options = []IPv6Option{}
+	mDst.Options = []network.IPv6Option{}
 	if len(matches[5]) != 0 {
 		elems := strings.Split(string(matches[5]), ",")
 		for _, elem := range elems {
-			opt := IPv6Option{
+			opt := network.IPv6Option{
 				Type:   -1,
 				Length: -1,
 			}
@@ -3882,14 +3916,14 @@ func (mFrag *MatchFrag) Parse(main []byte) (int, bool) {
 type OptionMatchHashLimit func(*MatchHashLimit)
 
 // Match if the rate is below or equal to amount/quantum.
-func WithMatchHashLimitUpto(rate Rate) OptionMatchHashLimit {
+func WithMatchHashLimitUpto(rate rate.Rate) OptionMatchHashLimit {
 	return func(mHashLimit *MatchHashLimit) {
 		mHashLimit.Avg = rate
 	}
 }
 
 // Match if the rate is above amount/quantum.
-func WithMatchHashLimitAbove(rate Rate) OptionMatchHashLimit {
+func WithMatchHashLimitAbove(rate rate.Rate) OptionMatchHashLimit {
 	return func(mHashLimit *MatchHashLimit) {
 		mHashLimit.Avg = rate
 		mHashLimit.AvgInvert = true
@@ -4027,7 +4061,7 @@ const (
 
 type MatchHashLimit struct {
 	baseMatch
-	Avg                 Rate // <= avg
+	Avg                 rate.Rate // <= avg
 	Burst               int
 	Mode                HashLimitMode
 	SrcMask             int
@@ -4050,7 +4084,7 @@ func (mHashLimit *MatchHashLimit) Short() string {
 func (mHashLimit *MatchHashLimit) ShortArgs() []string {
 	args := make([]string, 0, 27)
 	args = append(args, "-m", mHashLimit.matchType.String())
-	if (mHashLimit.Avg != Rate{}) {
+	if (mHashLimit.Avg != rate.Rate{}) {
 		if mHashLimit.AvgInvert {
 			args = append(args, "--hashlimit-above", mHashLimit.Avg.String())
 		} else {
@@ -4143,24 +4177,24 @@ func (mHashLimit *MatchHashLimit) Parse(main []byte) (int, bool) {
 	if err != nil {
 		return 0, false
 	}
-	unit := Unit(0)
+	unit := rate.Unit(0)
 	switch string(matches[3]) {
 	case "sec":
-		unit = Second
+		unit = rate.Second
 	case "min":
-		unit = Minute
+		unit = rate.Minute
 	case "hour":
-		unit = Hour
+		unit = rate.Hour
 	case "day":
-		unit = Day
+		unit = rate.Day
 	case "bs":
-		unit = BPS
+		unit = rate.BPS
 	case "kb/s":
-		unit = KBPS
+		unit = rate.KBPS
 	case "mb/s":
-		unit = MBPS
+		unit = rate.MBPS
 	}
-	mHashLimit.Avg = Rate{avg, unit}
+	mHashLimit.Avg = rate.Rate{avg, unit}
 	if len(matches[5]) != 0 {
 		burst, err := strconv.Atoi(string(matches[5]))
 		if err != nil {
@@ -4249,7 +4283,7 @@ func WithMatchHBHLength(yes bool, length int) OptionMatchHBH {
 }
 
 // Numeric type of option and the length of the option data in octets.
-func WithMatchHBHOpts(opts ...IPv6Option) OptionMatchHBH {
+func WithMatchHBHOpts(opts ...network.IPv6Option) OptionMatchHBH {
 	return func(mHBH *MatchHBH) {
 		mHBH.Options = opts
 	}
@@ -4273,7 +4307,7 @@ func NewMatchHBH(opts ...OptionMatchHBH) (*MatchHBH, error) {
 type MatchHBH struct {
 	baseMatch
 	Length  int
-	Options []IPv6Option
+	Options []network.IPv6Option
 }
 
 func (mHBH *MatchHBH) Short() string {
@@ -4336,11 +4370,11 @@ func (mHBH *MatchHBH) Parse(main []byte) (int, bool) {
 			mHBH.invert = true
 		}
 	}
-	mHBH.Options = []IPv6Option{}
+	mHBH.Options = []network.IPv6Option{}
 	if len(matches[5]) != 0 {
 		elems := strings.Split(string(matches[5]), ",")
 		for _, elem := range elems {
-			opt := IPv6Option{}
+			opt := network.IPv6Option{}
 			typelength := strings.Split(string(elem), ":")
 			if len(typelength) >= 1 {
 				typ, err := strconv.Atoi(typelength[0])
@@ -4420,7 +4454,7 @@ func (mHelper *MatchHelper) Parse(main []byte) (int, bool) {
 }
 
 // This module matches the Hop Limit field in the IPv6 header.
-func NewMatchHL(operator Operator, value int) (*MatchHL, error) {
+func NewMatchHL(operator operator.Operator, value int) (*MatchHL, error) {
 	mHL := &MatchHL{
 		baseMatch: baseMatch{
 			matchType: MatchTypeHL,
@@ -4433,7 +4467,7 @@ func NewMatchHL(operator Operator, value int) (*MatchHL, error) {
 
 type MatchHL struct {
 	baseMatch
-	Operator Operator
+	Operator operator.Operator
 	Value    int
 }
 
@@ -4445,13 +4479,13 @@ func (mHL *MatchHL) ShortArgs() []string {
 	args := make([]string, 0, 5)
 	args = append(args, "-m", mHL.matchType.String())
 	switch mHL.Operator {
-	case OperatorNE:
+	case operator.OperatorNE:
 		args = append(args, "!", "--hl-eq", strconv.Itoa(mHL.Value))
-	case OperatorEQ:
+	case operator.OperatorEQ:
 		args = append(args, "--hl-eq", strconv.Itoa(mHL.Value))
-	case OperatorLT:
+	case operator.OperatorLT:
 		args = append(args, "--hl-lt", strconv.Itoa(mHL.Value))
-	case OperatorGT:
+	case operator.OperatorGT:
 		args = append(args, "--hl-gt", strconv.Itoa(mHL.Value))
 	}
 	return args
@@ -4474,13 +4508,13 @@ func (mHL *MatchHL) Parse(main []byte) (int, bool) {
 	}
 	switch string(matches[1]) {
 	case "==":
-		mHL.Operator = OperatorEQ
+		mHL.Operator = operator.OperatorEQ
 	case "!=":
-		mHL.Operator = OperatorNE
+		mHL.Operator = operator.OperatorNE
 	case "<":
-		mHL.Operator = OperatorLT
+		mHL.Operator = operator.OperatorLT
 	case ">":
-		mHL.Operator = OperatorGT
+		mHL.Operator = operator.OperatorGT
 	default:
 		return 0, false
 	}
@@ -4494,13 +4528,13 @@ func (mHL *MatchHL) Parse(main []byte) (int, bool) {
 
 type OptionMatchICMP func(*MatchICMP)
 
-func WithMatchICMPCode(code ICMPCode) OptionMatchICMP {
+func WithMatchICMPCode(code network.ICMPCode) OptionMatchICMP {
 	return func(mICMP *MatchICMP) {
 		mICMP.CodeMin = code
 	}
 }
 
-func NewMatchICMP(yes bool, typ ICMPType, opts ...OptionMatchICMP) (*MatchICMP, error) {
+func NewMatchICMP(yes bool, typ network.ICMPType, opts ...OptionMatchICMP) (*MatchICMP, error) {
 	match := &MatchICMP{
 		ICMPType: typ,
 		baseMatch: baseMatch{
@@ -4521,9 +4555,9 @@ func NewMatchICMP(yes bool, typ ICMPType, opts ...OptionMatchICMP) (*MatchICMP, 
 // Non-numeric support
 type MatchICMP struct {
 	baseMatch
-	ICMPType   ICMPType
-	CodeMin    ICMPCode
-	CodeMax    ICMPCode
+	ICMPType   network.ICMPType
+	CodeMin    network.ICMPCode
+	CodeMax    network.ICMPCode
 	typeString string
 }
 
@@ -4574,16 +4608,16 @@ func (mICMP *MatchICMP) Parse(main []byte) (int, bool) {
 	}
 	switch string(matches[1]) {
 	case "ipv6-icmp":
-		mICMP.ipType = IPv6
+		mICMP.addrType = network.AddressTypeIPv6
 	case "icmp":
-		mICMP.ipType = IPv4
+		mICMP.addrType = network.AddressTypeIPv4
 	}
 	if len(matches[4]) != 0 {
 		typ, err := strconv.Atoi(string(matches[4]))
 		if err != nil {
 			return 0, false
 		}
-		mICMP.ICMPType = ICMPType(typ)
+		mICMP.ICMPType = network.ICMPType(typ)
 		if len(matches[3]) != 0 {
 			mICMP.invert = true
 		}
@@ -4593,7 +4627,7 @@ func (mICMP *MatchICMP) Parse(main []byte) (int, bool) {
 		if err != nil {
 			return 0, false
 		}
-		mICMP.CodeMin = ICMPCode(code)
+		mICMP.CodeMin = network.ICMPCode(code)
 	}
 	if len(matches[9]) != 0 {
 		codeMin, err := strconv.Atoi(string(matches[9]))
@@ -4604,37 +4638,37 @@ func (mICMP *MatchICMP) Parse(main []byte) (int, bool) {
 		if err != nil {
 			return 0, false
 		}
-		mICMP.CodeMin = ICMPCode(codeMin)
-		mICMP.CodeMax = ICMPCode(codeMax)
+		mICMP.CodeMin = network.ICMPCode(codeMin)
+		mICMP.CodeMax = network.ICMPCode(codeMax)
 	}
 	if len(matches[13]) != 0 {
 		str := string(matches[13])
-		switch mICMP.ipType {
-		case IPv4:
-			typ, ok := ICMP4Types[str]
+		switch mICMP.addrType {
+		case network.AddressTypeIPv4:
+			typ, ok := network.ICMP4Types[str]
 			if !ok {
-				code, ok := ICMP4Codes[str]
+				code, ok := network.ICMP4Codes[str]
 				if !ok {
 					return 0, false
 				} else {
-					mICMP.CodeMin = ICMPCode(code.Code)
-					mICMP.ICMPType = ICMPType(code.Type)
+					mICMP.CodeMin = network.ICMPCode(code.Code)
+					mICMP.ICMPType = network.ICMPType(code.Type)
 				}
 			} else {
-				mICMP.ICMPType = ICMPType(typ)
+				mICMP.ICMPType = network.ICMPType(typ)
 			}
-		case IPv6:
-			typ, ok := ICMP6Types[str]
+		case network.AddressTypeIPv6:
+			typ, ok := network.ICMPv6TypeMap[str]
 			if !ok {
-				code, ok := ICMP6Codes[str]
+				code, ok := network.ICMPv6Codes[str]
 				if !ok {
 					return 0, false
 				} else {
-					mICMP.CodeMin = ICMPCode(code.Code)
-					mICMP.ICMPType = ICMPType(code.Type)
+					mICMP.CodeMin = network.ICMPCode(code.Code)
+					mICMP.ICMPType = network.ICMPType(code.Type)
 				}
 			} else {
-				mICMP.ICMPType = ICMPType(typ)
+				mICMP.ICMPType = network.ICMPType(typ)
 			}
 		}
 	}
@@ -4800,7 +4834,7 @@ END:
 type OptionMatchIPv6Header func(*MatchIPv6Header)
 
 // Matches the packet which EXACTLY includes all specified headers.
-func WithMatchIPv6Header(headers ...IPHeaderType) OptionMatchIPv6Header {
+func WithMatchIPv6Header(headers ...network.IPv6HeaderType) OptionMatchIPv6Header {
 	return func(mIPv6Header *MatchIPv6Header) {
 		mIPv6Header.IPHeaderTypes = headers
 	}
@@ -4830,7 +4864,7 @@ func NewMatchIPv6Header(opts ...OptionMatchIPv6Header) (*MatchIPv6Header, error)
 type MatchIPv6Header struct {
 	baseMatch
 	Soft          bool
-	IPHeaderTypes []IPHeaderType
+	IPHeaderTypes []network.IPv6HeaderType
 }
 
 func (mIPv6 *MatchIPv6Header) Short() string {
@@ -4878,7 +4912,7 @@ func (mIPv6 *MatchIPv6Header) Parse(main []byte) (int, bool) {
 	if len(matches[2]) != 0 {
 		mIPv6.invert = true
 	}
-	mIPv6.IPHeaderTypes = []IPHeaderType{}
+	mIPv6.IPHeaderTypes = []network.IPv6HeaderType{}
 	// 0x02X
 	if len(matches[4]) != 0 {
 		hex, err := strconv.ParseUint(string(matches[4]), 16, 8)
@@ -4887,8 +4921,8 @@ func (mIPv6 *MatchIPv6Header) Parse(main []byte) (int, bool) {
 		}
 		hex8 := uint8(hex)
 		for hex8 != 0 {
-			for _, mask := range IPHeaderTypeMasks {
-				v, _ := IPHeaderTypeMaskMap[mask]
+			for _, mask := range network.IPv6HeaderTypeMasks {
+				v, _ := network.IPv6HeaderTypeMaskMap[mask]
 				if hex8&uint8(mask) != 0 {
 					mIPv6.IPHeaderTypes = append(mIPv6.IPHeaderTypes, v)
 					hex8 &= ^uint8(mask)
@@ -4900,7 +4934,7 @@ func (mIPv6 *MatchIPv6Header) Parse(main []byte) (int, bool) {
 	if len(matches[5]) != 0 {
 		elems := strings.Split(string(matches[5]), ",")
 		for _, elem := range elems {
-			typ, ok := IPHeaderTypes[elem]
+			typ, ok := network.IPv6HeaderTypes[elem]
 			if !ok {
 				return 0, false
 			}
@@ -4964,7 +4998,7 @@ func WithMatchIPVS(yes bool) OptionMatchIPVS {
 }
 
 // VIP protocol to match.
-func WithMatchVProto(yes bool, proto netdb.Protocol) OptionMatchIPVS {
+func WithMatchVProto(yes bool, proto network.Protocol) OptionMatchIPVS {
 	return func(mIPVS *MatchIPVS) {
 		mIPVS.VProto = proto
 		mIPVS.VProtoInvert = !yes
@@ -4972,7 +5006,7 @@ func WithMatchVProto(yes bool, proto netdb.Protocol) OptionMatchIPVS {
 }
 
 // VIP address to match.
-func WithMatchVAddr(yes bool, addr *Address) OptionMatchIPVS {
+func WithMatchVAddr(yes bool, addr network.Address) OptionMatchIPVS {
 	return func(mIPVS *MatchIPVS) {
 		mIPVS.VAddr = addr
 		mIPVS.VAddrInvert = !yes
@@ -5030,8 +5064,8 @@ func NewMatchIPVS(opts ...OptionMatchIPVS) (*MatchIPVS, error) {
 type MatchIPVS struct {
 	baseMatch
 	IPVS     bool
-	VProto   netdb.Protocol
-	VAddr    *Address
+	VProto   network.Protocol
+	VAddr    network.Address
 	VPort    int
 	VDir     ConnTrackDir
 	VMethod  IPVSMethod
@@ -5136,11 +5170,11 @@ func (mIPVS *MatchIPVS) Parse(main []byte) (int, bool) {
 			if err != nil {
 				goto END
 			}
-			mIPVS.VProto = netdb.Protocol(proto)
+			mIPVS.VProto = network.Protocol(proto)
 			mIPVS.VProtoInvert = invert
 		case IPVSVAddr:
 			vaddr := string(matches[4])
-			addr, err := ParseAddress(vaddr)
+			addr, err := network.ParseAddress(vaddr)
 			if err != nil {
 				goto END
 			}
@@ -5281,7 +5315,7 @@ func (mLength *MatchLength) Parse(main []byte) (int, bool) {
 type OptionMatchLimit func(*MatchLimit)
 
 // Maximum average matching rate.
-func WithMatchLimit(rate Rate) OptionMatchLimit {
+func WithMatchLimit(rate rate.Rate) OptionMatchLimit {
 	return func(mLimit *MatchLimit) {
 		mLimit.Avg = rate
 	}
@@ -5309,7 +5343,7 @@ func NewMatchLimit(opts ...OptionMatchLimit) (*MatchLimit, error) {
 
 type MatchLimit struct {
 	baseMatch
-	Avg   Rate
+	Avg   rate.Rate
 	Burst int
 }
 
@@ -5320,7 +5354,7 @@ func (mLimit *MatchLimit) Short() string {
 func (mLimit *MatchLimit) ShortArgs() []string {
 	args := make([]string, 0, 6)
 	args = append(args, "-m", mLimit.matchType.String())
-	if (mLimit.Avg != Rate{}) {
+	if (mLimit.Avg != rate.Rate{}) {
 		args = append(args, "--limit", mLimit.Avg.String())
 	}
 	if mLimit.Burst > -1 {
@@ -5354,20 +5388,20 @@ func (mLimit *MatchLimit) Parse(main []byte) (int, bool) {
 	if err != nil {
 		return 0, false
 	}
-	unit := Unit(0)
+	unit := rate.Unit(0)
 	switch string(matches[3]) {
 	case "second":
-		unit = Second
+		unit = rate.Second
 	case "minute":
-		unit = Minute
+		unit = rate.Minute
 	case "hour":
-		unit = Hour
+		unit = rate.Hour
 	case "day":
-		unit = Day
+		unit = rate.Day
 	default:
 		return 0, false
 	}
-	mLimit.Avg = Rate{
+	mLimit.Avg = rate.Rate{
 		avg, unit,
 	}
 	mLimit.Burst = burst
@@ -5433,7 +5467,7 @@ func (mMAC *MatchMAC) Parse(main []byte) (int, bool) {
 	return len(matches[0]), true
 }
 
-// Takes mostly 2 value, (mark) or (mark/mask)
+// The argument value takes mostly 2 values, mark or mark/mask.
 // Matches packets with the given unsigned mark value
 func NewMatchMark(yes bool, value ...int) (*MatchMark, error) {
 	mMark := &MatchMark{
@@ -5690,6 +5724,11 @@ func (mMH *MatchMH) Parse(main []byte) (int, bool) {
 		mMH.TypeMax = typ
 	}
 	return len(matches[0]), true
+}
+
+type PortRange struct {
+	Start int
+	End   int
 }
 
 type OptionMatchMultiPort func(*MatchMultiPort)
@@ -6570,10 +6609,10 @@ const (
 type MatchPolicyElement struct {
 	ReqID     int
 	SPI       int
-	Proto     netdb.Protocol
+	Proto     network.Protocol
 	Mode      PolicyMode
-	TunnelSrc *Address
-	TunnelDst *Address
+	TunnelSrc network.Address
+	TunnelDst network.Address
 	// invert
 	ReqIDInvert     bool
 	SPIInvert       bool
@@ -6587,7 +6626,7 @@ type OptionMatchPolicy func(*MatchPolicy)
 
 //  Used to select whether to match the policy used for decapsulation or
 // the policy that will be used for encapsulation.
-func WithMatchPolicyDir(dir Dir) OptionMatchPolicy {
+func WithMatchPolicyDir(dir direction.Direction) OptionMatchPolicy {
 	return func(mPolicy *MatchPolicy) {
 		mPolicy.Dir = dir
 	}
@@ -6630,7 +6669,7 @@ func NewMatchPolicy(opts ...OptionMatchPolicy) (*MatchPolicy, error) {
 
 type MatchPolicy struct {
 	baseMatch
-	Dir      Dir
+	Dir      direction.Direction
 	Pol      PolicyPol
 	Strict   bool
 	Elements []*MatchPolicyElement
@@ -6724,9 +6763,9 @@ func (mPolicy *MatchPolicy) Parse(main []byte) (int, bool) {
 		return 0, false
 	}
 	if len(matches[1]) != 0 {
-		mPolicy.Dir = In
+		mPolicy.Dir = direction.In
 		if matches[1][4] == 'o' {
-			mPolicy.Dir = Out
+			mPolicy.Dir = direction.Out
 		}
 	}
 	if len(matches[2]) != 0 {
@@ -6790,17 +6829,17 @@ func (mPolicy *MatchPolicy) Parse(main []byte) (int, bool) {
 			protocol := string(matches[10])
 			switch protocol {
 			case AH:
-				elem.Proto = netdb.ProtocolAH
+				elem.Proto = network.ProtocolAH
 			case ESP:
-				elem.Proto = netdb.ProtocolESP
+				elem.Proto = network.ProtocolESP
 			case IPComp:
-				elem.Proto = netdb.ProtocolIPComp
+				elem.Proto = network.ProtocolIPComp
 			default:
 				proto, err := strconv.Atoi(protocol)
 				if err != nil {
 					goto END
 				}
-				elem.Proto = netdb.Protocol(proto)
+				elem.Proto = network.Protocol(proto)
 			}
 			if len(matches[9]) != 0 {
 				elem.ProtoInvert = true
@@ -6823,7 +6862,7 @@ func (mPolicy *MatchPolicy) Parse(main []byte) (int, bool) {
 			matched = true
 		}
 		if len(matches[16]) != 0 {
-			addr, err := ParseAddress(string(matches[16]))
+			addr, err := network.ParseAddress(string(matches[16]))
 			if err != nil {
 				goto END
 			}
@@ -6834,7 +6873,7 @@ func (mPolicy *MatchPolicy) Parse(main []byte) (int, bool) {
 			matched = true
 		}
 		if len(matches[19]) != 0 {
-			addr, err := ParseAddress(string(matches[19]))
+			addr, err := network.ParseAddress(string(matches[19]))
 			if err != nil {
 				goto END
 			}
@@ -6924,7 +6963,7 @@ func WithMatchRateEstDelta() OptionMatchRateEst {
 }
 
 // LT, GT or EQ
-func WithMatchRateEstOperator(yes bool, operator Operator) OptionMatchRateEst {
+func WithMatchRateEstOperator(yes bool, operator operator.Operator) OptionMatchRateEst {
 	return func(mRateEst *MatchRateEst) {
 		mRateEst.Operator = operator
 		mRateEst.invert = !yes
@@ -7003,7 +7042,7 @@ func NewMatchRateEst(opts ...OptionMatchRateEst) (*MatchRateEst, error) {
 type MatchRateEst struct {
 	baseMatch
 	RateestDelta bool
-	Operator     Operator
+	Operator     operator.Operator
 	Name         string
 	Rateest1     string
 	Rateest2     string
@@ -7030,17 +7069,17 @@ func (mRateEst *MatchRateEst) ShortArgs() []string {
 		args = append(args, "--rateest-delta")
 	}
 	switch mRateEst.Operator {
-	case OperatorLT:
+	case operator.OperatorLT:
 		if mRateEst.invert {
 			args = append(args, "!")
 		}
 		args = append(args, "--rateest-lt")
-	case OperatorGT:
+	case operator.OperatorGT:
 		if mRateEst.invert {
 			args = append(args, "!")
 		}
 		args = append(args, "--rateest-gt")
-	case OperatorEQ:
+	case operator.OperatorEQ:
 		if mRateEst.invert {
 			args = append(args, "!")
 		}
@@ -7140,13 +7179,13 @@ func (mRateEst *MatchRateEst) Parse(main []byte) (int, bool) {
 	if len(matches[10]) != 0 {
 		switch string(matches[10]) {
 		case "lt":
-			mRateEst.Operator = OperatorLT
+			mRateEst.Operator = operator.OperatorLT
 			//mRateEst.RateestLT = true
 		case "eq":
-			mRateEst.Operator = OperatorEQ
+			mRateEst.Operator = operator.OperatorEQ
 			//mRateEst.RateestEQ = true
 		case "gt":
-			mRateEst.Operator = OperatorGT
+			mRateEst.Operator = operator.OperatorGT
 			//mRateEst.RateestGT = true
 		}
 	}
@@ -7167,13 +7206,13 @@ func (mRateEst *MatchRateEst) Parse(main []byte) (int, bool) {
 	if len(matches[20]) != 0 {
 		switch string(matches[20]) {
 		case "lt":
-			mRateEst.Operator = OperatorLT
+			mRateEst.Operator = operator.OperatorLT
 			//mRateEst.RateestLT = true
 		case "eq":
-			mRateEst.Operator = OperatorEQ
+			mRateEst.Operator = operator.OperatorEQ
 			//mRateEst.RateestEQ = true
 		case "gt":
-			mRateEst.Operator = OperatorGT
+			mRateEst.Operator = operator.OperatorGT
 			//mRateEst.RateestGT = true
 		}
 	}
@@ -7233,7 +7272,7 @@ func bitsToBytes(bits string) (int, error) {
 	}
 }
 
-// Takes mostly 2 value, (value) or (value/mask)
+// Takes mostly 2 values, (value) or (value/mask)
 // Matches packets with the given unsigned mark value
 func NewMatchRealm(yes bool, value ...int) (*MatchRealm, error) {
 	mRealm := &MatchRealm{
@@ -7729,7 +7768,7 @@ func WithMatchRTType(yes bool, typ int) OptionMatchRT {
 	}
 }
 
-// Takes mostly 2 value, (min) or (min, max)
+// Takes mostly 2 values, (min) or (min, max)
 // Match the `segments left' field (range).
 func WithMatchRTSegsLeft(yes bool, segsleft ...int) OptionMatchRT {
 	return func(mRT *MatchRT) {
@@ -7761,7 +7800,7 @@ func WithMatchRTReserved() OptionMatchRT {
 }
 
 // Match addresses when type == 0.
-func WithMatchRTAddresses(addrs ...*Address) OptionMatchRT {
+func WithMatchRTAddresses(addrs ...network.Address) OptionMatchRT {
 	return func(mRT *MatchRT) {
 		mRT.Addrs = addrs
 	}
@@ -7798,9 +7837,9 @@ type MatchRT struct {
 	SegsLeftMin int
 	SegsLeftMax int
 	Length      int
-	Reserved    bool       // type == 0
-	Addrs       []*Address // type == 0
-	NotStrict   bool       // type == 0
+	Reserved    bool              // type == 0
+	Addrs       []network.Address // type == 0
+	NotStrict   bool              // type == 0
 	// invert
 	TypeInvert     bool
 	SegsLeftInvert bool
@@ -7887,7 +7926,7 @@ func (mRT *MatchRT) Parse(main []byte) (int, bool) {
 	if len(matches) != 19 {
 		return 0, false
 	}
-	mRT.Addrs = []*Address{}
+	mRT.Addrs = []network.Address{}
 	if len(matches[3]) != 0 {
 		typ, err := strconv.Atoi(string(matches[3]))
 		if err != nil {
@@ -7939,7 +7978,7 @@ func (mRT *MatchRT) Parse(main []byte) (int, bool) {
 	if len(matches[17]) != 0 {
 		elems := strings.Split(string(matches[17]), ",")
 		for _, elem := range elems {
-			addr, err := ParseAddress(elem)
+			addr, err := network.ParseAddress(elem)
 			if err != nil {
 				return 0, false
 			}
@@ -8090,6 +8129,28 @@ const (
 	CF_T
 	CF_t
 	CF_ALL = CF_I | CF_U | CF_B | CF_E | CF_i | CF_u | CF_b | CF_e | CF_T | CF_t
+)
+
+type MatchRange int
+
+func (matchRange MatchRange) String() string {
+	switch matchRange {
+	case ANY:
+		return "any"
+	case ALL:
+		return "all"
+	case ONLY:
+		return "only"
+	default:
+		return ""
+	}
+}
+
+const (
+	_ MatchRange = iota
+	ANY
+	ALL
+	ONLY
 )
 
 type Chunk struct {
@@ -9261,7 +9322,7 @@ func WithMatchTCPDstPort(yes bool, port ...int) OptionMatchTCP {
 }
 
 // Match when the TCP flags are as specified.
-func WithMatchTCPFlags(yes bool, mask TCPFlag, set TCPFlag) OptionMatchTCP {
+func WithMatchTCPFlags(yes bool, mask network.TCPFlag, set network.TCPFlag) OptionMatchTCP {
 	return func(mTCP *MatchTCP) {
 		mTCP.FlagsMask = mask
 		mTCP.FlagsSet = set
@@ -9271,8 +9332,9 @@ func WithMatchTCPFlags(yes bool, mask TCPFlag, set TCPFlag) OptionMatchTCP {
 
 func WithMatchTCPSYN(yes bool) OptionMatchTCP {
 	return func(mTCP *MatchTCP) {
-		mTCP.FlagsMask |= TCPFlagSYN | TCPFlagRST | TCPFlagACK | TCPFlagFIN
-		mTCP.FlagsSet = TCPFlagSYN
+		mTCP.FlagsMask |= network.TCPFlagSYN | network.TCPFlagRST |
+			network.TCPFlagACK | network.TCPFlagFIN
+		mTCP.FlagsSet = network.TCPFlagSYN
 		mTCP.FlagsInvert = !yes
 	}
 }
@@ -9308,8 +9370,8 @@ type MatchTCP struct {
 	SrcPortMax int
 	DstPortMin int
 	DstPortMax int
-	FlagsMask  TCPFlag
-	FlagsSet   TCPFlag
+	FlagsMask  network.TCPFlag
+	FlagsSet   network.TCPFlag
 	Option     int
 	// invert
 	SrcPortInvert bool
@@ -9486,14 +9548,14 @@ func (mTCP *MatchTCP) Parse(main []byte) (int, bool) {
 		if err != nil {
 			return 0, false
 		}
-		mTCP.FlagsMask = TCPFlag(mask)
-		mTCP.FlagsSet = TCPFlag(set)
+		mTCP.FlagsMask = network.TCPFlag(mask)
+		mTCP.FlagsSet = network.TCPFlag(set)
 	}
 	// non-numeric like: SYN,FIN/SYN
 	if len(matches[27]) != 0 {
 		flags := strings.Split(string(matches[27]), ",")
 		for _, flag := range flags {
-			f, ok := TCPFlags[flag]
+			f, ok := network.TCPFlags[flag]
 			if !ok {
 				return 0, false
 			}
@@ -9501,7 +9563,7 @@ func (mTCP *MatchTCP) Parse(main []byte) (int, bool) {
 		}
 		flags = strings.Split(string(matches[28]), ",")
 		for _, flag := range flags {
-			f, ok := TCPFlags[flag]
+			f, ok := network.TCPFlags[flag]
 			if !ok {
 				return 0, false
 			}
@@ -9595,39 +9657,39 @@ func (mTCPMSS *MatchTCPMSS) Parse(main []byte) (int, bool) {
 
 type OptionMatchTime func(mTime *MatchTime)
 
-func WithMatchTimeDateStart(start *Date) OptionMatchTime {
+func WithMatchTimeDateStart(start *xtime.Date) OptionMatchTime {
 	return func(mTime *MatchTime) {
 		mTime.DateStart = start
 	}
 }
 
-func WithMatchTimeDateStop(top *Date) OptionMatchTime {
+func WithMatchTimeDateStop(top *xtime.Date) OptionMatchTime {
 	return func(mTime *MatchTime) {
 		mTime.DateStop = top
 	}
 }
 
-func WithMatchTimeDaytimeStart(start *Daytime) OptionMatchTime {
+func WithMatchTimeDaytimeStart(start *xtime.Daytime) OptionMatchTime {
 	return func(mTime *MatchTime) {
 		mTime.DaytimeStart = start
 	}
 }
 
-func WithMatchTimeDaytimeStop(top *Daytime) OptionMatchTime {
+func WithMatchTimeDaytimeStop(top *xtime.Daytime) OptionMatchTime {
 	return func(mTime *MatchTime) {
 		mTime.DaytimeStop = top
 	}
 }
 
 // Match on the given days of the month.
-func WithMatchTimeMonthdays(monthdays Monthday) OptionMatchTime {
+func WithMatchTimeMonthdays(monthdays xtime.Monthday) OptionMatchTime {
 	return func(mTime *MatchTime) {
 		mTime.Monthdays = monthdays
 	}
 }
 
 // Match not on the given days of the month.
-func WithMatchTimeNotMonthdays(monthdays Monthday) OptionMatchTime {
+func WithMatchTimeNotMonthdays(monthdays xtime.Monthday) OptionMatchTime {
 	return func(mTime *MatchTime) {
 		mTime.Monthdays = math.MaxInt32
 		mTime.Monthdays ^= monthdays
@@ -9635,14 +9697,14 @@ func WithMatchTimeNotMonthdays(monthdays Monthday) OptionMatchTime {
 }
 
 // Match on the given weekdays.
-func WithMatchTimeWeekdays(weekdays Weekday) OptionMatchTime {
+func WithMatchTimeWeekdays(weekdays xtime.Weekday) OptionMatchTime {
 	return func(mTime *MatchTime) {
 		mTime.Weekdays = weekdays
 	}
 }
 
 // Match not on the given weekdays.
-func WithMatchTimeNotWeekdays(weekdays Weekday) OptionMatchTime {
+func WithMatchTimeNotWeekdays(weekdays xtime.Weekday) OptionMatchTime {
 	return func(mTime *MatchTime) {
 		mTime.Weekdays = math.MaxInt8
 		mTime.Weekdays ^= weekdays
@@ -9680,12 +9742,12 @@ func NewMatchTime(opts ...OptionMatchTime) (*MatchTime, error) {
 
 type MatchTime struct {
 	baseMatch
-	DaytimeStart *Daytime
-	DaytimeStop  *Daytime
-	DateStart    *Date
-	DateStop     *Date
-	Weekdays     Weekday
-	Monthdays    Monthday
+	DaytimeStart *xtime.Daytime
+	DaytimeStop  *xtime.Daytime
+	DateStart    *xtime.Date
+	DateStop     *xtime.Date
+	Weekdays     xtime.Weekday
+	Monthdays    xtime.Monthday
 	KernelTZ     bool
 	Contiguous   bool
 }
@@ -9744,11 +9806,11 @@ func (mTime *MatchTime) Parse(main []byte) (int, bool) {
 		return 0, false
 	}
 	if len(matches[2]) != 0 {
-		start, err := ParseDaytime(string(matches[2]))
+		start, err := xtime.ParseDaytime(string(matches[2]))
 		if err != nil {
 			return 0, false
 		}
-		top, err := ParseDaytime(string(matches[3]))
+		top, err := xtime.ParseDaytime(string(matches[3]))
 		if err != nil {
 			return 0, false
 		}
@@ -9758,7 +9820,7 @@ func (mTime *MatchTime) Parse(main []byte) (int, bool) {
 	if len(matches[5]) != 0 {
 		weekdays := strings.Split(string(matches[5]), ",")
 		for _, weekday := range weekdays {
-			wd, ok := Weekdays[weekday]
+			wd, ok := xtime.Weekdays[weekday]
 			if !ok {
 				return 0, false
 			}
@@ -9777,14 +9839,14 @@ func (mTime *MatchTime) Parse(main []byte) (int, bool) {
 		}
 	}
 	if len(matches[11]) != 0 {
-		de, err := ParseDate(string(matches[11]))
+		de, err := xtime.ParseDate(string(matches[11]))
 		if err != nil {
 			return 0, false
 		}
 		mTime.DateStart = de
 	}
 	if len(matches[13]) != 0 {
-		de, err := ParseDate(string(matches[13]))
+		de, err := xtime.ParseDate(string(matches[13]))
 		if err != nil {
 			return 0, false
 		}
@@ -9800,7 +9862,7 @@ func (mTime *MatchTime) Parse(main []byte) (int, bool) {
 }
 
 // This option takes mostly 2 tos, (value) or (value/mask)
-func NewMatchTOS(yes bool, tos ...TOS) (*MatchTOS, error) {
+func NewMatchTOS(yes bool, tos ...network.TOS) (*MatchTOS, error) {
 	match := &MatchTOS{
 		baseMatch: baseMatch{
 			matchType: MatchTypeTOS,
@@ -9821,8 +9883,8 @@ func NewMatchTOS(yes bool, tos ...TOS) (*MatchTOS, error) {
 
 type MatchTOS struct {
 	baseMatch
-	Value TOS
-	Mask  TOS
+	Value network.TOS
+	Mask  network.TOS
 }
 
 func (mTOS *MatchTOS) Short() string {
@@ -9868,25 +9930,25 @@ func (mTOS *MatchTOS) Parse(main []byte) (int, bool) {
 		mTOS.invert = true
 	}
 	if len(matches[3]) != 0 {
-		tos, ok := TOSMap[string(matches[3])]
+		tos, ok := network.TOSMap[string(matches[3])]
 		if ok {
 			mTOS.Value = tos
 		}
-		mTOS.Mask = TOS(0x3f)
+		mTOS.Mask = network.TOS(0x3f)
 	}
 	if len(matches[5]) != 0 {
 		value, err := strconv.ParseUint(string(matches[5]), 16, 8)
 		if err != nil {
 			return 0, false
 		}
-		mTOS.Value = TOS(value)
+		mTOS.Value = network.TOS(value)
 	}
 	if len(matches[6]) != 0 {
 		mask, err := strconv.ParseUint(string(matches[6]), 16, 8)
 		if err != nil {
 			return 0, false
 		}
-		mTOS.Mask = TOS(mask)
+		mTOS.Mask = network.TOS(mask)
 	}
 	return len(matches[0]), true
 }
@@ -9896,7 +9958,7 @@ type OptionMatchTTL func(*MatchTTL)
 // Matches the given TTL value.
 func WithMatchTTLEqual(ttl int) OptionMatchTTL {
 	return func(mTTL *MatchTTL) {
-		mTTL.Operator = OperatorEQ
+		mTTL.Operator = operator.OperatorEQ
 		mTTL.Value = ttl
 	}
 }
@@ -9904,7 +9966,7 @@ func WithMatchTTLEqual(ttl int) OptionMatchTTL {
 // Doesn't match the given TTL value.
 func WithMatchTTLNotEqual(ttl int) OptionMatchTTL {
 	return func(mTTL *MatchTTL) {
-		mTTL.Operator = OperatorNE
+		mTTL.Operator = operator.OperatorNE
 		mTTL.Value = ttl
 	}
 }
@@ -9912,7 +9974,7 @@ func WithMatchTTLNotEqual(ttl int) OptionMatchTTL {
 // Matches if TTL is greater than the given TTL value.
 func WithMatchTTLGreaterThan(ttl int) OptionMatchTTL {
 	return func(mTTL *MatchTTL) {
-		mTTL.Operator = OperatorGT
+		mTTL.Operator = operator.OperatorGT
 		mTTL.Value = ttl
 	}
 }
@@ -9920,7 +9982,7 @@ func WithMatchTTLGreaterThan(ttl int) OptionMatchTTL {
 // Matches if TTL is less than the given TTL value.
 func WithMatchTTLLessThan(ttl int) OptionMatchTTL {
 	return func(mTTL *MatchTTL) {
-		mTTL.Operator = OperatorLT
+		mTTL.Operator = operator.OperatorLT
 		mTTL.Value = ttl
 	}
 }
@@ -9941,7 +10003,7 @@ func NewMatchTTL(opts ...OptionMatchTTL) (*MatchTTL, error) {
 // Non-numeric unsupport
 type MatchTTL struct {
 	baseMatch
-	Operator Operator
+	Operator operator.Operator
 	Value    int
 }
 
@@ -9949,14 +10011,14 @@ func (mTTL *MatchTTL) ShortArgs() []string {
 	args := []string{}
 	args = append(args, "-m", mTTL.matchType.String())
 	switch mTTL.Operator {
-	case OperatorEQ:
+	case operator.OperatorEQ:
 		if mTTL.invert {
 			args = append(args, "!")
 		}
 		args = append(args, "--ttl-eq", strconv.Itoa(mTTL.Value))
-	case OperatorGT:
+	case operator.OperatorGT:
 		args = append(args, "--ttl-gt", strconv.Itoa(mTTL.Value))
-	case OperatorLT:
+	case operator.OperatorLT:
 		args = append(args, "--ttl-lt", strconv.Itoa(mTTL.Value))
 	}
 	return args
@@ -9971,13 +10033,13 @@ func (mTTL *MatchTTL) Parse(main []byte) (int, bool) {
 	}
 	switch string(matches[1]) {
 	case "==":
-		mTTL.Operator = OperatorEQ
+		mTTL.Operator = operator.OperatorEQ
 	case "!=":
-		mTTL.Operator = OperatorNE
+		mTTL.Operator = operator.OperatorNE
 	case "<":
-		mTTL.Operator = OperatorLT
+		mTTL.Operator = operator.OperatorLT
 	case ">":
-		mTTL.Operator = OperatorGT
+		mTTL.Operator = operator.OperatorGT
 	default:
 		return 0, false
 	}
@@ -10338,7 +10400,7 @@ func ParseMatch(params []byte) ([]Match, int, error) {
 	for prefix, typ := range matchPrefixes {
 		ok := trie.Add(prefix, typ)
 		if !ok {
-			return nil, 0, ErrMatchParams
+			return nil, 0, xerror.ErrMatchParams
 		}
 	}
 	matches := []Match{}
@@ -10346,18 +10408,17 @@ func ParseMatch(params []byte) ([]Match, int, error) {
 		node, ok := trie.LPM(string(params))
 		if !ok {
 			break
-			//return nil, ErrMatchParams
 		}
 		typ := node.Value().(MatchType)
 		// get match by match type
 		match := MatchFactory(typ)
 		if match != nil {
-			return matches, index, ErrMatchParams
+			return matches, index, xerror.ErrMatchParams
 		}
 		// index meaning the end of this match
 		offset, ok := match.Parse(params)
 		if !ok {
-			return matches, index, ErrMatchParams
+			return matches, index, xerror.ErrMatchParams
 		}
 		index += offset
 		matches = append(matches, match)

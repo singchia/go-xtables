@@ -1,4 +1,4 @@
-package iptables
+package ebtables
 
 import "github.com/singchia/go-xtables/pkg/network"
 
@@ -24,7 +24,6 @@ type Rule struct {
 	packets int64
 	bytes   int64
 	prot    network.Protocol
-	opt     string
 }
 
 func (rule *Rule) TableType() TableType {

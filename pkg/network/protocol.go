@@ -5,12 +5,12 @@
 // All rights reserved.
 //
 
-package netdb
+package network
 
 import "strconv"
 
 // Created by gen.go, don't edit manually
-// Generated at 2022-08-28 20:04:30
+// Generated at 2023-01-28 16:24:13
 
 func GetProtocolByName(name string) Protocol {
 	protocol, ok := ProtocolUpperNameType[name]
@@ -32,6 +32,14 @@ func (proto Protocol) Type() string {
 
 func (proto Protocol) Value() string {
 	return strconv.Itoa(int(proto))
+}
+
+func (proto Protocol) Hex() [2]byte {
+	buf := [2]byte{}
+	// little endian
+	buf[0] = byte(proto)
+	buf[1] = byte(proto >> 8)
+	return buf
 }
 
 const (

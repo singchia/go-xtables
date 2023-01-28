@@ -16,7 +16,7 @@ const protocolHeaderFmt = `//
 // All rights reserved.
 //
 
-package netdb
+package network
 
 import "strconv"
 
@@ -43,6 +43,14 @@ func (proto Protocol) Type() string {
 
 func (proto Protocol) Value() string {
 	return strconv.Itoa(int(proto))
+}
+
+func (proto Protocol) Hex() [2]byte {
+	buf := [2]byte{}
+	// little endian
+	buf[0] = byte(proto)
+	buf[1] = byte(proto >> 8)
+	return buf
 }
 `
 

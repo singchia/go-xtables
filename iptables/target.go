@@ -6,6 +6,11 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+
+	"github.com/singchia/go-xtables/internal/operator"
+	"github.com/singchia/go-xtables/internal/rate"
+	"github.com/singchia/go-xtables/internal/xerror"
+	"github.com/singchia/go-xtables/pkg/network"
 )
 
 type TargetType int
@@ -376,7 +381,7 @@ func NewTarget(targetType TargetType, args ...interface{}) (Target, error) {
 	}
 
 Err:
-	return nil, ErrArgs
+	return nil, xerror.ErrArgs
 }
 
 type baseTarget struct {
@@ -1669,7 +1674,7 @@ func (tCT *TargetCT) Parse(main []byte) (int, bool) {
 type OptionTargetDNAT func(*TargetDNAT)
 
 // To set addr nil or port -1 means empty.
-func WithTargetDNATToAddr(addrMin, addrMax *Address, portMin, portMax int) OptionTargetDNAT {
+func WithTargetDNATToAddr(addrMin, addrMax network.Address, portMin, portMax int) OptionTargetDNAT {
 	return func(tDNAT *TargetDNAT) {
 		tDNAT.AddrMin = addrMin
 		tDNAT.AddrMax = addrMax
@@ -1707,8 +1712,8 @@ func NewTargetDNAT(opts ...OptionTargetDNAT) (*TargetDNAT, error) {
 
 type TargetDNAT struct {
 	baseTarget
-	AddrMin    *Address
-	AddrMax    *Address
+	AddrMin    network.Address
+	AddrMax    network.Address
 	PortMin    int
 	PortMax    int
 	PortBase   int
@@ -1770,14 +1775,14 @@ func (tDNAT *TargetDNAT) Parse(main []byte) (int, bool) {
 		return 0, false
 	}
 	if len(matches[2]) != 0 {
-		addr, err := ParseAddress(string(matches[2]))
+		addr, err := network.ParseAddress(string(matches[2]))
 		if err != nil {
 			return 0, false
 		}
 		tDNAT.AddrMin = addr
 	}
 	if len(matches[5]) != 0 {
-		addr, err := ParseAddress(string(matches[5]))
+		addr, err := network.ParseAddress(string(matches[5]))
 		if err != nil {
 			return 0, false
 		}
@@ -2030,21 +2035,21 @@ type OptionTargetHL func(*TargetHL)
 
 func WithTargetHLSet(value int) OptionTargetHL {
 	return func(tHL *TargetHL) {
-		tHL.Operator = OperatorSET
+		tHL.Operator = operator.OperatorSET
 		tHL.Value = value
 	}
 }
 
 func WithTargetHLDec(value int) OptionTargetHL {
 	return func(tHL *TargetHL) {
-		tHL.Operator = OperatorDEC
+		tHL.Operator = operator.OperatorDEC
 		tHL.Value = value
 	}
 }
 
 func WithTargetHLInc(value int) OptionTargetHL {
 	return func(tHL *TargetHL) {
-		tHL.Operator = OperatorINC
+		tHL.Operator = operator.OperatorINC
 		tHL.Value = value
 	}
 }
@@ -2064,7 +2069,7 @@ func NewTargetHL(opts ...OptionTargetHL) (*TargetHL, error) {
 // IPv6 specific
 type TargetHL struct {
 	baseTarget
-	Operator Operator
+	Operator operator.Operator
 	Value    int
 }
 
@@ -2076,11 +2081,11 @@ func (tHL *TargetHL) ShortArgs() []string {
 	args := make([]string, 0, 4)
 	args = append(args, "-j", tHL.targetType.String())
 	switch tHL.Operator {
-	case OperatorSET:
+	case operator.OperatorSET:
 		args = append(args, "--hl-set", strconv.Itoa(tHL.Value))
-	case OperatorDEC:
+	case operator.OperatorDEC:
 		args = append(args, "--hl-dec", strconv.Itoa(tHL.Value))
-	case OperatorINC:
+	case operator.OperatorINC:
 		args = append(args, "--hl-inc", strconv.Itoa(tHL.Value))
 	}
 	return args
@@ -2106,13 +2111,13 @@ func (tHL *TargetHL) Parse(main []byte) (int, bool) {
 		return 0, false
 	}
 	if len(matches[1]) != 0 {
-		tHL.Operator = OperatorSET
+		tHL.Operator = operator.OperatorSET
 	}
 	if len(matches[2]) != 0 {
-		tHL.Operator = OperatorDEC
+		tHL.Operator = operator.OperatorDEC
 	}
 	if len(matches[3]) != 0 {
-		tHL.Operator = OperatorINC
+		tHL.Operator = operator.OperatorINC
 	}
 	value, err := strconv.Atoi(string(matches[4]))
 	if err != nil {
@@ -2859,7 +2864,7 @@ type OptionTargetMark func(*TargetMark)
 
 // This option takes mostly 2 value, (value) or (value, mask)
 // Zero out the bits given by mask and XOR value into the ctmark.
-func WithTargetMarkSetXMark(mark ...int) OptionTargetMark {
+func WithTargetMarkSetX(mark ...int) OptionTargetMark {
 	return func(tMark *TargetMark) {
 		switch len(mark) {
 		case 1:
@@ -2868,12 +2873,12 @@ func WithTargetMarkSetXMark(mark ...int) OptionTargetMark {
 			tMark.Mark = mark[0]
 			tMark.Mask = mark[1]
 		}
-		tMark.Operator = OperatorXSET
+		tMark.Operator = operator.OperatorXSET
 	}
 }
 
 // Zeroes out the bits given by mask and ORs value into the packet mark.
-func WithTargetMarkSetMark(mark ...int) OptionTargetMark {
+func WithTargetMarkSet(mark ...int) OptionTargetMark {
 	return func(tMark *TargetMark) {
 		switch len(mark) {
 		case 1:
@@ -2882,7 +2887,7 @@ func WithTargetMarkSetMark(mark ...int) OptionTargetMark {
 			tMark.Mark = mark[0]
 			tMark.Mask = mark[1]
 		}
-		tMark.Operator = OperatorSET
+		tMark.Operator = operator.OperatorSET
 	}
 }
 
@@ -2890,7 +2895,7 @@ func WithTargetMarkSetMark(mark ...int) OptionTargetMark {
 func WithTargetMarkAnd(mark int) OptionTargetMark {
 	return func(tMark *TargetMark) {
 		tMark.Mark = mark
-		tMark.Operator = OperatorAND
+		tMark.Operator = operator.OperatorAND
 	}
 }
 
@@ -2898,7 +2903,7 @@ func WithTargetMarkAnd(mark int) OptionTargetMark {
 func WithTargetMarkOr(mark int) OptionTargetMark {
 	return func(tMark *TargetMark) {
 		tMark.Mark = mark
-		tMark.Operator = OperatorOR
+		tMark.Operator = operator.OperatorOR
 	}
 }
 
@@ -2906,7 +2911,7 @@ func WithTargetMarkOr(mark int) OptionTargetMark {
 func WithTargetMarkXor(mark int) OptionTargetMark {
 	return func(tMark *TargetMark) {
 		tMark.Mark = mark
-		tMark.Operator = OperatorXOR
+		tMark.Operator = operator.OperatorXOR
 	}
 }
 
@@ -2926,7 +2931,7 @@ func NewTargetMark(opts ...OptionTargetMark) (*TargetMark, error) {
 
 type TargetMark struct {
 	baseTarget
-	Operator Operator
+	Operator operator.Operator
 	Mark     int
 	Mask     int
 }
@@ -2939,25 +2944,25 @@ func (tMark *TargetMark) ShortArgs() []string {
 	args := make([]string, 0, 12)
 	args = append(args, "-j", tMark.targetType.String())
 	switch tMark.Operator {
-	case OperatorXSET:
+	case operator.OperatorXSET:
 		if tMark.Mask > -1 {
 			args = append(args, "--set-xmark",
 				strconv.Itoa(tMark.Mark)+"/"+strconv.Itoa(tMark.Mask))
 		} else {
 			args = append(args, "--set-xmark", strconv.Itoa(tMark.Mark))
 		}
-	case OperatorSET:
+	case operator.OperatorSET:
 		if tMark.Mask > -1 {
 			args = append(args, "--set-mark",
 				strconv.Itoa(tMark.Mark)+"/"+strconv.Itoa(tMark.Mask))
 		} else {
 			args = append(args, "--set-mark", strconv.Itoa(tMark.Mark))
 		}
-	case OperatorAND:
+	case operator.OperatorAND:
 		args = append(args, "--and-mark", strconv.Itoa(tMark.Mark))
-	case OperatorOR:
+	case operator.OperatorOR:
 		args = append(args, "--or-mark", strconv.Itoa(tMark.Mark))
-	case OperatorXOR:
+	case operator.OperatorXOR:
 		args = append(args, "--xor-mark", strconv.Itoa(tMark.Mark))
 	}
 	return args
@@ -2985,15 +2990,15 @@ func (tMark *TargetMark) Parse(main []byte) (int, bool) {
 	}
 	switch string(matches[1]) {
 	case "set":
-		tMark.Operator = OperatorSET
+		tMark.Operator = operator.OperatorSET
 	case "and":
-		tMark.Operator = OperatorAND
+		tMark.Operator = operator.OperatorAND
 	case "or":
-		tMark.Operator = OperatorOR
+		tMark.Operator = operator.OperatorOR
 	case "xor":
-		tMark.Operator = OperatorXOR
+		tMark.Operator = operator.OperatorXOR
 	case "xset":
-		tMark.Operator = OperatorXSET
+		tMark.Operator = operator.OperatorXSET
 	}
 	if len(matches[2]) != 0 {
 		value, err := strconv.ParseInt(string(matches[2]), 16, 64)
@@ -3142,7 +3147,7 @@ func (tMasquerade *TargetMasquerade) Parse(main []byte) (int, bool) {
 type OptionTargetNetmap func(*TargetNetmap)
 
 // Network address to map to.
-func WithTargetNetmapAddr(addr *Address) OptionTargetNetmap {
+func WithTargetNetmapAddr(addr network.Address) OptionTargetNetmap {
 	return func(tNetmap *TargetNetmap) {
 		tNetmap.Addr = addr
 	}
@@ -3162,7 +3167,7 @@ func NewTargetNetmap(opts ...OptionTargetNetmap) (*TargetNetmap, error) {
 
 type TargetNetmap struct {
 	baseTarget
-	Addr *Address
+	Addr network.Address
 }
 
 func (tNetmap *TargetNetmap) Short() string {
@@ -3196,13 +3201,13 @@ func (tNetmap *TargetNetmap) Parse(main []byte) (int, bool) {
 	if len(matches) != 3 {
 		return 0, false
 	}
-	addr, err := ParseAddress(string(matches[1]))
+	addr, err := network.ParseAddress(string(matches[1]))
 	if err != nil {
 		return 0, false
 	}
 	tNetmap.Addr = addr
 	if len(matches[2]) != 0 {
-		addr, err = ParseAddress(string(matches[1]) + string(matches[2]))
+		addr, err = network.ParseAddress(string(matches[1]) + string(matches[2]))
 		if err == nil {
 			tNetmap.Addr = addr
 		}
@@ -3496,7 +3501,7 @@ func WithTargetRateEstName(name string) OptionTargetRateEst {
 }
 
 // Rate measurement interval, in seconds, milliseconds or microseconds.
-func WithTargetRateEstInterval(interval RateFloat) OptionTargetRateEst {
+func WithTargetRateEstInterval(interval rate.RateFloat) OptionTargetRateEst {
 	return func(tRateEst *TargetRateEst) {
 		tRateEst.Interval = interval
 	}
@@ -3525,7 +3530,7 @@ func NewTargetRateEst(opts ...OptionTargetRateEst) (*TargetRateEst, error) {
 type TargetRateEst struct {
 	baseTarget
 	Name     string
-	Interval RateFloat
+	Interval rate.RateFloat
 	Ewmalog  float64
 }
 
@@ -3539,7 +3544,7 @@ func (tRateEst *TargetRateEst) ShortArgs() []string {
 	if tRateEst.Name != "" {
 		args = append(args, "--rateest-name", tRateEst.Name)
 	}
-	if (tRateEst.Interval != RateFloat{}) {
+	if (tRateEst.Interval != rate.RateFloat{}) {
 		args = append(args, "--rateest-interval", tRateEst.Interval.Sting())
 	}
 	if tRateEst.Ewmalog > -1 {
@@ -3574,26 +3579,26 @@ func (tRateEst *TargetRateEst) Parse(main []byte) (int, bool) {
 	if err != nil {
 		return 0, false
 	}
-	unit := Second
+	unit := rate.Second
 	switch string(matches[3]) {
 	case "us":
-		unit = Microsecond
+		unit = rate.Microsecond
 	case "ms":
-		unit = Millisecond
+		unit = rate.Millisecond
 	case "s":
-		unit = Second
+		unit = rate.Second
 	}
-	tRateEst.Interval = RateFloat{
+	tRateEst.Interval = rate.RateFloat{
 		interval, unit,
 	}
 	ewmalog, err := strconv.ParseFloat(string(matches[4]), 64)
 	switch string(matches[5]) {
 	case "us":
-		unit = Microsecond
+		unit = rate.Microsecond
 	case "ms":
-		unit = Millisecond
+		unit = rate.Millisecond
 	case "s":
-		unit = Second
+		unit = rate.Second
 	}
 	tRateEst.Ewmalog = ewmalog
 	return len(matches[0]), true
@@ -3851,7 +3856,7 @@ func (tReject *TargetReject) Parse(main []byte) (int, bool) {
 type OptionTargetSame func(*TargetSame)
 
 // This option takes mostly 2 addrs, (min) or (min, max)
-func WithTargetSameAddr(addr ...*Address) OptionTargetSame {
+func WithTargetSameAddr(addr ...network.Address) OptionTargetSame {
 	return func(tSame *TargetSame) {
 		switch len(addr) {
 		case 1:
@@ -3891,8 +3896,8 @@ func NewTargetSame(opts ...OptionTargetSame) (*TargetSame, error) {
 // IPv4 specific
 type TargetSame struct {
 	baseTarget
-	AddrMin *Address
-	AddrMax *Address
+	AddrMin network.Address
+	AddrMax network.Address
 	NoDst   bool
 	Random  bool
 }
@@ -3944,14 +3949,14 @@ func (tSame *TargetSame) Parse(main []byte) (int, bool) {
 		return 0, false
 	}
 	if len(matches[2]) != 0 {
-		addr, err := ParseAddress(string(matches[2]))
+		addr, err := network.ParseAddress(string(matches[2]))
 		if err != nil {
 			return 0, false
 		}
 		tSame.AddrMin = addr
 	}
 	if len(matches[4]) != 0 {
-		addr, err := ParseAddress(string(matches[2]))
+		addr, err := network.ParseAddress(string(matches[2]))
 		if err != nil {
 			return 0, false
 		}
@@ -4241,7 +4246,7 @@ func (tSet *TargetSet) Parse(main []byte) (int, bool) {
 type OptionTargetSNAT func(*TargetSNAT)
 
 // To set addr nil or port -1 means empty.
-func WithTargetSNATToAddr(addrMin, addrMax *Address, portMin, portMax int) OptionTargetSNAT {
+func WithTargetSNATToAddr(addrMin, addrMax network.Address, portMin, portMax int) OptionTargetSNAT {
 	return func(tSNAT *TargetSNAT) {
 		tSNAT.AddrMin = addrMin
 		tSNAT.AddrMax = addrMax
@@ -4279,8 +4284,8 @@ func NewTargetSNAT(opts ...OptionTargetSNAT) (*TargetSNAT, error) {
 
 type TargetSNAT struct {
 	baseTarget
-	AddrMin    *Address
-	AddrMax    *Address
+	AddrMin    network.Address
+	AddrMax    network.Address
 	PortMin    int
 	PortMax    int
 	PortBase   int
@@ -4341,14 +4346,14 @@ func (tSNAT *TargetSNAT) Parse(main []byte) (int, bool) {
 		return 0, false
 	}
 	if len(matches[2]) != 0 {
-		addr, err := ParseAddress(string(matches[2]))
+		addr, err := network.ParseAddress(string(matches[2]))
 		if err != nil {
 			return 0, false
 		}
 		tSNAT.AddrMin = addr
 	}
 	if len(matches[5]) != 0 {
-		addr, err := ParseAddress(string(matches[5]))
+		addr, err := network.ParseAddress(string(matches[5]))
 		if err != nil {
 			return 0, false
 		}
@@ -4686,7 +4691,7 @@ type OptionTargetTCPOptStrip func(*TargetTCPOptStrip)
 
 // Strip the given option(s).
 // The options may be specified by TCP option number or by symbolic name.
-func WithTargetTCPOptStripOpts(opts ...TCPOpt) OptionTargetTCPOptStrip {
+func WithTargetTCPOptStripOpts(opts ...network.TCPOpt) OptionTargetTCPOptStrip {
 	return func(tTCPOptStrip *TargetTCPOptStrip) {
 		tTCPOptStrip.Opts = opts
 	}
@@ -4706,7 +4711,7 @@ func NewTargetTCPOptStrip(opts ...OptionTargetTCPOptStrip) (*TargetTCPOptStrip, 
 
 type TargetTCPOptStrip struct {
 	baseTarget
-	Opts []TCPOpt
+	Opts []network.TCPOpt
 }
 
 func (tTCPOptStrip *TargetTCPOptStrip) Short() string {
@@ -4745,10 +4750,10 @@ func (tTCPOptStrip *TargetTCPOptStrip) Parse(main []byte) (int, bool) {
 	if len(matches) != 5 {
 		return 0, false
 	}
-	tTCPOptStrip.Opts = []TCPOpt{}
+	tTCPOptStrip.Opts = []network.TCPOpt{}
 	elems := strings.Split(string(matches[1]), ",")
 	for _, elem := range elems {
-		opt, ok := TCPOpts[elem]
+		opt, ok := network.TCPOpts[elem]
 		if ok {
 			tTCPOptStrip.Opts = append(tTCPOptStrip.Opts, opt)
 		} else {
@@ -4756,7 +4761,7 @@ func (tTCPOptStrip *TargetTCPOptStrip) Parse(main []byte) (int, bool) {
 			if err != nil {
 				return 0, false
 			}
-			tTCPOptStrip.Opts = append(tTCPOptStrip.Opts, TCPOpt(option))
+			tTCPOptStrip.Opts = append(tTCPOptStrip.Opts, network.TCPOpt(option))
 		}
 	}
 	return len(matches[0]), true
@@ -4812,7 +4817,7 @@ func (tTEE *TargetTEE) Parse(main []byte) (int, bool) {
 type OptionTargetTOS func(*TargetTOS)
 
 // This option takes mostly 2 tos, (value) or (value/mask)
-func WithTargetTOSSet(tos ...TOS) OptionTargetTOS {
+func WithTargetTOSSet(tos ...network.TOS) OptionTargetTOS {
 	return func(tTOS *TargetTOS) {
 		switch len(tos) {
 		case 1:
@@ -4821,28 +4826,28 @@ func WithTargetTOSSet(tos ...TOS) OptionTargetTOS {
 			tTOS.Value = tos[0]
 			tTOS.Mask = tos[1]
 		}
-		tTOS.Operator = OperatorSET
+		tTOS.Operator = operator.OperatorSET
 	}
 }
 
-func WithTargetTOSAnd(tos TOS) OptionTargetTOS {
+func WithTargetTOSAnd(tos network.TOS) OptionTargetTOS {
 	return func(tTOS *TargetTOS) {
 		tTOS.Value = tos
-		tTOS.Operator = OperatorAND
+		tTOS.Operator = operator.OperatorAND
 	}
 }
 
-func WithTargetTOSOr(tos TOS) OptionTargetTOS {
+func WithTargetTOSOr(tos network.TOS) OptionTargetTOS {
 	return func(tTOS *TargetTOS) {
 		tTOS.Value = tos
-		tTOS.Operator = OperatorOR
+		tTOS.Operator = operator.OperatorOR
 	}
 }
 
-func WithTargetTOSXor(tos TOS) OptionTargetTOS {
+func WithTargetTOSXor(tos network.TOS) OptionTargetTOS {
 	return func(tTOS *TargetTOS) {
 		tTOS.Value = tos
-		tTOS.Operator = OperatorXOR
+		tTOS.Operator = operator.OperatorXOR
 	}
 }
 
@@ -4862,9 +4867,9 @@ func NewTargetTOS(opts ...OptionTargetTOS) (*TargetTOS, error) {
 
 type TargetTOS struct {
 	baseTarget
-	Operator Operator
-	Value    TOS
-	Mask     TOS
+	Operator operator.Operator
+	Value    network.TOS
+	Mask     network.TOS
 }
 
 func (tTOS *TargetTOS) Short() string {
@@ -4875,18 +4880,18 @@ func (tTOS *TargetTOS) ShortArgs() []string {
 	args := make([]string, 0, 4)
 	args = append(args, "-j", tTOS.targetType.String())
 	switch tTOS.Operator {
-	case OperatorSET:
+	case operator.OperatorSET:
 		if tTOS.Mask > -1 {
 			args = append(args, "--set-tos",
 				strconv.Itoa(int(tTOS.Value))+"/"+strconv.Itoa(int(tTOS.Mask)))
 		} else {
 			args = append(args, "--set-tos", strconv.Itoa(int(tTOS.Value)))
 		}
-	case OperatorAND:
+	case operator.OperatorAND:
 		args = append(args, "--and-tos", strconv.Itoa(int(tTOS.Value)))
-	case OperatorOR:
+	case operator.OperatorOR:
 		args = append(args, "--or-tos", strconv.Itoa(int(tTOS.Value)))
-	case OperatorXOR:
+	case operator.OperatorXOR:
 		args = append(args, "--xor-tos", strconv.Itoa(int(tTOS.Value)))
 	}
 	return args
@@ -4914,34 +4919,34 @@ func (tTOS *TargetTOS) Parse(main []byte) (int, bool) {
 	}
 	switch string(matches[1]) {
 	case "set":
-		tTOS.Operator = OperatorSET
+		tTOS.Operator = operator.OperatorSET
 	case "and":
-		tTOS.Operator = OperatorAND
+		tTOS.Operator = operator.OperatorAND
 	case "or":
-		tTOS.Operator = OperatorOR
+		tTOS.Operator = operator.OperatorOR
 	case "xor":
-		tTOS.Operator = OperatorXOR
+		tTOS.Operator = operator.OperatorXOR
 	}
 	if len(matches[3]) != 0 {
-		tos, ok := TOSMap[string(matches[3])]
+		tos, ok := network.TOSMap[string(matches[3])]
 		if ok {
 			tTOS.Value = tos
 		}
-		tTOS.Mask = TOS(0x3f)
+		tTOS.Mask = network.TOS(0x3f)
 	}
 	if len(matches[5]) != 0 {
 		value, err := strconv.ParseInt(string(matches[5]), 16, 8)
 		if err != nil {
 			return 0, false
 		}
-		tTOS.Value = TOS(value)
+		tTOS.Value = network.TOS(value)
 	}
 	if len(matches[7]) != 0 {
 		mask, err := strconv.ParseInt(string(matches[7]), 16, 8)
 		if err != nil {
 			return 0, false
 		}
-		tTOS.Mask = TOS(mask)
+		tTOS.Mask = network.TOS(mask)
 	}
 	return len(matches[0]), true
 }
@@ -5104,21 +5109,21 @@ type OptionTargetTTL func(*TargetTTL)
 func WithTargetTTLSet(value int) OptionTargetTTL {
 	return func(tTTL *TargetTTL) {
 		tTTL.Value = value
-		tTTL.Operator = OperatorSET
+		tTTL.Operator = operator.OperatorSET
 	}
 }
 
 func WithTargetTTLDec(value int) OptionTargetTTL {
 	return func(tTTL *TargetTTL) {
 		tTTL.Value = value
-		tTTL.Operator = OperatorDEC
+		tTTL.Operator = operator.OperatorDEC
 	}
 }
 
 func WithTargetTTLInc(value int) OptionTargetTTL {
 	return func(tTTL *TargetTTL) {
 		tTTL.Value = value
-		tTTL.Operator = OperatorINC
+		tTTL.Operator = operator.OperatorINC
 	}
 }
 
@@ -5138,7 +5143,7 @@ func NewTargetTTL(opts ...OptionTargetTTL) (*TargetTTL, error) {
 // IPv4 specific
 type TargetTTL struct {
 	baseTarget
-	Operator Operator
+	Operator operator.Operator
 	Value    int
 }
 
@@ -5150,11 +5155,11 @@ func (tTTL *TargetTTL) ShortArgs() []string {
 	args := make([]string, 0, 4)
 	args = append(args, "-j", tTTL.targetType.String())
 	switch tTTL.Operator {
-	case OperatorSET:
+	case operator.OperatorSET:
 		args = append(args, "--ttl-set", strconv.Itoa(tTTL.Value))
-	case OperatorDEC:
+	case operator.OperatorDEC:
 		args = append(args, "--ttl-dec", strconv.Itoa(tTTL.Value))
-	case OperatorINC:
+	case operator.OperatorINC:
 		args = append(args, "--ttl-inc", strconv.Itoa(tTTL.Value))
 	}
 	return args
@@ -5182,11 +5187,11 @@ func (tTTL *TargetTTL) Parse(main []byte) (int, bool) {
 	}
 	switch string(matches[1]) {
 	case "set to":
-		tTTL.Operator = OperatorSET
+		tTTL.Operator = operator.OperatorSET
 	case "decrement to":
-		tTTL.Operator = OperatorDEC
+		tTTL.Operator = operator.OperatorDEC
 	case "increment to":
-		tTTL.Operator = OperatorINC
+		tTTL.Operator = operator.OperatorINC
 	}
 	ttl, err := strconv.Atoi(string(matches[2]))
 	if err != nil {

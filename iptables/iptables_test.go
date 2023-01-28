@@ -48,7 +48,7 @@ func TestChain(t *testing.T) {
 	iptables := NewIPTables()
 	_, err := iptables.
 		TableType(TableTypeFilter).
-		Chain(ChainTypeINPUT)
+		ChainType(ChainTypeINPUT)
 	if err != nil {
 		t.Error(err)
 		return

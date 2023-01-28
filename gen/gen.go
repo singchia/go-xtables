@@ -20,6 +20,8 @@ import (
 
 var (
 	protocolLowerMaps = flag.Bool("proto_lower_maps", false, "gen protocol lower maps")
+	serviceDefine     = flag.Bool("service_define", true, "whether service define")
+	serviceTypeMaps   = flag.Bool("service_maps", false, "gen service maps")
 )
 
 const (
@@ -61,8 +63,8 @@ func iterate(file string, cb func(row []string) error) ([][]string, error) {
 }
 
 const (
-	outProtocol = "../pkg/netdb/protocol.go"
-	outService  = "../pkg/netdb/service.go"
+	outProtocol = "../pkg/network/protocol.go"
+	outService  = "../pkg/network/service.go"
 )
 
 func main() {

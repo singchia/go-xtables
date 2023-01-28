@@ -1,10 +1,4 @@
-/*
- * Apache License 2.0
- *
- * Copyright (c) 2022, Austin Zhai
- * All rights reserved.
- */
-package iptables
+package ebtables
 
 import "strconv"
 
@@ -19,22 +13,23 @@ func (ct CommandType) Value() string {
 }
 
 const (
-	_                      CommandType = iota
-	CommandTypeAppend                  // append
-	CommandTypeCheck                   // check
-	CommandTypeDelete                  // delete
-	CommandTypeInsert                  // insert
-	CommandTypeReplace                 // replace
-	CommandTypeList                    // list
-	CommandTypeListRules               // list_rules
-	CommandTypeFlush                   // flush
-	CommandTypeZero                    // zero
-	CommandTypeNewChain                // new_chain
-	CommandTypeDeleteChain             // delete_chain
-	CommandTypePolicy                  // policy
-	CommandTypeRenameChain             // rename_chain
-	//CommandTypeChain                   // go-xtables support
-	//CommandTypeFind // go-xtables support
+	_                         CommandType = iota
+	CommandTypeAppend                     // append
+	CommandTypeChangeCounters             // change counters
+	CommandTypeDelete                     // delete
+	CommandTypeInsert                     // insert
+	CommandTypeFlush                      // flush
+	CommandTypePolicy                     // policy
+	CommandTypeZero                       // zero
+	CommandTypeList                       // list
+	CommandTypeNewChain                   // new_chain
+	CommandTypeDeleteChain                // delete_chain
+	CommandTypeRenameChain                // rename_chain
+	CommandTypeInitTable                  // init_table
+	CommandTypeAtomicInit                 // atomic_init
+	CommandTypeAtomicSave                 // atomic_save
+	CommandTypeAtomicCommit               // atomic_commit
+	//CommandTypeFind                       // go-xtables support
 )
 
 type HasRulenum interface {
@@ -74,6 +69,24 @@ func (bc baseCommand) Long() string {
 	return bc.Short()
 }
 
+/*
+func NewFind() *Find {
+	command := &Find{
+		List: &List{
+			baseCommand: baseCommand{
+				commandType: CommandTypeFind,
+			},
+		},
+	}
+	command.setChild(command)
+	return command
+}
+
+type Find struct {
+	*List
+}
+*/
+
 func NewAppend() *Append {
 	command := &Append{
 		baseCommand: baseCommand{
@@ -96,26 +109,26 @@ func (apd *Append) Long() string {
 	return "--append"
 }
 
-func NewCheck() *Append {
-	command := &Append{
+func NewChangeCounters() *ChangeCounters {
+	command := &ChangeCounters{
 		baseCommand: baseCommand{
-			commandType: CommandTypeCheck,
+			commandType: CommandTypeChangeCounters,
 		},
 	}
 	command.setChild(command)
 	return command
 }
 
-type Check struct {
+type ChangeCounters struct {
 	baseCommand
 }
 
-func (check *Check) Short() string {
+func (cc *ChangeCounters) Short() string {
 	return "-C"
 }
 
-func (check *Check) Long() string {
-	return "--check"
+func (cc *ChangeCounters) Long() string {
+	return "--change-counters"
 }
 
 func NewDelete(rulenum uint32) *Delete {
@@ -174,34 +187,6 @@ func (insert *Insert) Long() string {
 	return "--insert"
 }
 
-func NewReplace(rulenum uint32) *Replace {
-	command := &Replace{
-		baseCommand: baseCommand{
-			commandType: CommandTypeReplace,
-		},
-		rnum: rulenum,
-	}
-	command.setChild(command)
-	return command
-}
-
-type Replace struct {
-	baseCommand
-	rnum uint32
-}
-
-func (replace *Replace) Rulenum() uint32 {
-	return replace.rnum
-}
-
-func (replace *Replace) Short() string {
-	return "-R"
-}
-
-func (replace *Replace) Long() string {
-	return "--replace"
-}
-
 func NewList() *List {
 	command := &List{
 		baseCommand: baseCommand{
@@ -222,28 +207,6 @@ func (list *List) Short() string {
 
 func (list *List) Long() string {
 	return "--list"
-}
-
-func NewListRules() *ListRules {
-	command := &ListRules{
-		baseCommand: baseCommand{
-			commandType: CommandTypeListRules,
-		},
-	}
-	command.setChild(command)
-	return command
-}
-
-type ListRules struct {
-	baseCommand
-}
-
-func (listRules *ListRules) Short() string {
-	return "-S"
-}
-
-func (listRules *ListRules) Long() string {
-	return "--list-rules"
 }
 
 func NewFlush() *Flush {
@@ -268,12 +231,34 @@ func (flush *Flush) Long() string {
 	return "--flush"
 }
 
-func NewZero(rulenum uint32) *Zero {
+func NewPolicy() *Policy {
+	command := &Policy{
+		baseCommand: baseCommand{
+			commandType: CommandTypePolicy,
+		},
+	}
+	command.setChild(command)
+	return command
+}
+
+type Policy struct {
+	baseCommand
+	targetType TargetType
+}
+
+func (policy *Policy) Short() string {
+	return "-P"
+}
+
+func (policy *Policy) Long() string {
+	return "--policy"
+}
+
+func NewZero() *Zero {
 	command := &Zero{
 		baseCommand: baseCommand{
 			commandType: CommandTypeZero,
 		},
-		rnum: rulenum,
 	}
 	command.setChild(command)
 	return command
@@ -340,35 +325,11 @@ func (dc *DeleteChain) Long() string {
 	return "--delete-chain"
 }
 
-func NewPolicy() *Policy {
-	command := &Policy{
-		baseCommand: baseCommand{
-			commandType: CommandTypePolicy,
-		},
-	}
-	command.setChild(command)
-	return command
-}
-
-type Policy struct {
-	baseCommand
-	targetType TargetType
-}
-
-func (policy *Policy) Short() string {
-	return "-P"
-}
-
-func (policy *Policy) Long() string {
-	return "--policy"
-}
-
-func NewRenameChain(newChain string) *RenameChain {
+func NewRenameChain() *RenameChain {
 	command := &RenameChain{
 		baseCommand: baseCommand{
 			commandType: CommandTypeRenameChain,
 		},
-		newChain: newChain,
 	}
 	command.setChild(command)
 	return command
@@ -385,4 +346,76 @@ func (renameChain *RenameChain) Short() string {
 
 func (renameChain *RenameChain) Long() string {
 	return "--rename-chain"
+}
+
+func NewInitTable() *InitTable {
+	command := &InitTable{
+		baseCommand: baseCommand{
+			commandType: CommandTypeInitTable,
+		},
+	}
+	command.setChild(command)
+	return command
+}
+
+type InitTable struct {
+	baseCommand
+}
+
+func (initTable *InitTable) Short() string {
+	return "--init-table"
+}
+
+func NewAtomicInit() *AtomicInit {
+	command := &AtomicInit{
+		baseCommand: baseCommand{
+			commandType: CommandTypeAtomicInit,
+		},
+	}
+	command.setChild(command)
+	return command
+}
+
+type AtomicInit struct {
+	baseCommand
+}
+
+func (atomicInit *AtomicInit) Short() string {
+	return "--atomic-init"
+}
+
+func NewAtomicSave() *AtomicSave {
+	command := &AtomicSave{
+		baseCommand: baseCommand{
+			commandType: CommandTypeAtomicSave,
+		},
+	}
+	command.setChild(command)
+	return command
+}
+
+type AtomicSave struct {
+	baseCommand
+}
+
+func (atomicSave *AtomicSave) Short() string {
+	return "--atomic-save"
+}
+
+func NewAtomicCommit() *AtomicCommit {
+	command := &AtomicCommit{
+		baseCommand: baseCommand{
+			commandType: CommandTypeAtomicCommit,
+		},
+	}
+	command.setChild(command)
+	return command
+}
+
+type AtomicCommit struct {
+	baseCommand
+}
+
+func (atomicCommit *AtomicCommit) Short() string {
+	return "--atomic-commit"
 }

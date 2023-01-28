@@ -1,6 +1,4 @@
-package iptables
-
-import "github.com/singchia/go-xtables/pkg/network"
+package arptables
 
 type Rule struct {
 	tableType TableType
@@ -23,8 +21,6 @@ type Rule struct {
 
 	packets int64
 	bytes   int64
-	prot    network.Protocol
-	opt     string
 }
 
 func (rule *Rule) TableType() TableType {

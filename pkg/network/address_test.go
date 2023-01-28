@@ -1,9 +1,16 @@
-package iptables
+package network
 
 import "testing"
 
 func TestParseAddress(t *testing.T) {
 	ads, err := ParseAddress("google.com")
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	t.Log(ads.String(), "\n")
+
+	ads, err = ParseAddress("one.one.one.one/16")
 	if err != nil {
 		t.Error(err)
 		return

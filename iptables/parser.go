@@ -6,7 +6,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/singchia/go-xtables/pkg/netdb"
+	"github.com/singchia/go-xtables/internal/xerror"
+	"github.com/singchia/go-xtables/internal/xutil"
+	"github.com/singchia/go-xtables/pkg/network"
 )
 
 type OnChainLine func(line []byte) (*Chain, error)
@@ -61,7 +63,7 @@ func ParseRule(line []byte, head []string, chain *Chain) (*Rule, error) {
 		packets: -1,
 		bytes:   -1,
 	}
-	fields, index := NFields(line, len(head))
+	fields, index := xutil.NFields(line, len(head))
 	for i, name := range head {
 		field := string(fields[i])
 		switch name {
@@ -101,15 +103,15 @@ func ParseRule(line []byte, head []string, chain *Chain) (*Rule, error) {
 				rule.target = target
 			}
 		case "prot":
-			prot := netdb.GetProtocolByName(strings.ToUpper(field))
-			if prot != netdb.ProtocolUnknown {
+			prot := network.GetProtocolByName(strings.ToUpper(field))
+			if prot != network.ProtocolUnknown {
 				rule.prot = prot
 			} else {
 				id, err := strconv.Atoi(field)
 				if err != nil {
 					return nil, err
 				}
-				rule.prot = netdb.Protocol(id)
+				rule.prot = network.Protocol(id)
 			}
 		case "opt":
 			rule.opt = field
@@ -147,7 +149,7 @@ func ParseRule(line []byte, head []string, chain *Chain) (*Rule, error) {
 				source = field[1:]
 			}
 
-			ads, err := ParseAddress(source)
+			ads, err := network.ParseAddress(source)
 			if err != nil {
 				return nil, err
 			}
@@ -165,7 +167,7 @@ func ParseRule(line []byte, head []string, chain *Chain) (*Rule, error) {
 				destination = field[1:]
 			}
 
-			ads, err := ParseAddress(destination)
+			ads, err := network.ParseAddress(destination)
 			if err != nil {
 				return nil, err
 			}
@@ -183,7 +185,7 @@ func ParseRule(line []byte, head []string, chain *Chain) (*Rule, error) {
 	if len(params) > 0 {
 		// see https://git.netfilter.org/iptables/tree/iptables/iptables.c
 		// the [goto] clause should be before matches
-		p0, next := NFields(params, 1)
+		p0, next := xutil.NFields(params, 1)
 		if bytes.Compare(p0[0], []byte("[goto]")) == 0 {
 			jump = false
 			params = params[next:]
@@ -222,7 +224,7 @@ func ParseRule(line []byte, head []string, chain *Chain) (*Rule, error) {
 	// then target
 	_, ok := rule.target.Parse(params)
 	if !ok {
-		return nil, ErrTargetParseFailed
+		return nil, xerror.ErrTargetParseFailed
 	}
 	return rule, nil
 }
@@ -265,12 +267,12 @@ func ParseChain(line []byte) (*Chain, error) {
 
 	rest := buf.Bytes()
 	if len(rest) < 2 {
-		return nil, ErrChainLineTooShort
+		return nil, xerror.ErrChainLineTooShort
 	}
 	rest = rest[1 : len(rest)-1]
 	attrs := bytes.Fields(rest)
 	if len(attrs)%2 != 0 {
-		return nil, ErrChainAttrsNotRecognized
+		return nil, xerror.ErrChainAttrsNotRecognized
 	}
 
 	pairs := len(attrs) / 2

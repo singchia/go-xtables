@@ -9,7 +9,8 @@ package iptables
 import (
 	"net"
 
-	"github.com/singchia/go-xtables/pkg/netdb"
+	"github.com/singchia/go-xtables/internal/operator"
+	"github.com/singchia/go-xtables/pkg/network"
 )
 
 func (iptables *IPTables) TableType(table TableType) *IPTables {
@@ -55,7 +56,7 @@ func (iptables *IPTables) MatchIPv6() *IPTables {
 	return iptables
 }
 
-func (iptables *IPTables) MatchProtocol(yes bool, protocol netdb.Protocol) *IPTables {
+func (iptables *IPTables) MatchProtocol(yes bool, protocol network.Protocol) *IPTables {
 	if iptables.statement.err != nil {
 		return iptables
 	}
@@ -77,7 +78,7 @@ func (iptables *IPTables) MatchSource(yes bool, address interface{}) *IPTables {
 	if iptables.statement.err != nil {
 		return iptables
 	}
-	ads, err := ParseAddress(address)
+	ads, err := network.ParseAddress(address)
 	if err != nil {
 		iptables.statement.err = err
 		return iptables
@@ -101,7 +102,7 @@ func (iptables *IPTables) MatchDestination(yes bool, address interface{}) *IPTab
 	if iptables.statement.err != nil {
 		return iptables
 	}
-	ads, err := ParseAddress(address)
+	ads, err := network.ParseAddress(address)
 	if err != nil {
 		iptables.statement.err = err
 		return iptables
@@ -433,7 +434,7 @@ func (iptables *IPTables) MatchHelper(helper string) *IPTables {
 	return iptables
 }
 
-func (iptables *IPTables) MatchHL(operator Operator, value int) *IPTables {
+func (iptables *IPTables) MatchHL(operator operator.Operator, value int) *IPTables {
 	if iptables.statement.err != nil {
 		return iptables
 	}
@@ -446,7 +447,7 @@ func (iptables *IPTables) MatchHL(operator Operator, value int) *IPTables {
 	return iptables
 }
 
-func (iptables *IPTables) MatchICMP(yes bool, typ ICMPType,
+func (iptables *IPTables) MatchICMP(yes bool, typ network.ICMPType,
 	opts ...OptionMatchICMP) *IPTables {
 	if iptables.statement.err != nil {
 		return iptables
@@ -850,7 +851,7 @@ func (iptables *IPTables) MatchTime(opts ...OptionMatchTime) *IPTables {
 	return iptables
 }
 
-func (iptables *IPTables) MatchTOS(yes bool, tos ...TOS) *IPTables {
+func (iptables *IPTables) MatchTOS(yes bool, tos ...network.TOS) *IPTables {
 	if iptables.statement.err != nil {
 		return iptables
 	}
@@ -907,11 +908,10 @@ func (iptables *IPTables) OptionFragment(yes bool) *IPTables {
 	if iptables.statement.err != nil {
 		return iptables
 	}
-	option := &OptionFragment{
-		baseOption: baseOption{
-			optionType: OptionTypeFragment,
-			invert:     !yes,
-		},
+	option, err := NewOptionFragment(yes)
+	if err != nil {
+		iptables.statement.err = err
+		return iptables
 	}
 	iptables.statement.addOption(option)
 	return iptables
@@ -921,12 +921,10 @@ func (iptables *IPTables) OptionSetCounters(packets, bytes uint64) *IPTables {
 	if iptables.statement.err != nil {
 		return iptables
 	}
-	option := &OptionSetCounters{
-		baseOption: baseOption{
-			optionType: OptionTypeSetCounters,
-		},
-		packets: packets,
-		bytes:   bytes,
+	option, err := NewOptionSetCounters(packets, bytes)
+	if err != nil {
+		iptables.statement.err = err
+		return iptables
 	}
 	iptables.statement.addOption(option)
 	return iptables
@@ -936,10 +934,10 @@ func (iptables *IPTables) OptionVerbose() *IPTables {
 	if iptables.statement.err != nil {
 		return iptables
 	}
-	option := &OptionVerbose{
-		baseOption: baseOption{
-			optionType: OptionTypeVerbose,
-		},
+	option, err := NewOptionVerbose()
+	if err != nil {
+		iptables.statement.err = err
+		return iptables
 	}
 	iptables.statement.addOption(option)
 	return iptables
@@ -950,11 +948,10 @@ func (iptables *IPTables) OptionWait(seconds uint32) *IPTables {
 	if iptables.statement.err != nil {
 		return iptables
 	}
-	option := &OptionWait{
-		baseOption: baseOption{
-			optionType: OptionTypeWait,
-		},
-		seconds: seconds,
+	option, err := NewOptionWait(seconds)
+	if err != nil {
+		iptables.statement.err = err
+		return iptables
 	}
 	iptables.statement.addOption(option)
 	return iptables
@@ -964,11 +961,49 @@ func (iptables *IPTables) OptionWaitInterval(microseconds uint64) *IPTables {
 	if iptables.statement.err != nil {
 		return iptables
 	}
-	option := &OptionWaitInterval{
-		baseOption: baseOption{
-			optionType: OptionTypeWaitInterval,
-		},
-		microseconds: microseconds,
+	option, err := NewOptionWaitInterval(microseconds)
+	if err != nil {
+		iptables.statement.err = err
+		return iptables
+	}
+	iptables.statement.addOption(option)
+	return iptables
+}
+
+func (iptables *IPTables) OptionExact() *IPTables {
+	if iptables.statement.err != nil {
+		return iptables
+	}
+	option, err := NewOptionExact()
+	if err != nil {
+		iptables.statement.err = err
+		return iptables
+	}
+	iptables.statement.addOption(option)
+	return iptables
+}
+
+func (iptables *IPTables) OptionLineNumbers() *IPTables {
+	if iptables.statement.err != nil {
+		return iptables
+	}
+	option, err := NewOptionLineNumbers()
+	if err != nil {
+		iptables.statement.err = err
+		return iptables
+	}
+	iptables.statement.addOption(option)
+	return iptables
+}
+
+func (iptables *IPTables) OptionModprobe(command string) *IPTables {
+	if iptables.statement.err != nil {
+		return iptables
+	}
+	option, err := NewOptionModprobe(command)
+	if err != nil {
+		iptables.statement.err = err
+		return iptables
 	}
 	iptables.statement.addOption(option)
 	return iptables
