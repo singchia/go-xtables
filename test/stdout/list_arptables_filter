@@ -1,0 +1,23 @@
+Chain INPUT (policy ACCEPT 104K packets, 2919K bytes)
+1 -j mangle -i * -o * ! -d 192.168.18.199 --mangle-ip-d 1.2.3.5 , pcnt=240K -- bcnt=6729K
+2 -j ACCEPT ! -i enp0s3 -o * , pcnt=0 -- bcnt=0
+3 -j ACCEPT -i enp0s3 -o * , pcnt=536 -- bcnt=15008
+4 -j ACCEPT -i * -o * --opcode 1/1 , pcnt=102K -- bcnt=2858K
+5 -j ACCEPT -i * -o * --opcode 1 , pcnt=1203 -- bcnt=33684
+6 -j ACCEPT -i * -o * --opcode 6/10 , pcnt=0 -- bcnt=0
+7 -j ACCEPT -i * -o * --opcode 6 , pcnt=0 -- bcnt=0
+8 -j ACCEPT -i * -o * --h-length 10/11 , pcnt=0 -- bcnt=0
+9 -j ACCEPT -i * -o * , pcnt=5643 -- bcnt=158K
+10 -j ACCEPT -i * -o * , pcnt=20 -- bcnt=560
+11 -j ACCEPT -i * -o * --h-length 10/25 , pcnt=0 -- bcnt=0
+12 -j ACCEPT -i * -o * --h-length 10 , pcnt=0 -- bcnt=0
+13 -j ACCEPT -i * -o * --dst-mac 00:01:02:03:04:05 , pcnt=0 -- bcnt=0
+14 -j mangle -i * -o * -d 192.168.18.199 --mangle-ip-d 1.2.3.5 , pcnt=0 -- bcnt=0
+15 -i * -o * -d 192.168.18.199 , pcnt=0 -- bcnt=0
+
+Chain OUTPUT (policy ACCEPT 1181 packets, 33068 bytes)
+1 -j CLASSIFY -i * -o * --set-class 1111:0 , pcnt=479 -- bcnt=13412
+2 -j CLASSIFY -i * -o * --set-class 11:0 , pcnt=479 -- bcnt=13412
+3 -j CLASSIFY -i * -o * --set-class ffff:0 , pcnt=479 -- bcnt=13412
+
+Chain FORWARD (policy ACCEPT 0 packets, 0 bytes)
