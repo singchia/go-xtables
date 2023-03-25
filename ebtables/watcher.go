@@ -1,10 +1,12 @@
 package ebtables
 
 import (
+	"regexp"
 	"strconv"
 	"strings"
 
-	"github.com/singchia/go-xtables/internal/xlog"
+	"github.com/singchia/go-hammer/tree"
+	"github.com/singchia/go-xtables"
 )
 
 type WatcherType int
@@ -29,6 +31,22 @@ type Watcher interface {
 	ShortArgs() []string
 	Long() string
 	LongArgs() []string
+	Parse([]byte) (int, bool)
+}
+
+func watcherFactory(watcherType WatcherType) Watcher {
+	switch watcherType {
+	case WatcherTypeLog:
+		watcher, _ := newWatcherLog()
+		return watcher
+	case WatcherTypeNFLog:
+		watcher, _ := newWatcherNFLog()
+		return watcher
+	case WatcherTypeULog:
+		watcher, _ := newWatcherULog()
+		return watcher
+	}
+	return nil
 }
 
 type baseWatcher struct {
@@ -77,21 +95,8 @@ func WithWatcherLog() OptionWatcherLog {
 	}
 }
 
-type LogLevel xlog.LogLevel
-
-const (
-	LogLevelEMERG   = xlog.LogLevelEMERG
-	LogLevelALERT   = xlog.LogLevelALERT
-	LogLevelCRIT    = xlog.LogLevelCRIT
-	LogLevelERR     = xlog.LogLevelERR
-	LogLevelWARNING = xlog.LogLevelWARNING
-	LogLevelNOTICE  = xlog.LogLevelNOTICE
-	LogLevelINFO    = xlog.LogLevelINFO
-	LogLevelDEBUG   = xlog.LogLevelDEBUG
-)
-
 // Defines the logging level.
-func WithWatcherLogLevel(level LogLevel) OptionWatcherLog {
+func WithWatcherLogLevel(level xtables.LogLevel) OptionWatcherLog {
 	return func(watcher *WatcherLog) {
 		watcher.Level = level
 	}
@@ -129,7 +134,7 @@ func WithWatcherARP() OptionWatcherLog {
 	}
 }
 
-func NewWatcherLog(opts ...OptionWatcherLog) (*WatcherLog, error) {
+func newWatcherLog(opts ...OptionWatcherLog) (*WatcherLog, error) {
 	watcher := &WatcherLog{
 		baseWatcher: baseWatcher{
 			watcherType: WatcherTypeLog,
@@ -147,7 +152,7 @@ func NewWatcherLog(opts ...OptionWatcherLog) (*WatcherLog, error) {
 type WatcherLog struct {
 	baseWatcher
 	Default bool
-	Level   LogLevel
+	Level   xtables.LogLevel
 	Prefix  string
 	IP      bool
 	IPv6    bool
@@ -180,6 +185,60 @@ func (watcher *WatcherLog) ShortArgs() []string {
 		args = append(args, "--log-arp")
 	}
 	return args
+}
+
+func (watcher *WatcherLog) Parse(main []byte) (int, bool) {
+	// 1. "--log-(level|prefix|ip|ip6|arp)" #1
+	// 2. "( (emerg|alert|crit|error|warning|notice|info|debug))?" #2 #3
+	// 3. "( "([[:print:]]+)")? *" #4 #5
+	pattern := `--log-(level|prefix|ip|ip6|arp)` +
+		`( (emerg|alert|crit|error|warning|notice|info|debug))?` +
+		`( "([[:print:]]*)")? *`
+	reg := regexp.MustCompile(pattern)
+	index := 0
+	for len(main) > 0 {
+		matches := reg.FindSubmatch(main)
+		if len(matches) != 6 {
+			goto END
+		}
+		switch string(matches[1]) {
+		case "level":
+			// --log-level
+			switch string(matches[3]) {
+			case "emerg":
+				watcher.Level = xtables.LogLevelEMERG
+			case "alert":
+				watcher.Level = xtables.LogLevelALERT
+			case "crit":
+				watcher.Level = xtables.LogLevelCRIT
+			case "error":
+				watcher.Level = xtables.LogLevelERR
+			case "warning":
+				watcher.Level = xtables.LogLevelWARNING
+			case "notice":
+				watcher.Level = xtables.LogLevelNOTICE
+			case "info":
+				watcher.Level = xtables.LogLevelINFO
+			case "debug":
+				watcher.Level = xtables.LogLevelDEBUG
+			}
+		case "prefix":
+			watcher.Prefix = string(matches[5])
+		case "ip":
+			watcher.IP = true
+		case "ip6":
+			watcher.IPv6 = true
+		case "arp":
+			watcher.ARP = true
+		}
+		index += len(matches[0])
+		main = main[len(matches[0]):]
+	}
+END:
+	if index != 0 {
+		return index, true
+	}
+	return 0, false
 }
 
 type OptionWatcherNFLog func(*WatcherNFLog)
@@ -228,7 +287,7 @@ func WithWatcherNFLogThreshold(size uint64) OptionWatcherNFLog {
 	}
 }
 
-func NewWatcherNFLog(opts ...OptionWatcherNFLog) (*WatcherNFLog, error) {
+func newWatcherNFLog(opts ...OptionWatcherNFLog) (*WatcherNFLog, error) {
 	watcher := &WatcherNFLog{
 		baseWatcher: baseWatcher{
 			watcherType: WatcherTypeNFLog,
@@ -287,6 +346,55 @@ func (watcher *WatcherNFLog) ShortArgs() []string {
 	return args
 }
 
+func (watcher *WatcherNFLog) Parse(main []byte) (int, bool) {
+	// 1. "--nflog-(group|prefix|range|threshold)" #1
+	// 2. "( "([[:print:]]+)")?" #2 #3
+	// 3. "( ([0-9]+))? *" #4 #5
+	pattern := `--nflog-(group|prefix|range|threshold)` +
+		`( "([[:print:]]*)")?` +
+		`( ([0-9]+))? *`
+	reg := regexp.MustCompile(pattern)
+	index := 0
+	for len(main) > 0 {
+		matches := reg.FindSubmatch(main)
+		if len(matches) != 6 {
+			goto END
+		}
+		switch string(matches[1]) {
+		case "prefix":
+			watcher.Prefix = string(matches[3])
+		case "group":
+			group, err := strconv.ParseUint(string(matches[5]), 10, 32)
+			if err != nil {
+				goto END
+			}
+			watcher.Group = uint32(group)
+			watcher.HasGroup = true
+		case "range":
+			rang, err := strconv.ParseUint(string(matches[5]), 10, 64)
+			if err != nil {
+				goto END
+			}
+			watcher.Range = rang
+			watcher.HasRange = true
+		case "threshold":
+			threshold, err := strconv.ParseUint(string(matches[5]), 10, 64)
+			if err != nil {
+				goto END
+			}
+			watcher.Threshold = threshold
+			watcher.HasThreshold = true
+		}
+		index += len(matches[0])
+		main = main[len(matches[0]):]
+	}
+END:
+	if index != 0 {
+		return index, true
+	}
+	return 0, false
+}
+
 type OptionWatcherULog func(*WatcherULog)
 
 // Use the default settings: ulog-prefix="", ulog-nlgroup=1, ulog-cprange=4096,
@@ -333,13 +441,13 @@ func WithWatcherQThreshold(threshold int) OptionWatcherULog {
 	}
 }
 
-func NewWatcherULog(opts ...OptionWatcherULog) (*WatcherULog, error) {
+func newWatcherULog(opts ...OptionWatcherULog) (*WatcherULog, error) {
 	watcher := &WatcherULog{
 		baseWatcher: baseWatcher{
 			watcherType: WatcherTypeULog,
 		},
 		NetlinkGroup:   1,
-		CopyRange:      0,
+		CopyRange:      0, // maximum copy range is given by nfbufsiz
 		QueueThreshold: -1,
 	}
 	watcher.setChild(watcher)
@@ -384,4 +492,112 @@ func (watcher *WatcherULog) ShortArgs() []string {
 			strconv.Itoa(watcher.QueueThreshold))
 	}
 	return args
+}
+
+func (watcher *WatcherULog) Parse(main []byte) (int, bool) {
+	// 1. "--ulog-(prefix|nlgroup|cprange|qthreshold)" #1
+	// 2. "( "([[:print:]]+)")?" #2 #3
+	// 3. "( default_cprange)?" #4
+	// 4. "( ([0-9]+))? *" #5 #6
+	pattern := `--ulog-(prefix|nlgroup|cprange|qthreshold)` +
+		`( "([[:print:]]*)")?` +
+		`( default_cprange)?` +
+		`( ([0-9]+))? *`
+	reg := regexp.MustCompile(pattern)
+	index := 0
+	for len(main) > 0 {
+		matches := reg.FindSubmatch(main)
+		if len(matches) != 7 {
+			goto END
+		}
+		switch string(matches[1]) {
+		case "prefix":
+			watcher.Prefix = string(matches[3])
+		case "nlgroup":
+			nlgroup, err := strconv.ParseInt(string(matches[6]), 10, 8)
+			if err != nil {
+				goto END
+			}
+			watcher.NetlinkGroup = int8(nlgroup)
+		case "cprange":
+			if len(matches[4]) != 0 {
+				watcher.CopyRange = 0
+				break
+			}
+			cprange, err := strconv.Atoi(string(matches[6]))
+			if err != nil {
+				goto END
+			}
+			watcher.CopyRange = cprange
+		case "qthreshold":
+			threshold, err := strconv.Atoi(string(matches[6]))
+			if err != nil {
+				goto END
+			}
+			watcher.QueueThreshold = threshold
+		}
+		index += len(matches[0])
+		main = main[len(matches[0]):]
+	}
+END:
+	if index != 0 {
+		return index, true
+	}
+	return 0, false
+}
+
+var (
+	watcherPrefixes = map[string]WatcherType{
+		"--log":             WatcherTypeLog,
+		"--log-level":       WatcherTypeLog,
+		"--log-prefix":      WatcherTypeLog,
+		"--log-ip":          WatcherTypeLog,
+		"--log-ip6":         WatcherTypeLog,
+		"--log-arp":         WatcherTypeLog,
+		"--nflog":           WatcherTypeNFLog,
+		"--nflog-group":     WatcherTypeNFLog,
+		"--nflog-prefix":    WatcherTypeNFLog,
+		"--nflog-range":     WatcherTypeNFLog,
+		"--nflog-threshold": WatcherTypeNFLog,
+		"--ulog":            WatcherTypeULog,
+		"--ulog-prefix":     WatcherTypeULog,
+		"--ulog-nlgroup":    WatcherTypeULog,
+		"--ulog-cprange":    WatcherTypeULog,
+		"--ulog-qthreshold": WatcherTypeULog,
+	}
+
+	watcherTrie tree.Trie
+)
+
+func init() {
+	watcherTrie = tree.NewTrie()
+	for prefix, typ := range watcherPrefixes {
+		watcherTrie.Add(prefix, typ)
+	}
+}
+
+func parseWatcher(params []byte) ([]Watcher, int, error) {
+	index := 0
+	watchers := []Watcher{}
+	for len(params) > 0 {
+		node, ok := watcherTrie.LPM(string(params))
+		if !ok {
+			break
+		}
+		typ := node.Value().(WatcherType)
+		// get watcher by watcher type
+		watcher := watcherFactory(typ)
+		if watcher == nil {
+			return watchers, index, xtables.ErrWatcherParams
+		}
+		// index meaning the end of this match
+		offset, ok := watcher.Parse(params)
+		if !ok {
+			return watchers, index, xtables.ErrWatcherParams
+		}
+		index += offset
+		watchers = append(watchers, watcher)
+		params = params[offset:]
+	}
+	return watchers, index, nil
 }

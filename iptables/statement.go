@@ -1,9 +1,3 @@
-/*
- * Apache License 2.0
- *
- * Copyright (c) 2022, Austin Zhai
- * All rights reserved.
- */
 package iptables
 
 import (
@@ -11,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/singchia/go-xtables/internal/xerror"
+	"github.com/singchia/go-xtables"
 	"github.com/singchia/go-xtables/pkg/constraint"
 )
 
@@ -32,12 +26,12 @@ type Statement struct {
 
 func NewStatement() *Statement {
 	state := &Statement{
-		table:       TableTypeFilter,
+		table:       TableTypeNull,
 		matches:     make(map[MatchType]Match),
 		options:     make(map[OptionType]Option),
 		constraints: constraint.NewConstraints(),
 	}
-	option, err := NewOptionNumeric()
+	option, err := newOptionNumeric()
 	if err != nil {
 		state.err = err
 	} else {
@@ -58,8 +52,10 @@ func (statement *Statement) Elems() ([]string, error) {
 	// table
 	elems := []string{}
 	elems = append(elems, "-t")
-	tableName, chainName := "filter", ""
+	tableName, chainName := "", ""
 	switch statement.table {
+	case TableTypeFilter:
+		tableName = "filter"
 	case TableTypeNat:
 		tableName = "nat"
 	case TableTypeMangle:
@@ -73,7 +69,7 @@ func (statement *Statement) Elems() ([]string, error) {
 
 	// command
 	if statement.command == nil {
-		return nil, xerror.ErrCommandRequired
+		return nil, xtables.ErrCommandRequired
 	}
 	elems = append(elems, statement.command.Short())
 
@@ -92,10 +88,9 @@ func (statement *Statement) Elems() ([]string, error) {
 	case ChainTypeUserDefined:
 		chainName = statement.userDefinedChain
 	}
-	if chainName == "" {
-		return nil, xerror.ErrChainRequired
+	if chainName != "" {
+		elems = append(elems, chainName)
 	}
-	elems = append(elems, chainName)
 
 	// command policy and rename specific
 	switch statement.command.Type() {
@@ -115,10 +110,14 @@ func (statement *Statement) Elems() ([]string, error) {
 	for _, option := range statement.options {
 		args := option.ShortArgs()
 		if args != nil {
-			elems = append(elems, args...)
+			if option.Type() != OptionTypeNumeric ||
+				(option.Type() == OptionTypeNumeric &&
+					statement.command.Type() == CommandTypeListRules) {
+				elems = append(elems, args...)
+			}
 		}
 		if option.Type() == OptionTypeNotNumeric {
-			delete(statement.options, OptionTypeNotNumeric)
+			delete(statement.options, OptionTypeNumeric)
 		}
 	}
 

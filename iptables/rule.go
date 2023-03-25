@@ -27,12 +27,16 @@ type Rule struct {
 	opt     string
 }
 
-func (rule *Rule) TableType() TableType {
+func (rule *Rule) Table() TableType {
 	return rule.tableType
 }
 
-func (rule *Rule) ChainType() ChainType {
+func (rule *Rule) Chain() ChainType {
 	return rule.chain.chainType
+}
+
+func (rule *Rule) Target() Target {
+	return rule.target
 }
 
 func (rule *Rule) Matches() []Match {
@@ -41,4 +45,8 @@ func (rule *Rule) Matches() []Match {
 
 func (rule *Rule) Options() []Option {
 	return rule.options
+}
+
+func (rule *Rule) Protocol() network.Protocol {
+	return rule.prot
 }

@@ -1,4 +1,4 @@
-package xtime
+package xtables
 
 import (
 	"errors"

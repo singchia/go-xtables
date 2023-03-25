@@ -6,15 +6,17 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/singchia/go-xtables/internal/xerror"
+	"github.com/singchia/go-xtables"
 	"github.com/singchia/go-xtables/internal/xutil"
 	"github.com/singchia/go-xtables/pkg/network"
 )
 
-type OnChainLine func(line []byte) (*Chain, error)
-type OnRuleLine func(rule []byte, head []string, chain *Chain) (*Rule, error)
+type onChainLine func(line []byte) (*Chain, error)
+type onRuleLine func(rule []byte, head []string, chain *Chain) (*Rule, error)
 
-func Parse(data []byte, onChainLine OnChainLine, onRuleLine OnRuleLine) ([]*Chain, []*Rule, error) {
+func parse(data []byte, table TableType, onChainLine onChainLine, onRuleLine onRuleLine) (
+	[]*Chain, []*Rule, error) {
+
 	chains := []*Chain{}
 	rules := []*Rule{}
 
@@ -35,6 +37,7 @@ func Parse(data []byte, onChainLine OnChainLine, onRuleLine OnRuleLine) ([]*Chai
 				if err != nil {
 					return nil, nil, err
 				}
+				chain.tableType = table
 				chains = append(chains, chain)
 			}
 		} else if index == 1 {
@@ -50,6 +53,7 @@ func Parse(data []byte, onChainLine OnChainLine, onRuleLine OnRuleLine) ([]*Chai
 			if err != nil {
 				return nil, nil, err
 			}
+			rule.tableType = table
 			rules = append(rules, rule)
 		}
 		index++
@@ -57,11 +61,16 @@ func Parse(data []byte, onChainLine OnChainLine, onRuleLine OnRuleLine) ([]*Chai
 	return chains, rules, nil
 }
 
-func ParseRule(line []byte, head []string, chain *Chain) (*Rule, error) {
+func parseRule(line []byte, head []string, chain *Chain) (*Rule, error) {
 	rule := &Rule{
-		chain:   chain,
-		packets: -1,
-		bytes:   -1,
+		chain:      chain,
+		lineNumber: -1,
+		packets:    -1,
+		bytes:      -1,
+		matches:    []Match{},
+		options:    []Option{},
+		matchMap:   map[MatchType]Match{},
+		optionMap:  map[OptionType]Option{},
 	}
 	fields, index := xutil.NFields(line, len(head))
 	for i, name := range head {
@@ -75,28 +84,28 @@ func ParseRule(line []byte, head []string, chain *Chain) (*Rule, error) {
 			rule.lineNumber = num
 
 		case "pkts":
-			num, err := unfoldDecimal(field)
+			num, err := xutil.UnfoldDecimal(field)
 			if err != nil {
 				return nil, err
 			}
 			rule.packets = num
 		case "bytes":
-			num, err := unfoldDecimal(field)
+			num, err := xutil.UnfoldDecimal(field)
 			if err != nil {
 				return nil, err
 			}
 			rule.bytes = num
 		case "target":
-			value, ok := TargetValueType[field]
+			value, ok := targetValueType[field]
 			if !ok {
 				// user defined chain, wait to see concrete details
-				target, err := NewTarget(TargetTypeUnknown, field)
+				target, err := targetFactory(TargetTypeNull, field)
 				if err != nil {
 					return nil, err
 				}
 				rule.target = target
 			} else {
-				target, err := NewTarget(value)
+				target, err := targetFactory(value)
 				if err != nil {
 					return nil, err
 				}
@@ -116,36 +125,36 @@ func ParseRule(line []byte, head []string, chain *Chain) (*Rule, error) {
 		case "opt":
 			rule.opt = field
 		case "in":
-			yes := true
+			invert := false
 			iface := field
 			if field[0] == '!' {
-				yes = false
+				invert = true
 				iface = field[1:]
 			}
-			match, err := NewMatchInInterface(yes, iface)
+			match, err := newMatchInInterface(invert, iface)
 			if err != nil {
 				return nil, err
 			}
 			rule.matches = append(rule.matches, match)
 			rule.matchMap[MatchTypeInInterface] = match
 		case "out":
-			yes := true
+			invert := false
 			iface := field
 			if field[0] == '!' {
-				yes = false
+				invert = false
 				iface = field[1:]
 			}
-			match, err := NewMatchOutInterface(yes, iface)
+			match, err := newMatchOutInterface(invert, iface)
 			if err != nil {
 				return nil, err
 			}
 			rule.matches = append(rule.matches, match)
 			rule.matchMap[MatchTypeOutInterface] = match
 		case "source":
-			yes := true
+			invert := false
 			source := field
 			if field[0] == '!' {
-				yes = false
+				invert = true
 				source = field[1:]
 			}
 
@@ -153,17 +162,17 @@ func ParseRule(line []byte, head []string, chain *Chain) (*Rule, error) {
 			if err != nil {
 				return nil, err
 			}
-			match, err := NewMatchSource(yes, ads)
+			match, err := newMatchSource(invert, ads)
 			if err != nil {
 				return nil, err
 			}
 			rule.matches = append(rule.matches, match)
 			rule.matchMap[MatchTypeSource] = match
 		case "destination":
-			yes := true
+			invert := false
 			destination := field
 			if field[0] == '!' {
-				yes = false
+				invert = true
 				destination = field[1:]
 			}
 
@@ -171,7 +180,7 @@ func ParseRule(line []byte, head []string, chain *Chain) (*Rule, error) {
 			if err != nil {
 				return nil, err
 			}
-			match, err := NewMatchDestination(yes, ads)
+			match, err := newMatchDestination(invert, ads)
 			if err != nil {
 				return nil, err
 			}
@@ -192,16 +201,16 @@ func ParseRule(line []byte, head []string, chain *Chain) (*Rule, error) {
 		}
 	}
 
-	if rule.target.Type() == TargetTypeUnknown {
+	if rule.target.Type() == TargetTypeNull {
 		if jump {
-			target, err := NewTarget(TargetTypeJumpChain,
+			target, err := targetFactory(TargetTypeJumpChain,
 				rule.target.(*TargetUnknown).Unknown())
 			if err != nil {
 				return nil, err
 			}
 			rule.target = target
 		} else {
-			target, err := NewTarget(TargetTypeGotoChain,
+			target, err := targetFactory(TargetTypeGotoChain,
 				rule.target.(*TargetUnknown).Unknown())
 			if err != nil {
 				return nil, err
@@ -224,12 +233,12 @@ func ParseRule(line []byte, head []string, chain *Chain) (*Rule, error) {
 	// then target
 	_, ok := rule.target.Parse(params)
 	if !ok {
-		return nil, xerror.ErrTargetParseFailed
+		return nil, xtables.ErrTargetParseFailed
 	}
 	return rule, nil
 }
 
-func ParseChain(line []byte) (*Chain, error) {
+func parseChain(line []byte) (*Chain, error) {
 	chain := &Chain{
 		references: -1,
 	}
@@ -267,12 +276,12 @@ func ParseChain(line []byte) (*Chain, error) {
 
 	rest := buf.Bytes()
 	if len(rest) < 2 {
-		return nil, xerror.ErrChainLineTooShort
+		return nil, xtables.ErrChainLineTooShort
 	}
 	rest = rest[1 : len(rest)-1]
 	attrs := bytes.Fields(rest)
 	if len(attrs)%2 != 0 {
-		return nil, xerror.ErrChainAttrsNotRecognized
+		return nil, xtables.ErrChainAttrsNotRecognized
 	}
 
 	pairs := len(attrs) / 2
@@ -285,23 +294,17 @@ func ParseChain(line []byte) (*Chain, error) {
 		if bytes.HasPrefix(first, []byte("policy")) {
 			switch string(second) {
 			case "ACCEPT":
-				chain.policy = &TargetAccept{
-					baseTarget: baseTarget{
-						targetType: TargetTypeAccept,
-					},
-				}
+				chain.policy = newTargetAccept()
 			case "DROP":
-				chain.policy = &TargetDrop{
-					baseTarget: baseTarget{
-						targetType: TargetTypeDrop,
-					},
-				}
+				chain.policy = newTargetDrop()
+			case "RETURN":
+				chain.policy = newTargetReturn()
 			}
 		}
 
 		// packets
 		if bytes.HasPrefix(second, []byte("packets")) {
-			num, err := unfoldDecimal(string(first))
+			num, err := xutil.UnfoldDecimal(string(first))
 			if err != nil {
 				return nil, err
 			}
@@ -310,7 +313,7 @@ func ParseChain(line []byte) (*Chain, error) {
 
 		// bytes
 		if bytes.HasPrefix(second, []byte("bytes")) {
-			num, err := unfoldDecimal(string(first))
+			num, err := xutil.UnfoldDecimal(string(first))
 			if err != nil {
 				return nil, err
 			}
@@ -319,7 +322,7 @@ func ParseChain(line []byte) (*Chain, error) {
 
 		// references
 		if bytes.HasPrefix(second, []byte("references")) {
-			num, err := unfoldDecimal(string(first))
+			num, err := xutil.UnfoldDecimal(string(first))
 			if err != nil {
 				return nil, err
 			}
@@ -327,48 +330,4 @@ func ParseChain(line []byte) (*Chain, error) {
 		}
 	}
 	return chain, nil
-}
-
-func unfoldDecimal(decimal string) (int64, error) {
-	lastPart := decimal[len(decimal)-1]
-	numPart := decimal[0 : len(decimal)-1]
-	switch lastPart {
-	case 'k', 'K':
-		num, err := strconv.ParseInt(numPart, 10, 64)
-		if err != nil {
-			return num, err
-		}
-		return num * 1024, nil
-	case 'm', 'M':
-		num, err := strconv.ParseInt(numPart, 10, 64)
-		if err != nil {
-			return num, err
-		}
-		return num * 1024 * 1024, nil
-	case 'g', 'G':
-		num, err := strconv.ParseInt(numPart, 10, 64)
-		if err != nil {
-			return num, err
-		}
-		return num * 1024 * 1024 * 1024, nil
-	case 't', 'T':
-		num, err := strconv.ParseInt(numPart, 10, 64)
-		if err != nil {
-			return num, err
-		}
-		return num * 1024 * 1024 * 1024 * 1024, nil
-	case 'p', 'P':
-		num, err := strconv.ParseInt(numPart, 10, 64)
-		if err != nil {
-			return num, err
-		}
-		return num * 1024 * 1024 * 1024 * 1024 * 1024, nil
-	case 'z', 'Z':
-		num, err := strconv.ParseInt(numPart, 10, 64)
-		if err != nil {
-			return num, err
-		}
-		return num * 1024 * 1024 * 1024 * 1024 * 1024 * 1024, nil
-	}
-	return strconv.ParseInt(decimal, 10, 64)
 }

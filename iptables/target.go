@@ -7,16 +7,14 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/singchia/go-xtables/internal/operator"
-	"github.com/singchia/go-xtables/internal/rate"
-	"github.com/singchia/go-xtables/internal/xerror"
+	"github.com/singchia/go-xtables"
 	"github.com/singchia/go-xtables/pkg/network"
 )
 
 type TargetType int
 
 const (
-	TargetTypeUnknown TargetType = iota
+	TargetTypeNull TargetType = iota
 	TargetTypeAccept
 	TargetTypeDrop
 	TargetTypeReturn
@@ -66,7 +64,7 @@ const (
 )
 
 var (
-	TargetTypeValue = map[TargetType]string{
+	targetTypeValue = map[TargetType]string{
 		TargetTypeAccept:      "ACCEPT",
 		TargetTypeDrop:        "DROP",
 		TargetTypeReturn:      "RETURN",
@@ -112,7 +110,7 @@ var (
 		TargetTypeULog:        "ULOG",
 	}
 
-	TargetValueType = map[string]TargetType{
+	targetValueType = map[string]TargetType{
 		"ACCEPT":      TargetTypeAccept,
 		"DROP":        TargetTypeDrop,
 		"RETURN":      TargetTypeReturn,
@@ -265,9 +263,9 @@ type Target interface {
 	Parse([]byte) (int, bool)
 }
 
-func NewTarget(targetType TargetType, args ...interface{}) (Target, error) {
+func targetFactory(targetType TargetType, args ...interface{}) (Target, error) {
 	switch targetType {
-	case TargetTypeUnknown:
+	case TargetTypeNull:
 		if len(args) != 1 {
 			goto Err
 		}
@@ -275,13 +273,13 @@ func NewTarget(targetType TargetType, args ...interface{}) (Target, error) {
 		if !ok {
 			goto Err
 		}
-		return NewTargetUnknown(name), nil
+		return newTargetUnknown(name), nil
 	case TargetTypeAccept:
-		return NewTargetAccept(), nil
+		return newTargetAccept(), nil
 	case TargetTypeDrop:
-		return NewTargetDrop(), nil
+		return newTargetDrop(), nil
 	case TargetTypeReturn:
-		return NewTargetReturn(), nil
+		return newTargetReturn(), nil
 	case TargetTypeJumpChain:
 		if len(args) != 1 {
 			goto Err
@@ -290,7 +288,7 @@ func NewTarget(targetType TargetType, args ...interface{}) (Target, error) {
 		if !ok {
 			goto Err
 		}
-		return NewTargetJumpChain(chain), nil
+		return newTargetJumpChain(chain), nil
 	case TargetTypeGotoChain:
 		if len(args) != 1 {
 			goto Err
@@ -299,89 +297,89 @@ func NewTarget(targetType TargetType, args ...interface{}) (Target, error) {
 		if !ok {
 			goto Err
 		}
-		return NewTargetGotoChain(chain), nil
+		return newTargetGotoChain(chain), nil
 	case TargetTypeAudit:
-		return NewTargetAudit(-1)
+		return newTargetAudit(-1)
 	case TargetTypeCheckSum:
-		return NewTargetCheckSum()
+		return newTargetCheckSum()
 	case TargetTypeClassify:
-		return NewTargetClassify(-1, -1)
+		return newTargetClassify(-1, -1)
 	case TargetTypeClusterIP:
-		return NewTargetClusterIP()
+		return newTargetClusterIP()
 	case TargetTypeConnMark:
-		return NewTargetConnMark()
+		return newTargetConnMark()
 	case TargetTypeConnSecMark:
-		return NewTargetConnSecMark(-1)
+		return newTargetConnSecMark(-1)
 	case TargetTypeCT:
-		return NewTargetCT()
+		return newTargetCT()
 	case TargetTypeDNAT:
-		return NewTargetDNAT()
+		return newTargetDNAT()
 	case TargetTypeDNPT:
-		return NewTargetDNPT()
+		return newTargetDNPT()
 	case TargetTypeDSCP:
-		return NewTargetDSCP()
+		return newTargetDSCP()
 	case TargetTypeECN:
-		return NewTargetECN()
+		return newTargetECN()
 	case TargetTypeHL:
-		return NewTargetHL()
+		return newTargetHL()
 	case TargetTypeHMark:
-		return NewTargetHMark()
+		return newTargetHMark()
 	case TargetTypeIdleTimer:
-		return NewTargetIdleTimer()
+		return newTargetIdleTimer()
 	case TargetTypeLED:
-		return NewTargetLED()
+		return newTargetLED()
 	case TargetTypeLog:
-		return NewTargetLog()
+		return newTargetLog()
 	case TargetTypeMark:
-		return NewTargetMark()
+		return newTargetMark()
 	case TargetTypeMasquerade:
-		return NewTargetMasquerade()
+		return newTargetMasquerade()
 	case TargetTypeNetmap:
-		return NewTargetNetmap()
+		return newTargetNetmap()
 	case TargetTypeNFLog:
-		return NewTargetNFLog()
+		return newTargetNFLog()
 	case TargetTypeNFQueue:
-		return NewTargetNFQueue()
+		return newTargetNFQueue()
 	case TargetTypeRateEst:
-		return NewTargetRateEst()
+		return newTargetRateEst()
 	case TargetTypeRedirect:
-		return NewTargetRedirect()
+		return newTargetRedirect()
 	case TargetTypeReject:
-		return NewTargetReject()
+		return newTargetReject()
 	case TargetTypeSame:
-		return NewTargetSame()
+		return newTargetSame()
 	case TargetTypeSecMark:
-		return NewTargetSecMark()
+		return newTargetSecMark()
 	case TargetTypeSet:
-		return NewTargetSet()
+		return newTargetSet()
 	case TargetTypeSNAT:
-		return NewTargetSNAT()
+		return newTargetSNAT()
 	case TargetTypeSNPT:
-		return NewTargetSNPT()
+		return newTargetSNPT()
 	case TargetTypeSYNProxy:
-		return NewTargetSYNProxy()
+		return newTargetSYNProxy()
 	case TargetTypeTCPMSS:
-		return NewTargetTCPMSS()
+		return newTargetTCPMSS()
 	case TargetTypeTCPOptStrip:
-		return NewTargetTCPOptStrip()
+		return newTargetTCPOptStrip()
 	case TargetTypeTEE:
-		return NewTargetTEE(nil)
+		return newTargetTEE(nil)
 	case TargetTypeTOS:
-		return NewTargetTOS()
+		return newTargetTOS()
 	case TargetTypeTProxy:
-		return NewTargetTProxy()
+		return newTargetTProxy()
 	case TargetTypeTrace:
-		return NewTargetTrace()
+		return newTargetTrace()
 	case TargetTypeTTL:
-		return NewTargetTTL()
+		return newTargetTTL()
 	case TargetTypeULog:
-		return NewTargetULog()
+		return newTargetULog()
 	default:
-		return NewTargetEmpty()
+		return newTargetEmpty()
 	}
 
 Err:
-	return nil, xerror.ErrArgs
+	return nil, xtables.ErrArgs
 }
 
 type baseTarget struct {
@@ -409,14 +407,14 @@ func (bt baseTarget) LongArgs() []string {
 }
 
 func (bt baseTarget) Parse([]byte) (int, bool) {
-	return 0, false
+	return 0, true
 }
 
 type TargetEmpty struct {
 	baseTarget
 }
 
-func NewTargetEmpty() (*TargetEmpty, error) {
+func newTargetEmpty() (*TargetEmpty, error) {
 	return &TargetEmpty{
 		baseTarget: baseTarget{
 			targetType: TargetTypeEmpty,
@@ -429,10 +427,10 @@ type TargetUnknown struct {
 	unknown string
 }
 
-func NewTargetUnknown(unknown string) *TargetUnknown {
+func newTargetUnknown(unknown string) *TargetUnknown {
 	return &TargetUnknown{
 		baseTarget: baseTarget{
-			targetType: TargetTypeUnknown,
+			targetType: TargetTypeNull,
 		},
 		unknown: unknown,
 	}
@@ -446,7 +444,7 @@ type TargetAccept struct {
 	baseTarget
 }
 
-func NewTargetAccept() *TargetAccept {
+func newTargetAccept() *TargetAccept {
 	return &TargetAccept{
 		baseTarget: baseTarget{
 			targetType: TargetTypeAccept,
@@ -474,7 +472,7 @@ type TargetDrop struct {
 	baseTarget
 }
 
-func NewTargetDrop() *TargetDrop {
+func newTargetDrop() *TargetDrop {
 	return &TargetDrop{
 		baseTarget: baseTarget{
 			targetType: TargetTypeDrop,
@@ -502,7 +500,7 @@ type TargetReturn struct {
 	baseTarget
 }
 
-func NewTargetReturn() *TargetReturn {
+func newTargetReturn() *TargetReturn {
 	return &TargetReturn{
 		baseTarget: baseTarget{
 			targetType: TargetTypeReturn,
@@ -531,7 +529,7 @@ type TargetJumpChain struct {
 	chain string
 }
 
-func NewTargetJumpChain(chain string) *TargetJumpChain {
+func newTargetJumpChain(chain string) *TargetJumpChain {
 	return &TargetJumpChain{
 		baseTarget: baseTarget{
 			targetType: TargetTypeJumpChain,
@@ -561,7 +559,7 @@ type TargetGotoChain struct {
 	chain string
 }
 
-func NewTargetGotoChain(chain string) *TargetGotoChain {
+func newTargetGotoChain(chain string) *TargetGotoChain {
 	return &TargetGotoChain{
 		baseTarget: baseTarget{
 			targetType: TargetTypeGotoChain,
@@ -609,7 +607,7 @@ const (
 )
 
 // Set type of audit record.
-func NewTargetAudit(typ AuditType) (*TargetAudit, error) {
+func newTargetAudit(typ AuditType) (*TargetAudit, error) {
 	return &TargetAudit{
 		baseTarget: baseTarget{
 			targetType: TargetTypeAudit,
@@ -666,7 +664,7 @@ func (tAudit *TargetAudit) Parse(main []byte) (int, bool) {
 
 // This target allows to selectively work around broken/old applications.
 // Compute and fill in the checksum in a packet that lacks a checksum.
-func NewTargetCheckSum() (*TargetChecksum, error) {
+func newTargetCheckSum() (*TargetChecksum, error) {
 	target := &TargetChecksum{
 		baseTarget: baseTarget{
 			targetType: TargetTypeCheckSum,
@@ -714,7 +712,7 @@ func (tChecksum *TargetChecksum) Parse(main []byte) (int, bool) {
 }
 
 // This option takes major and minor of class value
-func NewTargetClassify(major, minor int) (*TargetClassify, error) {
+func newTargetClassify(major, minor int) (*TargetClassify, error) {
 	return &TargetClassify{
 		baseTarget: baseTarget{
 			targetType: TargetTypeClassify,
@@ -839,7 +837,7 @@ func WithTargetClusterIPHashInit(hashInit int) OptionTargetClusterIP {
 	}
 }
 
-func NewTargetClusterIP(opts ...OptionTargetClusterIP) (*TargetClusterIP, error) {
+func newTargetClusterIP(opts ...OptionTargetClusterIP) (*TargetClusterIP, error) {
 	target := &TargetClusterIP{
 		baseTarget: baseTarget{
 			targetType: TargetTypeClusterIP,
@@ -1062,7 +1060,7 @@ func WithTargetConnMarkXor(mark int) OptionTargetConnMark {
 	}
 }
 
-func NewTargetConnMark(opts ...OptionTargetConnMark) (*TargetConnMark, error) {
+func newTargetConnMark(opts ...OptionTargetConnMark) (*TargetConnMark, error) {
 	target := &TargetConnMark{
 		baseTarget: baseTarget{
 			targetType: TargetTypeConnMark,
@@ -1278,7 +1276,7 @@ const (
 	TargetConnSecMarkModeRESTORE
 )
 
-func NewTargetConnSecMark(mode TargetConnSecMarkMode) (*TargetConnSecMark, error) {
+func newTargetConnSecMark(mode TargetConnSecMarkMode) (*TargetConnSecMark, error) {
 	target := &TargetConnSecMark{
 		baseTarget: baseTarget{
 			targetType: TargetTypeConnSecMark,
@@ -1411,9 +1409,9 @@ const (
 type OptionTargetCT func(*TargetCT)
 
 // Disables connection tracking for this packet.
-func WithTargetCT(yes bool) OptionTargetCT {
+func WithTargetCTNoTrack() OptionTargetCT {
 	return func(tCT *TargetCT) {
-		tCT.NoTrack = !yes
+		tCT.NoTrack = true
 	}
 }
 
@@ -1493,7 +1491,7 @@ func WithTargetCTTimeout(timeout string) OptionTargetCT {
 	}
 }
 
-func NewTargetCT(opts ...OptionTargetCT) (*TargetCT, error) {
+func newTargetCT(opts ...OptionTargetCT) (*TargetCT, error) {
 	target := &TargetCT{
 		baseTarget: baseTarget{
 			targetType: TargetTypeCT,
@@ -1673,8 +1671,17 @@ func (tCT *TargetCT) Parse(main []byte) (int, bool) {
 
 type OptionTargetDNAT func(*TargetDNAT)
 
+func WithTargetDNATToAddr(addr network.Address, port int) OptionTargetDNAT {
+	return func(tDNAT *TargetDNAT) {
+		tDNAT.AddrMin = addr
+		tDNAT.AddrMax = nil
+		tDNAT.PortMin = port
+		tDNAT.PortMax = -1
+	}
+}
+
 // To set addr nil or port -1 means empty.
-func WithTargetDNATToAddr(addrMin, addrMax network.Address, portMin, portMax int) OptionTargetDNAT {
+func WithTargetDNATToAddrs(addrMin, addrMax network.Address, portMin, portMax int) OptionTargetDNAT {
 	return func(tDNAT *TargetDNAT) {
 		tDNAT.AddrMin = addrMin
 		tDNAT.AddrMax = addrMax
@@ -1695,7 +1702,7 @@ func WithTargetDNATPersistent() OptionTargetDNAT {
 	}
 }
 
-func NewTargetDNAT(opts ...OptionTargetDNAT) (*TargetDNAT, error) {
+func newTargetDNAT(opts ...OptionTargetDNAT) (*TargetDNAT, error) {
 	target := &TargetDNAT{
 		baseTarget: baseTarget{
 			targetType: TargetTypeDNAT,
@@ -1832,7 +1839,7 @@ func WithTargetDNPTDstPrefix(prefix *net.IPNet) OptionTargetDNPT {
 	}
 }
 
-func NewTargetDNPT(opts ...OptionTargetDNPT) (*TargetDNPT, error) {
+func newTargetDNPT(opts ...OptionTargetDNPT) (*TargetDNPT, error) {
 	target := &TargetDNPT{
 		baseTarget: baseTarget{
 			targetType: TargetTypeDNPT,
@@ -1905,19 +1912,19 @@ func (tDNPT *TargetDNPT) Parse(main []byte) (int, bool) {
 type OptionTargetDSCP func(*TargetDSCP)
 
 // Target against a numeric value [0-63].
-func WithTargetDSCPValue(yes bool, value int) OptionTargetDSCP {
+func WithTargetDSCPValue(value int) OptionTargetDSCP {
 	return func(mDSCP *TargetDSCP) {
 		mDSCP.Value = value
 	}
 }
 
-func WithTargetDSCPClass(yes bool, class DSCPClass) OptionTargetDSCP {
+func WithTargetDSCPClass(class DSCPClass) OptionTargetDSCP {
 	return func(mDSCP *TargetDSCP) {
 		mDSCP.Value = int(class)
 	}
 }
 
-func NewTargetDSCP(opts ...OptionTargetDSCP) (*TargetDSCP, error) {
+func newTargetDSCP(opts ...OptionTargetDSCP) (*TargetDSCP, error) {
 	target := &TargetDSCP{
 		baseTarget: baseTarget{
 			targetType: TargetTypeDSCP,
@@ -1978,7 +1985,7 @@ func WithTargetECNRemove() OptionTargetECN {
 	}
 }
 
-func NewTargetECN(opts ...OptionTargetECN) (*TargetECN, error) {
+func newTargetECN(opts ...OptionTargetECN) (*TargetECN, error) {
 	target := &TargetECN{
 		baseTarget: baseTarget{
 			targetType: TargetTypeECN,
@@ -2035,26 +2042,26 @@ type OptionTargetHL func(*TargetHL)
 
 func WithTargetHLSet(value int) OptionTargetHL {
 	return func(tHL *TargetHL) {
-		tHL.Operator = operator.OperatorSET
+		tHL.Operator = xtables.OperatorSET
 		tHL.Value = value
 	}
 }
 
 func WithTargetHLDec(value int) OptionTargetHL {
 	return func(tHL *TargetHL) {
-		tHL.Operator = operator.OperatorDEC
+		tHL.Operator = xtables.OperatorDEC
 		tHL.Value = value
 	}
 }
 
 func WithTargetHLInc(value int) OptionTargetHL {
 	return func(tHL *TargetHL) {
-		tHL.Operator = operator.OperatorINC
+		tHL.Operator = xtables.OperatorINC
 		tHL.Value = value
 	}
 }
 
-func NewTargetHL(opts ...OptionTargetHL) (*TargetHL, error) {
+func newTargetHL(opts ...OptionTargetHL) (*TargetHL, error) {
 	target := &TargetHL{
 		baseTarget: baseTarget{
 			targetType: TargetTypeHL,
@@ -2069,7 +2076,7 @@ func NewTargetHL(opts ...OptionTargetHL) (*TargetHL, error) {
 // IPv6 specific
 type TargetHL struct {
 	baseTarget
-	Operator operator.Operator
+	Operator xtables.Operator
 	Value    int
 }
 
@@ -2081,11 +2088,11 @@ func (tHL *TargetHL) ShortArgs() []string {
 	args := make([]string, 0, 4)
 	args = append(args, "-j", tHL.targetType.String())
 	switch tHL.Operator {
-	case operator.OperatorSET:
+	case xtables.OperatorSET:
 		args = append(args, "--hl-set", strconv.Itoa(tHL.Value))
-	case operator.OperatorDEC:
+	case xtables.OperatorDEC:
 		args = append(args, "--hl-dec", strconv.Itoa(tHL.Value))
-	case operator.OperatorINC:
+	case xtables.OperatorINC:
 		args = append(args, "--hl-inc", strconv.Itoa(tHL.Value))
 	}
 	return args
@@ -2111,13 +2118,13 @@ func (tHL *TargetHL) Parse(main []byte) (int, bool) {
 		return 0, false
 	}
 	if len(matches[1]) != 0 {
-		tHL.Operator = operator.OperatorSET
+		tHL.Operator = xtables.OperatorSET
 	}
 	if len(matches[2]) != 0 {
-		tHL.Operator = operator.OperatorDEC
+		tHL.Operator = xtables.OperatorDEC
 	}
 	if len(matches[3]) != 0 {
-		tHL.Operator = operator.OperatorINC
+		tHL.Operator = xtables.OperatorINC
 	}
 	value, err := strconv.Atoi(string(matches[4]))
 	if err != nil {
@@ -2228,7 +2235,7 @@ func WithTargetHMarkRandom(rnd int) OptionTargetHMark {
 	}
 }
 
-func NewTargetHMark(opts ...OptionTargetHMark) (*TargetHMark, error) {
+func newTargetHMark(opts ...OptionTargetHMark) (*TargetHMark, error) {
 	target := &TargetHMark{
 		baseTarget: baseTarget{
 			targetType: TargetTypeHMark,
@@ -2460,7 +2467,7 @@ func WithTargetIdleTimerLabel(label string) OptionTargetIdleTimer {
 	}
 }
 
-func NewTargetIdleTimer(opts ...OptionTargetIdleTimer) (*TargetIdleTimer, error) {
+func newTargetIdleTimer(opts ...OptionTargetIdleTimer) (*TargetIdleTimer, error) {
 	target := &TargetIdleTimer{
 		baseTarget: baseTarget{
 			targetType: TargetTypeIdleTimer,
@@ -2557,7 +2564,7 @@ func WithTargetLEDAlwaysBlink() OptionTargetLED {
 	}
 }
 
-func NewTargetLED(opts ...OptionTargetLED) (*TargetLED, error) {
+func newTargetLED(opts ...OptionTargetLED) (*TargetLED, error) {
 	target := &TargetLED{
 		baseTarget: baseTarget{
 			targetType: TargetTypeLED,
@@ -2702,7 +2709,7 @@ func WithTargetLogUID() OptionTargetLog {
 	}
 }
 
-func NewTargetLog(opts ...OptionTargetLog) (*TargetLog, error) {
+func newTargetLog(opts ...OptionTargetLog) (*TargetLog, error) {
 	target := &TargetLog{
 		baseTarget: baseTarget{
 			targetType: TargetTypeLog,
@@ -2873,7 +2880,7 @@ func WithTargetMarkSetX(mark ...int) OptionTargetMark {
 			tMark.Mark = mark[0]
 			tMark.Mask = mark[1]
 		}
-		tMark.Operator = operator.OperatorXSET
+		tMark.Operator = xtables.OperatorXSET
 	}
 }
 
@@ -2887,7 +2894,7 @@ func WithTargetMarkSet(mark ...int) OptionTargetMark {
 			tMark.Mark = mark[0]
 			tMark.Mask = mark[1]
 		}
-		tMark.Operator = operator.OperatorSET
+		tMark.Operator = xtables.OperatorSET
 	}
 }
 
@@ -2895,7 +2902,7 @@ func WithTargetMarkSet(mark ...int) OptionTargetMark {
 func WithTargetMarkAnd(mark int) OptionTargetMark {
 	return func(tMark *TargetMark) {
 		tMark.Mark = mark
-		tMark.Operator = operator.OperatorAND
+		tMark.Operator = xtables.OperatorAND
 	}
 }
 
@@ -2903,7 +2910,7 @@ func WithTargetMarkAnd(mark int) OptionTargetMark {
 func WithTargetMarkOr(mark int) OptionTargetMark {
 	return func(tMark *TargetMark) {
 		tMark.Mark = mark
-		tMark.Operator = operator.OperatorOR
+		tMark.Operator = xtables.OperatorOR
 	}
 }
 
@@ -2911,11 +2918,11 @@ func WithTargetMarkOr(mark int) OptionTargetMark {
 func WithTargetMarkXor(mark int) OptionTargetMark {
 	return func(tMark *TargetMark) {
 		tMark.Mark = mark
-		tMark.Operator = operator.OperatorXOR
+		tMark.Operator = xtables.OperatorXOR
 	}
 }
 
-func NewTargetMark(opts ...OptionTargetMark) (*TargetMark, error) {
+func newTargetMark(opts ...OptionTargetMark) (*TargetMark, error) {
 	target := &TargetMark{
 		baseTarget: baseTarget{
 			targetType: TargetTypeMark,
@@ -2931,7 +2938,7 @@ func NewTargetMark(opts ...OptionTargetMark) (*TargetMark, error) {
 
 type TargetMark struct {
 	baseTarget
-	Operator operator.Operator
+	Operator xtables.Operator
 	Mark     int
 	Mask     int
 }
@@ -2944,25 +2951,25 @@ func (tMark *TargetMark) ShortArgs() []string {
 	args := make([]string, 0, 12)
 	args = append(args, "-j", tMark.targetType.String())
 	switch tMark.Operator {
-	case operator.OperatorXSET:
+	case xtables.OperatorXSET:
 		if tMark.Mask > -1 {
 			args = append(args, "--set-xmark",
 				strconv.Itoa(tMark.Mark)+"/"+strconv.Itoa(tMark.Mask))
 		} else {
 			args = append(args, "--set-xmark", strconv.Itoa(tMark.Mark))
 		}
-	case operator.OperatorSET:
+	case xtables.OperatorSET:
 		if tMark.Mask > -1 {
 			args = append(args, "--set-mark",
 				strconv.Itoa(tMark.Mark)+"/"+strconv.Itoa(tMark.Mask))
 		} else {
 			args = append(args, "--set-mark", strconv.Itoa(tMark.Mark))
 		}
-	case operator.OperatorAND:
+	case xtables.OperatorAND:
 		args = append(args, "--and-mark", strconv.Itoa(tMark.Mark))
-	case operator.OperatorOR:
+	case xtables.OperatorOR:
 		args = append(args, "--or-mark", strconv.Itoa(tMark.Mark))
-	case operator.OperatorXOR:
+	case xtables.OperatorXOR:
 		args = append(args, "--xor-mark", strconv.Itoa(tMark.Mark))
 	}
 	return args
@@ -2990,15 +2997,15 @@ func (tMark *TargetMark) Parse(main []byte) (int, bool) {
 	}
 	switch string(matches[1]) {
 	case "set":
-		tMark.Operator = operator.OperatorSET
+		tMark.Operator = xtables.OperatorSET
 	case "and":
-		tMark.Operator = operator.OperatorAND
+		tMark.Operator = xtables.OperatorAND
 	case "or":
-		tMark.Operator = operator.OperatorOR
+		tMark.Operator = xtables.OperatorOR
 	case "xor":
-		tMark.Operator = operator.OperatorXOR
+		tMark.Operator = xtables.OperatorXOR
 	case "xset":
-		tMark.Operator = operator.OperatorXSET
+		tMark.Operator = xtables.OperatorXSET
 	}
 	if len(matches[2]) != 0 {
 		value, err := strconv.ParseInt(string(matches[2]), 16, 64)
@@ -3044,7 +3051,7 @@ func WithTargetMasqueradeRandomFully() OptionTargetMasquerade {
 	}
 }
 
-func NewTargetMasquerade(opts ...OptionTargetMasquerade) (*TargetMasquerade, error) {
+func newTargetMasquerade(opts ...OptionTargetMasquerade) (*TargetMasquerade, error) {
 	target := &TargetMasquerade{
 		baseTarget: baseTarget{
 			targetType: TargetTypeMasquerade,
@@ -3153,7 +3160,7 @@ func WithTargetNetmapAddr(addr network.Address) OptionTargetNetmap {
 	}
 }
 
-func NewTargetNetmap(opts ...OptionTargetNetmap) (*TargetNetmap, error) {
+func newTargetNetmap(opts ...OptionTargetNetmap) (*TargetNetmap, error) {
 	target := &TargetNetmap{
 		baseTarget: baseTarget{
 			targetType: TargetTypeNetmap,
@@ -3257,7 +3264,7 @@ func WithTargetNFLogThreshold(threshold int) OptionTargetNFLog {
 	}
 }
 
-func NewTargetNFLog(opts ...OptionTargetNFLog) (*TargetNFLog, error) {
+func newTargetNFLog(opts ...OptionTargetNFLog) (*TargetNFLog, error) {
 	target := &TargetNFLog{
 		baseTarget: baseTarget{
 			targetType: TargetTypeNFLog,
@@ -3402,7 +3409,7 @@ func WithTargetNFQueueCPUFanout() OptionTargetNFQueue {
 	}
 }
 
-func NewTargetNFQueue(opts ...OptionTargetNFQueue) (*TargetNFQueue, error) {
+func newTargetNFQueue(opts ...OptionTargetNFQueue) (*TargetNFQueue, error) {
 	target := &TargetNFQueue{
 		baseTarget: baseTarget{
 			targetType: TargetTypeNFQueue,
@@ -3501,7 +3508,7 @@ func WithTargetRateEstName(name string) OptionTargetRateEst {
 }
 
 // Rate measurement interval, in seconds, milliseconds or microseconds.
-func WithTargetRateEstInterval(interval rate.RateFloat) OptionTargetRateEst {
+func WithTargetRateEstInterval(interval xtables.RateFloat) OptionTargetRateEst {
 	return func(tRateEst *TargetRateEst) {
 		tRateEst.Interval = interval
 	}
@@ -3514,7 +3521,7 @@ func WithTargetRateEstEwmalog(ewmalog float64) OptionTargetRateEst {
 	}
 }
 
-func NewTargetRateEst(opts ...OptionTargetRateEst) (*TargetRateEst, error) {
+func newTargetRateEst(opts ...OptionTargetRateEst) (*TargetRateEst, error) {
 	target := &TargetRateEst{
 		baseTarget: baseTarget{
 			targetType: TargetTypeRateEst,
@@ -3530,7 +3537,7 @@ func NewTargetRateEst(opts ...OptionTargetRateEst) (*TargetRateEst, error) {
 type TargetRateEst struct {
 	baseTarget
 	Name     string
-	Interval rate.RateFloat
+	Interval xtables.RateFloat
 	Ewmalog  float64
 }
 
@@ -3544,7 +3551,7 @@ func (tRateEst *TargetRateEst) ShortArgs() []string {
 	if tRateEst.Name != "" {
 		args = append(args, "--rateest-name", tRateEst.Name)
 	}
-	if (tRateEst.Interval != rate.RateFloat{}) {
+	if (tRateEst.Interval != xtables.RateFloat{}) {
 		args = append(args, "--rateest-interval", tRateEst.Interval.Sting())
 	}
 	if tRateEst.Ewmalog > -1 {
@@ -3579,26 +3586,26 @@ func (tRateEst *TargetRateEst) Parse(main []byte) (int, bool) {
 	if err != nil {
 		return 0, false
 	}
-	unit := rate.Second
+	unit := xtables.Second
 	switch string(matches[3]) {
 	case "us":
-		unit = rate.Microsecond
+		unit = xtables.Microsecond
 	case "ms":
-		unit = rate.Millisecond
+		unit = xtables.Millisecond
 	case "s":
-		unit = rate.Second
+		unit = xtables.Second
 	}
-	tRateEst.Interval = rate.RateFloat{
+	tRateEst.Interval = xtables.RateFloat{
 		interval, unit,
 	}
 	ewmalog, err := strconv.ParseFloat(string(matches[4]), 64)
 	switch string(matches[5]) {
 	case "us":
-		unit = rate.Microsecond
+		unit = xtables.Microsecond
 	case "ms":
-		unit = rate.Millisecond
+		unit = xtables.Millisecond
 	case "s":
-		unit = rate.Second
+		unit = xtables.Second
 	}
 	tRateEst.Ewmalog = ewmalog
 	return len(matches[0]), true
@@ -3625,7 +3632,7 @@ func WithTargetRedirectRandom() OptionTargetRedirect {
 	}
 }
 
-func NewTargetRedirect(opts ...OptionTargetRedirect) (*TargetRedirect, error) {
+func newTargetRedirect(opts ...OptionTargetRedirect) (*TargetRedirect, error) {
 	target := &TargetRedirect{
 		baseTarget: baseTarget{
 			targetType: TargetTypeRedirect,
@@ -3798,7 +3805,7 @@ func WithTargetRejectType(typ RejectType) OptionTargetReject {
 	}
 }
 
-func NewTargetReject(opts ...OptionTargetReject) (*TargetReject, error) {
+func newTargetReject(opts ...OptionTargetReject) (*TargetReject, error) {
 	target := &TargetReject{
 		baseTarget: baseTarget{
 			targetType: TargetTypeReject,
@@ -3880,7 +3887,7 @@ func WithTargetSameNoRandom() OptionTargetSame {
 	}
 }
 
-func NewTargetSame(opts ...OptionTargetSame) (*TargetSame, error) {
+func newTargetSame(opts ...OptionTargetSame) (*TargetSame, error) {
 	target := &TargetSame{
 		baseTarget: baseTarget{
 			targetType: TargetTypeSame,
@@ -3979,7 +3986,7 @@ func WithTargetSecMarkSelCtx(selCtx string) OptionTargetSecMark {
 	}
 }
 
-func NewTargetSecMark(opts ...OptionTargetSecMark) (*TargetSecMark, error) {
+func newTargetSecMark(opts ...OptionTargetSecMark) (*TargetSecMark, error) {
 	target := &TargetSecMark{
 		baseTarget: baseTarget{
 			targetType: TargetTypeSecMark,
@@ -4116,7 +4123,7 @@ func WithTargetSetMapQueue() OptionTargetSet {
 	}
 }
 
-func NewTargetSet(opts ...OptionTargetSet) (*TargetSet, error) {
+func newTargetSet(opts ...OptionTargetSet) (*TargetSet, error) {
 	target := &TargetSet{
 		baseTarget: baseTarget{
 			targetType: TargetTypeSet,
@@ -4267,7 +4274,7 @@ func WithTargetSNATPersistent() OptionTargetSNAT {
 	}
 }
 
-func NewTargetSNAT(opts ...OptionTargetSNAT) (*TargetSNAT, error) {
+func newTargetSNAT(opts ...OptionTargetSNAT) (*TargetSNAT, error) {
 	target := &TargetSNAT{
 		baseTarget: baseTarget{
 			targetType: TargetTypeSNAT,
@@ -4403,7 +4410,7 @@ func WithTargetSNPTDstPrefix(prefix *net.IPNet) OptionTargetSNPT {
 	}
 }
 
-func NewTargetSNPT(opts ...OptionTargetSNPT) (*TargetSNPT, error) {
+func newTargetSNPT(opts ...OptionTargetSNPT) (*TargetSNPT, error) {
 	target := &TargetSNPT{
 		baseTarget: baseTarget{
 			targetType: TargetTypeSNPT,
@@ -4510,7 +4517,7 @@ func WithTargetSYNProxyECN() OptionTargetSYNProxy {
 	}
 }
 
-func NewTargetSYNProxy(opts ...OptionTargetSYNProxy) (*TargetSYNProxy, error) {
+func newTargetSYNProxy(opts ...OptionTargetSYNProxy) (*TargetSYNProxy, error) {
 	target := &TargetSYNProxy{
 		baseTarget: baseTarget{
 			targetType: TargetTypeSYNProxy,
@@ -4622,7 +4629,7 @@ func WithTargetTCPMSSClampMssToPmtu() OptionTargetTCPMSS {
 	}
 }
 
-func NewTargetTCPMSS(opts ...OptionTargetTCPMSS) (*TargetTCPMSS, error) {
+func newTargetTCPMSS(opts ...OptionTargetTCPMSS) (*TargetTCPMSS, error) {
 	target := &TargetTCPMSS{
 		baseTarget: baseTarget{
 			targetType: TargetTypeTCPMSS,
@@ -4697,7 +4704,7 @@ func WithTargetTCPOptStripOpts(opts ...network.TCPOpt) OptionTargetTCPOptStrip {
 	}
 }
 
-func NewTargetTCPOptStrip(opts ...OptionTargetTCPOptStrip) (*TargetTCPOptStrip, error) {
+func newTargetTCPOptStrip(opts ...OptionTargetTCPOptStrip) (*TargetTCPOptStrip, error) {
 	target := &TargetTCPOptStrip{
 		baseTarget: baseTarget{
 			targetType: TargetTypeTCPOptStrip,
@@ -4767,7 +4774,7 @@ func (tTCPOptStrip *TargetTCPOptStrip) Parse(main []byte) (int, bool) {
 	return len(matches[0]), true
 }
 
-func NewTargetTEE(gateway net.IP) (*TargetTEE, error) {
+func newTargetTEE(gateway net.IP) (*TargetTEE, error) {
 	target := &TargetTEE{
 		baseTarget: baseTarget{
 			targetType: TargetTypeTEE,
@@ -4826,32 +4833,32 @@ func WithTargetTOSSet(tos ...network.TOS) OptionTargetTOS {
 			tTOS.Value = tos[0]
 			tTOS.Mask = tos[1]
 		}
-		tTOS.Operator = operator.OperatorSET
+		tTOS.Operator = xtables.OperatorSET
 	}
 }
 
 func WithTargetTOSAnd(tos network.TOS) OptionTargetTOS {
 	return func(tTOS *TargetTOS) {
 		tTOS.Value = tos
-		tTOS.Operator = operator.OperatorAND
+		tTOS.Operator = xtables.OperatorAND
 	}
 }
 
 func WithTargetTOSOr(tos network.TOS) OptionTargetTOS {
 	return func(tTOS *TargetTOS) {
 		tTOS.Value = tos
-		tTOS.Operator = operator.OperatorOR
+		tTOS.Operator = xtables.OperatorOR
 	}
 }
 
 func WithTargetTOSXor(tos network.TOS) OptionTargetTOS {
 	return func(tTOS *TargetTOS) {
 		tTOS.Value = tos
-		tTOS.Operator = operator.OperatorXOR
+		tTOS.Operator = xtables.OperatorXOR
 	}
 }
 
-func NewTargetTOS(opts ...OptionTargetTOS) (*TargetTOS, error) {
+func newTargetTOS(opts ...OptionTargetTOS) (*TargetTOS, error) {
 	target := &TargetTOS{
 		baseTarget: baseTarget{
 			targetType: TargetTypeTOS,
@@ -4867,7 +4874,7 @@ func NewTargetTOS(opts ...OptionTargetTOS) (*TargetTOS, error) {
 
 type TargetTOS struct {
 	baseTarget
-	Operator operator.Operator
+	Operator xtables.Operator
 	Value    network.TOS
 	Mask     network.TOS
 }
@@ -4880,18 +4887,18 @@ func (tTOS *TargetTOS) ShortArgs() []string {
 	args := make([]string, 0, 4)
 	args = append(args, "-j", tTOS.targetType.String())
 	switch tTOS.Operator {
-	case operator.OperatorSET:
+	case xtables.OperatorSET:
 		if tTOS.Mask > -1 {
 			args = append(args, "--set-tos",
 				strconv.Itoa(int(tTOS.Value))+"/"+strconv.Itoa(int(tTOS.Mask)))
 		} else {
 			args = append(args, "--set-tos", strconv.Itoa(int(tTOS.Value)))
 		}
-	case operator.OperatorAND:
+	case xtables.OperatorAND:
 		args = append(args, "--and-tos", strconv.Itoa(int(tTOS.Value)))
-	case operator.OperatorOR:
+	case xtables.OperatorOR:
 		args = append(args, "--or-tos", strconv.Itoa(int(tTOS.Value)))
-	case operator.OperatorXOR:
+	case xtables.OperatorXOR:
 		args = append(args, "--xor-tos", strconv.Itoa(int(tTOS.Value)))
 	}
 	return args
@@ -4919,13 +4926,13 @@ func (tTOS *TargetTOS) Parse(main []byte) (int, bool) {
 	}
 	switch string(matches[1]) {
 	case "set":
-		tTOS.Operator = operator.OperatorSET
+		tTOS.Operator = xtables.OperatorSET
 	case "and":
-		tTOS.Operator = operator.OperatorAND
+		tTOS.Operator = xtables.OperatorAND
 	case "or":
-		tTOS.Operator = operator.OperatorOR
+		tTOS.Operator = xtables.OperatorOR
 	case "xor":
-		tTOS.Operator = operator.OperatorXOR
+		tTOS.Operator = xtables.OperatorXOR
 	}
 	if len(matches[3]) != 0 {
 		tos, ok := network.TOSMap[string(matches[3])]
@@ -4979,7 +4986,7 @@ func WithTargetTProxyMark(mark ...int) OptionTargetTProxy {
 	}
 }
 
-func NewTargetTProxy(opts ...OptionTargetTProxy) (*TargetTProxy, error) {
+func newTargetTProxy(opts ...OptionTargetTProxy) (*TargetTProxy, error) {
 	target := &TargetTProxy{
 		baseTarget: baseTarget{
 			targetType: TargetTypeTProxy,
@@ -5074,7 +5081,7 @@ func (tTProxy *TargetTProxy) Parse(main []byte) (int, bool) {
 	return len(matches[0]), true
 }
 
-func NewTargetTrace() (*TargetTrace, error) {
+func newTargetTrace() (*TargetTrace, error) {
 	return &TargetTrace{
 		baseTarget: baseTarget{
 			targetType: TargetTypeTrace,
@@ -5109,25 +5116,25 @@ type OptionTargetTTL func(*TargetTTL)
 func WithTargetTTLSet(value int) OptionTargetTTL {
 	return func(tTTL *TargetTTL) {
 		tTTL.Value = value
-		tTTL.Operator = operator.OperatorSET
+		tTTL.Operator = xtables.OperatorSET
 	}
 }
 
 func WithTargetTTLDec(value int) OptionTargetTTL {
 	return func(tTTL *TargetTTL) {
 		tTTL.Value = value
-		tTTL.Operator = operator.OperatorDEC
+		tTTL.Operator = xtables.OperatorDEC
 	}
 }
 
 func WithTargetTTLInc(value int) OptionTargetTTL {
 	return func(tTTL *TargetTTL) {
 		tTTL.Value = value
-		tTTL.Operator = operator.OperatorINC
+		tTTL.Operator = xtables.OperatorINC
 	}
 }
 
-func NewTargetTTL(opts ...OptionTargetTTL) (*TargetTTL, error) {
+func newTargetTTL(opts ...OptionTargetTTL) (*TargetTTL, error) {
 	target := &TargetTTL{
 		baseTarget: baseTarget{
 			targetType: TargetTypeTTL,
@@ -5143,7 +5150,7 @@ func NewTargetTTL(opts ...OptionTargetTTL) (*TargetTTL, error) {
 // IPv4 specific
 type TargetTTL struct {
 	baseTarget
-	Operator operator.Operator
+	Operator xtables.Operator
 	Value    int
 }
 
@@ -5155,11 +5162,11 @@ func (tTTL *TargetTTL) ShortArgs() []string {
 	args := make([]string, 0, 4)
 	args = append(args, "-j", tTTL.targetType.String())
 	switch tTTL.Operator {
-	case operator.OperatorSET:
+	case xtables.OperatorSET:
 		args = append(args, "--ttl-set", strconv.Itoa(tTTL.Value))
-	case operator.OperatorDEC:
+	case xtables.OperatorDEC:
 		args = append(args, "--ttl-dec", strconv.Itoa(tTTL.Value))
-	case operator.OperatorINC:
+	case xtables.OperatorINC:
 		args = append(args, "--ttl-inc", strconv.Itoa(tTTL.Value))
 	}
 	return args
@@ -5187,11 +5194,11 @@ func (tTTL *TargetTTL) Parse(main []byte) (int, bool) {
 	}
 	switch string(matches[1]) {
 	case "set to":
-		tTTL.Operator = operator.OperatorSET
+		tTTL.Operator = xtables.OperatorSET
 	case "decrement to":
-		tTTL.Operator = operator.OperatorDEC
+		tTTL.Operator = xtables.OperatorDEC
 	case "increment to":
-		tTTL.Operator = operator.OperatorINC
+		tTTL.Operator = xtables.OperatorINC
 	}
 	ttl, err := strconv.Atoi(string(matches[2]))
 	if err != nil {
@@ -5235,7 +5242,7 @@ func WithTargetULogQueueThreshold(threshold int) OptionTargetULog {
 	}
 }
 
-func NewTargetULog(opts ...OptionTargetULog) (*TargetULog, error) {
+func newTargetULog(opts ...OptionTargetULog) (*TargetULog, error) {
 	target := &TargetULog{
 		baseTarget: baseTarget{
 			targetType: TargetTypeULog,

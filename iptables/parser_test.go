@@ -5,6 +5,8 @@ import (
 	"bytes"
 	"io/ioutil"
 	"testing"
+
+	"github.com/singchia/go-xtables/internal/xutil"
 )
 
 func TestUnfoldDecimal(t *testing.T) {
@@ -18,7 +20,7 @@ func TestUnfoldDecimal(t *testing.T) {
 		"1112Z",
 	}
 	for _, elem := range test {
-		num, err := unfoldDecimal(elem)
+		num, err := xutil.UnfoldDecimal(elem)
 		if err != nil {
 			t.Error(err)
 			return
@@ -31,7 +33,7 @@ func TestUnfoldDecimal(t *testing.T) {
 		"foo",
 	}
 	for _, elem := range test {
-		num, err := unfoldDecimal(elem)
+		num, err := xutil.UnfoldDecimal(elem)
 		if err == nil {
 			t.Error("err")
 			return

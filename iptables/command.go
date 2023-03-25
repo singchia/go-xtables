@@ -1,9 +1,3 @@
-/*
- * Apache License 2.0
- *
- * Copyright (c) 2022, Austin Zhai
- * All rights reserved.
- */
 package iptables
 
 import "strconv"
@@ -25,16 +19,16 @@ const (
 	CommandTypeDelete                  // delete
 	CommandTypeInsert                  // insert
 	CommandTypeReplace                 // replace
-	CommandTypeList                    // list
-	CommandTypeListRules               // list_rules
+	CommandTypeListRules               // list
+	CommandTypeDumpRules               // as iptables list_rules
 	CommandTypeFlush                   // flush
 	CommandTypeZero                    // zero
 	CommandTypeNewChain                // new_chain
 	CommandTypeDeleteChain             // delete_chain
 	CommandTypePolicy                  // policy
 	CommandTypeRenameChain             // rename_chain
-	//CommandTypeChain                   // go-xtables support
-	//CommandTypeFind // go-xtables support
+	CommandTypeListChains              // go-xtables support
+	CommandTypeFind                    // go-xtables support
 )
 
 type HasRulenum interface {
@@ -74,7 +68,7 @@ func (bc baseCommand) Long() string {
 	return bc.Short()
 }
 
-func NewAppend() *Append {
+func newAppend() *Append {
 	command := &Append{
 		baseCommand: baseCommand{
 			commandType: CommandTypeAppend,
@@ -96,8 +90,8 @@ func (apd *Append) Long() string {
 	return "--append"
 }
 
-func NewCheck() *Append {
-	command := &Append{
+func newCheck() *Check {
+	command := &Check{
 		baseCommand: baseCommand{
 			commandType: CommandTypeCheck,
 		},
@@ -118,7 +112,7 @@ func (check *Check) Long() string {
 	return "--check"
 }
 
-func NewDelete(rulenum uint32) *Delete {
+func newDelete(rulenum uint32) *Delete {
 	command := &Delete{
 		baseCommand: baseCommand{
 			commandType: CommandTypeDelete,
@@ -146,7 +140,7 @@ func (del *Delete) Long() string {
 	return "--delete"
 }
 
-func NewInsert(rulenum uint32) *Insert {
+func newInsert(rulenum uint32) *Insert {
 	command := &Insert{
 		baseCommand: baseCommand{
 			commandType: CommandTypeInsert,
@@ -174,7 +168,7 @@ func (insert *Insert) Long() string {
 	return "--insert"
 }
 
-func NewReplace(rulenum uint32) *Replace {
+func newReplace(rulenum uint32) *Replace {
 	command := &Replace{
 		baseCommand: baseCommand{
 			commandType: CommandTypeReplace,
@@ -202,29 +196,7 @@ func (replace *Replace) Long() string {
 	return "--replace"
 }
 
-func NewList() *List {
-	command := &List{
-		baseCommand: baseCommand{
-			commandType: CommandTypeList,
-		},
-	}
-	command.setChild(command)
-	return command
-}
-
-type List struct {
-	baseCommand
-}
-
-func (list *List) Short() string {
-	return "-L"
-}
-
-func (list *List) Long() string {
-	return "--list"
-}
-
-func NewListRules() *ListRules {
+func newListRules() *ListRules {
 	command := &ListRules{
 		baseCommand: baseCommand{
 			commandType: CommandTypeListRules,
@@ -238,15 +210,69 @@ type ListRules struct {
 	baseCommand
 }
 
-func (listRules *ListRules) Short() string {
+func (list *ListRules) Short() string {
+	return "-L"
+}
+
+func (list *ListRules) Long() string {
+	return "--list"
+}
+
+func newListChains() *ListChains {
+	command := &ListChains{
+		ListRules: &ListRules{
+			baseCommand: baseCommand{
+				commandType: CommandTypeListChains,
+			},
+		},
+	}
+	command.setChild(command)
+	return command
+}
+
+type ListChains struct {
+	*ListRules
+}
+
+func newFind() *Find {
+	command := &Find{
+		ListRules: &ListRules{
+			baseCommand: baseCommand{
+				commandType: CommandTypeFind,
+			},
+		},
+	}
+	command.setChild(command)
+	return command
+}
+
+type Find struct {
+	*ListRules
+}
+
+func newDumpRules() *DumpRules {
+	command := &DumpRules{
+		baseCommand: baseCommand{
+			commandType: CommandTypeDumpRules,
+		},
+	}
+	command.setChild(command)
+	return command
+}
+
+type DumpRules struct {
+	baseCommand
+}
+
+func (listRules *DumpRules) Short() string {
 	return "-S"
 }
 
-func (listRules *ListRules) Long() string {
+func (listRules *DumpRules) Long() string {
 	return "--list-rules"
 }
 
-func NewFlush() *Flush {
+func newFlush() *Flush {
 	command := &Flush{
 		baseCommand: baseCommand{
 			commandType: CommandTypeFlush,
@@ -268,7 +294,7 @@ func (flush *Flush) Long() string {
 	return "--flush"
 }
 
-func NewZero(rulenum uint32) *Zero {
+func newZero(rulenum uint32) *Zero {
 	command := &Zero{
 		baseCommand: baseCommand{
 			commandType: CommandTypeZero,
@@ -296,7 +322,7 @@ func (zero *Zero) Long() string {
 	return "--zero"
 }
 
-func NewNewChain() *NewChain {
+func newNewChain() *NewChain {
 	command := &NewChain{
 		baseCommand: baseCommand{
 			commandType: CommandTypeNewChain,
@@ -318,7 +344,7 @@ func (nc *NewChain) Long() string {
 	return "--new-chain"
 }
 
-func NewDeleteChain() *DeleteChain {
+func newDeleteChain() *DeleteChain {
 	command := &DeleteChain{
 		baseCommand: baseCommand{
 			commandType: CommandTypeDeleteChain,
@@ -340,11 +366,12 @@ func (dc *DeleteChain) Long() string {
 	return "--delete-chain"
 }
 
-func NewPolicy() *Policy {
+func newPolicy(target TargetType) *Policy {
 	command := &Policy{
 		baseCommand: baseCommand{
 			commandType: CommandTypePolicy,
 		},
+		targetType: target,
 	}
 	command.setChild(command)
 	return command
@@ -363,7 +390,7 @@ func (policy *Policy) Long() string {
 	return "--policy"
 }
 
-func NewRenameChain(newChain string) *RenameChain {
+func newRenameChain(newChain string) *RenameChain {
 	command := &RenameChain{
 		baseCommand: baseCommand{
 			commandType: CommandTypeRenameChain,

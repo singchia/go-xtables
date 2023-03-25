@@ -7,7 +7,10 @@
 
 package network
 
-import "strconv"
+import (
+	"strconv"
+	"strings"
+)
 
 // Created by gen.go, don't edit manually
 // Generated at 2023-01-28 16:24:13
@@ -188,6 +191,7 @@ const (
 
 var (
 	ProtocolUpperNameType = map[string]Protocol{
+		"ALL":             ProtocolIP,
 		"IP":              ProtocolIP,
 		"HOPOPT":          ProtocolHOPOPT,
 		"ICMP":            ProtocolICMP,
@@ -331,3 +335,15 @@ var (
 		"ROHC":            ProtocolROHC,
 	}
 )
+
+func ParseProtocol(proto string) (Protocol, error) {
+	p, err := strconv.Atoi(proto)
+	if err == nil {
+		return Protocol(p), nil
+	}
+	v, ok := ProtocolUpperNameType[strings.ToUpper(proto)]
+	if ok {
+		return v, nil
+	}
+	return 0, err
+}

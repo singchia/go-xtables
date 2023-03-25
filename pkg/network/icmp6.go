@@ -1,6 +1,9 @@
 package network
 
-import "strconv"
+import (
+	"strconv"
+	"strings"
+)
 
 type ICMPv6Type ICMPType
 
@@ -155,3 +158,27 @@ var (
 		}{ICMPv6CodeUnrecognizedIPv6Option, ICMPv6TypeParameterProblem},
 	}
 )
+
+func ParseICMPv6Type(typ string) (ICMPv6Type, error) {
+	t, err := strconv.Atoi(typ)
+	if err == nil {
+		return ICMPv6Type(t), nil
+	}
+	v, ok := ICMPv6TypeMap[strings.ToLower(typ)]
+	if ok {
+		return v, nil
+	}
+	return 0, err
+}
+
+func ParseICMPv6Code(code string) (ICMPv6Code, error) {
+	t, err := strconv.Atoi(code)
+	if err == nil {
+		return ICMPv6Code(t), nil
+	}
+	v, ok := ICMPv6CodeMap[strings.ToLower(code)]
+	if ok {
+		return v, nil
+	}
+	return 0, err
+}

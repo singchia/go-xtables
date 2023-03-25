@@ -1,6 +1,10 @@
 package network
 
-import "fmt"
+import (
+	"fmt"
+	"strconv"
+	"strings"
+)
 
 type IPType uint8
 
@@ -34,3 +38,15 @@ var (
 		"Normal-Service":       TOSNormal,
 	}
 )
+
+func ParseTOS(tos string) (TOS, error) {
+	t, err := strconv.ParseInt(tos, 16, 8)
+	if err == nil {
+		return TOS(t), nil
+	}
+	v, ok := TOSMap[strings.ToUpper(tos)]
+	if ok {
+		return v, nil
+	}
+	return 0, err
+}

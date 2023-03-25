@@ -1,4 +1,4 @@
-package rate
+package xtables
 
 import "strconv"
 

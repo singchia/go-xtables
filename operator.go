@@ -1,4 +1,4 @@
-package operator
+package xtables
 
 type Operator uint32
 

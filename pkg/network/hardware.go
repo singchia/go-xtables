@@ -76,3 +76,11 @@ const (
 	HardwareTypeIPv6                   HardwareType = 229
 	HardwareTypeAEthernet              HardwareType = 257
 )
+
+func ParseHardwareType(hwtype string) (HardwareType, error) {
+	typ, err := strconv.ParseUint(hwtype, 10, 16)
+	if err != nil {
+		return 0, err
+	}
+	return HardwareType(typ), nil
+}

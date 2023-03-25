@@ -3,10 +3,12 @@ package arptables
 import (
 	"fmt"
 	"net"
+	"regexp"
 	"strconv"
 	"strings"
 
-	"github.com/singchia/go-xtables/pkg/network"
+	"github.com/singchia/go-hammer/tree"
+	"github.com/singchia/go-xtables"
 )
 
 type TargetType int
@@ -65,6 +67,10 @@ func (tt TargetType) String() string {
 		return "RETURN"
 	case TargetTypeJumpChain:
 		return "JUMP"
+	case TargetTypeClassify:
+		return "CLASSIFY"
+	case TargetTypeMangle:
+		return "mangle"
 	default:
 		return ""
 	}
@@ -77,6 +83,33 @@ type Target interface {
 	ShortArgs() []string
 	LongArgs() []string
 	Parse([]byte) (int, bool)
+}
+
+func TargetFactory(targetType TargetType) Target {
+	switch targetType {
+	case TargetTypeAccept:
+		target := NewTargetAccept()
+		return target
+	case TargetTypeContinue:
+		target := NewTargetContinue()
+		return target
+	case TargetTypeDrop:
+		target := NewTargetDrop()
+		return target
+	case TargetTypeReturn:
+		target := NewTargetReturn()
+		return target
+	case TargetTypeJumpChain:
+		target := NewTargetJumpChain("")
+		return target
+	case TargetTypeMangle:
+		target, _ := NewTargetMangle()
+		return target
+	case TargetTypeClassify:
+		target, _ := NewTargetClassify(0, 0)
+		return target
+	}
+	return nil
 }
 
 type baseTarget struct {
@@ -176,6 +209,16 @@ func (ta *TargetAccept) LongArgs() []string {
 	return ta.ShortArgs()
 }
 
+func (ta *TargetAccept) Parse(main []byte) (int, bool) {
+	pattern := `-j ACCEPT *`
+	reg := regexp.MustCompile(pattern)
+	matches := reg.FindSubmatch(main)
+	if len(matches) != 1 {
+		return 0, false
+	}
+	return len(matches[0]), true
+}
+
 type TargetContinue struct {
 	baseTarget
 }
@@ -202,6 +245,16 @@ func (tc *TargetContinue) Long() string {
 
 func (tc *TargetContinue) LongArgs() []string {
 	return []string{"--jump", "CONTINUE"}
+}
+
+func (tc *TargetContinue) Parse(main []byte) (int, bool) {
+	pattern := `-j CONTINUE *`
+	reg := regexp.MustCompile(pattern)
+	matches := reg.FindSubmatch(main)
+	if len(matches) != 1 {
+		return 0, false
+	}
+	return len(matches[0]), true
 }
 
 type TargetDrop struct {
@@ -232,6 +285,16 @@ func (td *TargetDrop) LongArgs() []string {
 	return []string{"--jump", "DROP"}
 }
 
+func (td *TargetDrop) Parse(main []byte) (int, bool) {
+	pattern := `-j DROP *`
+	reg := regexp.MustCompile(pattern)
+	matches := reg.FindSubmatch(main)
+	if len(matches) != 1 {
+		return 0, false
+	}
+	return len(matches[0]), true
+}
+
 type TargetReturn struct {
 	baseTarget
 }
@@ -258,6 +321,16 @@ func (tr *TargetReturn) Long() string {
 
 func (tr *TargetReturn) LongArgs() []string {
 	return []string{"--jump", "RETURN"}
+}
+
+func (tr *TargetReturn) Parse(main []byte) (int, bool) {
+	pattern := `-j RETURN *`
+	reg := regexp.MustCompile(pattern)
+	matches := reg.FindSubmatch(main)
+	if len(matches) != 1 {
+		return 0, false
+	}
+	return len(matches[0]), true
 }
 
 type TargetJumpChain struct {
@@ -290,33 +363,44 @@ func (tj *TargetJumpChain) LongArgs() []string {
 	return []string{"--jump", tj.chain}
 }
 
+func (tj *TargetJumpChain) Parse(main []byte) (int, bool) {
+	pattern := `-j ([[:graph:]]) *`
+	reg := regexp.MustCompile(pattern)
+	matches := reg.FindSubmatch(main)
+	if len(matches) != 2 {
+		return 0, false
+	}
+	tj.chain = string(matches[1])
+	return len(matches[0]), true
+}
+
 type OptionTargetMangle func(*TargetMangle)
 
 // Mangles source IP address to given value.
 func WithTargetMangleSourceIP(ip net.IP) OptionTargetMangle {
 	return func(target *TargetMangle) {
-		target.SourceIP = network.NewIP(ip)
+		target.SourceIP = ip
 	}
 }
 
 // Mangles destination IP address to given value.
 func WithTargetMangleDestinationIP(ip net.IP) OptionTargetMangle {
 	return func(target *TargetMangle) {
-		target.DestinationIP = network.NewIP(ip)
+		target.DestinationIP = ip
 	}
 }
 
 // Mangles source MAC address to given value.
 func WithTargetMangleSourceMAC(mac net.HardwareAddr) OptionTargetMangle {
 	return func(target *TargetMangle) {
-		target.SourceMAC = network.NewHardwareAddr(mac)
+		target.SourceMAC = mac
 	}
 }
 
 // Mangles destination MAC address to given value.
 func WithTargetMangleDestinationMAC(mac net.HardwareAddr) OptionTargetMangle {
 	return func(target *TargetMangle) {
-		target.DestinationMAC = network.NewHardwareAddr(mac)
+		target.DestinationMAC = mac
 	}
 }
 
@@ -342,10 +426,10 @@ func NewTargetMangle(opts ...OptionTargetMangle) (*TargetMangle, error) {
 
 type TargetMangle struct {
 	baseTarget
-	SourceIP       network.Address
-	DestinationIP  network.Address
-	SourceMAC      network.Address
-	DestinationMAC network.Address
+	SourceIP       net.IP
+	DestinationIP  net.IP
+	SourceMAC      net.HardwareAddr
+	DestinationMAC net.HardwareAddr
 	MangleTarget   TargetType
 }
 
@@ -362,7 +446,7 @@ func (target *TargetMangle) ShortArgs() []string {
 		args = append(args, "--mangle-ip-d", target.DestinationIP.String())
 	}
 	if target.SourceMAC != nil {
-		args = append(args, "--mangle-mac-s", target.SourceIP.String())
+		args = append(args, "--mangle-mac-s", target.SourceMAC.String())
 	}
 	if target.DestinationMAC != nil {
 		args = append(args, "--mangle-mac-d", target.DestinationMAC.String())
@@ -371,6 +455,50 @@ func (target *TargetMangle) ShortArgs() []string {
 		args = append(args, "--mangle-target", target.MangleTarget.String())
 	}
 	return args
+}
+
+func (target *TargetMangle) Parse(main []byte) (int, bool) {
+	// 1. "--mangle"
+	// 2. "(-(ip-s|ip-d|mac-s|mac-d) ([[:graph:]]+))?" #1 #2 #3
+	// 3. "(-target (ACCEPT|CONTINUE|DROP|RETURN))? *" #4 #5
+	pattern := `--mangle` +
+		`(-(ip-s|ip-d|mac-s|mac-d) ([[:graph:]]+))?` +
+		`(-target (ACCEPT|CONTINUE|DROP|RETURN))? *`
+	reg := regexp.MustCompile(pattern)
+	matches := reg.FindSubmatch(main)
+	if len(matches) != 6 {
+		return 0, false
+	}
+	switch string(matches[2]) {
+	case "ip-s":
+		target.SourceIP = net.ParseIP(string(matches[3]))
+	case "ip-d":
+		target.DestinationIP = net.ParseIP(string(matches[3]))
+	case "mac-s":
+		mac, err := net.ParseMAC(string(matches[3]))
+		if err != nil {
+			return 0, false
+		}
+		target.SourceMAC = mac
+	case "mac-d":
+		mac, err := net.ParseMAC(string(matches[3]))
+		if err != nil {
+			return 0, false
+		}
+		target.DestinationMAC = mac
+	}
+
+	switch string(matches[5]) {
+	case "ACCEPT":
+		target.MangleTarget = TargetTypeAccept
+	case "CONTINUE":
+		target.MangleTarget = TargetTypeContinue
+	case "DROP":
+		target.MangleTarget = TargetTypeDrop
+	case "RETURN":
+		target.MangleTarget = TargetTypeReturn
+	}
+	return len(matches[0]), true
 }
 
 // This module allows you to set the skb->priority value.
@@ -402,4 +530,67 @@ func (target *TargetClassify) ShortArgs() []string {
 			strconv.Itoa(target.Major)+":"+strconv.Itoa(target.Minor))
 	}
 	return args
+}
+
+func (target *TargetClassify) Parse(main []byte) (int, bool) {
+	// 1. "--set-class ([0-9A-Za-z]+):([0-9A-Za-z]+) *" #1 #2
+	pattern := `--set-class ([0-9A-Za-z]+):([0-9A-Za-z]+) *`
+	reg := regexp.MustCompile(pattern)
+	matches := reg.FindSubmatch(main)
+	if len(matches) != 3 {
+		return 0, false
+	}
+	major, err := strconv.ParseInt(string(matches[1]), 16, 32)
+	if err != nil {
+		return 0, false
+	}
+	minor, err := strconv.ParseInt(string(matches[2]), 16, 32)
+	if err != nil {
+		return 0, false
+	}
+	target.Major = int(major)
+	target.Minor = int(minor)
+	return len(matches[0]), true
+}
+
+var (
+	targetPrefixes = map[string]TargetType{
+		"-j ACCEPT":    TargetTypeAccept,
+		"-j CONTINUE":  TargetTypeContinue,
+		"-j DROP":      TargetTypeDrop,
+		"-j RETURN":    TargetTypeReturn,
+		"-j CLASSIFY ": TargetTypeClassify,
+		"-j mangle ":   TargetTypeMangle,
+		"-j ":          TargetTypeJumpChain,
+	}
+
+	targetTrie tree.Trie
+)
+
+func init() {
+	targetTrie = tree.NewTrie()
+	for prefix, typ := range targetPrefixes {
+		targetTrie.Add(prefix, typ)
+	}
+}
+
+func ParseTarget(params []byte) (Target, int, error) {
+	node, ok := targetTrie.LPM(string(params))
+	if !ok {
+		return nil, 0, xtables.ErrTargetNotFound
+	}
+	typ := node.Value().(TargetType)
+	// get target by target type
+	target := TargetFactory(typ)
+	if target == nil {
+		return nil, 0, xtables.ErrMatchParams
+	}
+	if typ != TargetTypeClassify && typ != TargetTypeMangle {
+		offset, ok := target.Parse(params)
+		if !ok {
+			return nil, 0, xtables.ErrMatchParams
+		}
+		return target, offset, nil
+	}
+	return target, len(node.Word()), nil
 }

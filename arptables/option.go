@@ -18,6 +18,9 @@ func (ot OptionType) Value() string {
 const (
 	_ OptionType = iota
 	OptionTypeSetCounters
+	OptionTypeVerbose
+	OptionTypeNumeric
+	OptionTypeLineNumbers
 )
 
 type Option interface {
@@ -104,4 +107,80 @@ func (opt *OptionSetCounters) LongArgs() []string {
 		strconv.FormatUint(opt.packets, 10),
 		strconv.FormatUint(opt.bytes, 10),
 	}
+}
+
+func NewOptionVerbose() (*OptionVerbose, error) {
+	option := &OptionVerbose{
+		baseOption: baseOption{
+			optionType: OptionTypeVerbose,
+		},
+	}
+	option.setChild(option)
+	return option, nil
+}
+
+type OptionVerbose struct {
+	baseOption
+}
+
+func (opt *OptionVerbose) Short() string {
+	return "-v"
+}
+
+func (opt *OptionVerbose) ShortArgs() []string {
+	return []string{"-v"}
+}
+
+func (opt *OptionVerbose) Long() string {
+	return "--verbose"
+}
+
+func (opt *OptionVerbose) LongArgs() []string {
+	return []string{"--verbose"}
+}
+
+func NewOptionNumeric() (*OptionNumeric, error) {
+	option := &OptionNumeric{
+		baseOption: baseOption{
+			optionType: OptionTypeNumeric,
+		},
+	}
+	option.setChild(option)
+	return option, nil
+}
+
+type OptionNumeric struct {
+	baseOption
+}
+
+func (opt *OptionNumeric) Short() string {
+	return "-n"
+}
+
+func (opt *OptionNumeric) ShortArgs() []string {
+	return []string{"-n"}
+}
+
+func NewOptionLineNumbers() (*OptionLineNumbers, error) {
+	option := &OptionLineNumbers{
+		baseOption: baseOption{
+			optionType: OptionTypeLineNumbers,
+		},
+	}
+	option.setChild(option)
+	return option, nil
+}
+
+// List with line numbers of each rule, corresponding to that rule's
+// position in the chain.
+type OptionLineNumbers struct {
+	baseOption
+}
+
+func (opt *OptionLineNumbers) Short() string {
+	return "--line-numbers"
+}
+
+func (opt *OptionLineNumbers) ShortArgs() []string {
+	return []string{"--line-numbers"}
 }

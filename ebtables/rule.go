@@ -1,7 +1,5 @@
 package ebtables
 
-import "github.com/singchia/go-xtables/pkg/network"
-
 type Rule struct {
 	tableType TableType
 	// chain info
@@ -14,6 +12,10 @@ type Rule struct {
 	matches  []Match
 	matchMap map[MatchType]Match
 
+	// watchers
+	watchers   []Watcher
+	watcherMap map[WatcherType]Watcher
+
 	// options
 	options   []Option
 	optionMap map[OptionType]Option
@@ -23,7 +25,7 @@ type Rule struct {
 
 	packets int64
 	bytes   int64
-	prot    network.Protocol
+	//prot    network.Protocol
 }
 
 func (rule *Rule) TableType() TableType {

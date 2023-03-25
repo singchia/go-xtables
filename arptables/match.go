@@ -1,10 +1,12 @@
 package arptables
 
 import (
-	"encoding/hex"
+	"regexp"
 	"strconv"
 	"strings"
 
+	"github.com/singchia/go-hammer/tree"
+	"github.com/singchia/go-xtables"
 	"github.com/singchia/go-xtables/pkg/network"
 )
 
@@ -47,6 +49,42 @@ type Match interface {
 	LongArgs() []string
 	Parse([]byte) (int, bool)
 	Depends() []MatchType
+}
+
+func MatchFactory(matchType MatchType) Match {
+	switch matchType {
+	case MatchTypeDestinationIP:
+		match, _ := NewMatchDestinationIP(false, nil)
+		return match
+	case MatchTypeDestinationMAC:
+		match, _ := NewMatchDestinationMAC(false, nil)
+		return match
+	case MatchTypeHardwareLength:
+		match, _ := NewMatchHardwareLength(-1)
+		return match
+	case MatchTypeHardwareType:
+		match, _ := NewMatchHardwareType(0)
+		return match
+	case MatchTypeInInterface:
+		match, _ := NewMatchInInterface(false, "")
+		return match
+	case MatchTypeOpCode:
+		match, _ := NewMatchOpCode(0)
+		return match
+	case MatchTypeOutInterface:
+		match, _ := NewMatchOutInterface(false, "")
+		return match
+	case MatchTypeProtoType:
+		match, _ := NewMatchProtoType(-1)
+		return match
+	case MatchTypeSourceIP:
+		match, _ := NewMatchSourceIP(false, nil)
+		return match
+	case MatchTypeSourceMAC:
+		match, _ := NewMatchSourceMAC(false, nil)
+		return match
+	}
+	return nil
 }
 
 type baseMatch struct {
@@ -93,12 +131,12 @@ func (bm *baseMatch) Depends() []MatchType {
 }
 
 // The destination IP specification
-func NewMatchDestinationIP(yes bool, addr network.Address) (*MatchDestinationIP, error) {
+func NewMatchDestinationIP(invert bool, addr network.Address) (*MatchDestinationIP, error) {
 	match := &MatchDestinationIP{
 		baseMatch: baseMatch{
 			matchType: MatchTypeDestinationIP,
 		},
-		DestinationInvert: !yes,
+		DestinationInvert: invert,
 		Destination:       addr,
 	}
 	match.setChild(match)
@@ -140,13 +178,32 @@ func (match *MatchDestinationIP) LongArgs() []string {
 	return args
 }
 
+func (match *MatchDestinationIP) Parse(main []byte) (int, bool) {
+	// 1. "(! )?-d (([[:graph:]]+)(\/([:graph:]+))?) *" #1 #2 #3 #4 #5
+	pattern := `(! )?-d (([[:graph:]]+)(\/([[:graph:]]+))?) *`
+	reg := regexp.MustCompile(pattern)
+	matches := reg.FindSubmatch(main)
+	if len(matches) != 6 {
+		return 0, false
+	}
+	if len(matches[1]) != 0 {
+		match.DestinationInvert = true
+	}
+	addr, err := network.ParseAddress(string(matches[2]))
+	if err != nil {
+		return 0, false
+	}
+	match.Destination = addr
+	return len(matches[0]), true
+}
+
 // The destination mac address.
-func NewMatchDestinationMAC(yes bool, addr network.Address) (*MatchDestinationMAC, error) {
+func NewMatchDestinationMAC(invert bool, addr network.Address) (*MatchDestinationMAC, error) {
 	match := &MatchDestinationMAC{
 		baseMatch: baseMatch{
 			matchType: MatchTypeDestinationMAC,
 		},
-		DestinationInvert: !yes,
+		DestinationInvert: invert,
 		Destination:       addr,
 	}
 	match.setChild(match)
@@ -174,13 +231,32 @@ func (match *MatchDestinationMAC) ShortArgs() []string {
 	return args
 }
 
+func (match *MatchDestinationMAC) Parse(main []byte) (int, bool) {
+	// 1. "(! )?--dst-mac (([0-9A-Za-z:]+)(/([0-9A-Za-z:]+))?) *" #1 #2 #3 #4 #5
+	pattern := `(! )?--dst-mac (([0-9A-Za-z:]+)(/([0-9A-Za-z:]+))?) *`
+	reg := regexp.MustCompile(pattern)
+	matches := reg.FindSubmatch(main)
+	if len(matches) != 6 {
+		return 0, false
+	}
+	if len(matches[1]) != 0 {
+		match.DestinationInvert = true
+	}
+	addr, err := network.ParseAddress(string(matches[2]))
+	if err != nil {
+		return 0, false
+	}
+	match.Destination = addr
+	return len(matches[0]), true
+}
+
 // The source IP specification.
-func NewMatchSourceIP(yes bool, addr network.Address) (*MatchSourceIP, error) {
+func NewMatchSourceIP(invert bool, addr network.Address) (*MatchSourceIP, error) {
 	match := &MatchSourceIP{
 		baseMatch: baseMatch{
 			matchType: MatchTypeSourceIP,
 		},
-		SourceInvert: !yes,
+		SourceInvert: invert,
 		Source:       addr,
 	}
 	match.setChild(match)
@@ -222,13 +298,32 @@ func (match *MatchSourceIP) LongArgs() []string {
 	return args
 }
 
+func (match *MatchSourceIP) Parse(main []byte) (int, bool) {
+	// 1. "(! )?-s( !)? (([[:graph:]]+)(/([:graph:]+))?) *" #1 #2 #3 #4 #5
+	pattern := `(! )?-s (([[:graph:]]+)(/([:graph:]+))?) *`
+	reg := regexp.MustCompile(pattern)
+	matches := reg.FindSubmatch(main)
+	if len(matches) != 6 {
+		return 0, false
+	}
+	if len(matches[1]) != 0 {
+		match.SourceInvert = true
+	}
+	addr, err := network.ParseAddress(string(matches[2]))
+	if err != nil {
+		return 0, false
+	}
+	match.Source = addr
+	return len(matches[0]), true
+}
+
 // The source mac address.
-func NewMatchSourceMAC(yes bool, addr network.Address) (*MatchSourceMAC, error) {
+func NewMatchSourceMAC(invert bool, addr network.Address) (*MatchSourceMAC, error) {
 	match := &MatchSourceMAC{
 		baseMatch: baseMatch{
 			matchType: MatchTypeSourceMAC,
 		},
-		SourceInvert: !yes,
+		SourceInvert: invert,
 		Source:       addr,
 	}
 	match.setChild(match)
@@ -256,23 +351,46 @@ func (match *MatchSourceMAC) ShortArgs() []string {
 	return args
 }
 
-func NewMatchHardwareLength(yes bool, length ...int) (*MatchHardwareLength, error) {
+func (match *MatchSourceMAC) Parse(main []byte) (int, bool) {
+	// 1. "(! )?--src-mac (([0-9A-Za-z:]+)(/([0-9A-Za-z:]+))?) *" #1 #2 #3 #4 #5
+	pattern := `(! )?--src-mac (([0-9A-Za-z:]+)(/([0-9A-Za-z:]+))?) *`
+	reg := regexp.MustCompile(pattern)
+	matches := reg.FindSubmatch(main)
+	if len(matches) != 6 {
+		return 0, false
+	}
+	if len(matches[1]) != 0 {
+		match.SourceInvert = true
+	}
+	addr, err := network.ParseAddress(string(matches[2]))
+	if err != nil {
+		return 0, false
+	}
+	match.Source = addr
+	return len(matches[0]), true
+}
+
+func NewMatchHardwareLengthWithMask(length, mask int) (*MatchHardwareLength, error) {
 	match := &MatchHardwareLength{
 		baseMatch: baseMatch{
 			matchType: MatchTypeHardwareLength,
 		},
-		Length: -1,
+		Length: length,
+		Mask:   mask,
+	}
+	match.setChild(match)
+	return match, nil
+}
+
+func NewMatchHardwareLength(length int) (*MatchHardwareLength, error) {
+	match := &MatchHardwareLength{
+		baseMatch: baseMatch{
+			matchType: MatchTypeHardwareLength,
+		},
+		Length: length,
 		Mask:   -1,
 	}
 	match.setChild(match)
-	switch len(length) {
-	case 1:
-		match.Length = length[0]
-		match.Mask = -1
-	case 2:
-		match.Length = length[0]
-		match.Mask = length[1]
-	}
 	return match, nil
 }
 
@@ -319,7 +437,33 @@ func (match *MatchHardwareLength) LongArgs() []string {
 	return args
 }
 
-func NewMatchOpCodeWithMask(yes bool, opcode, mask [2]byte) (*MatchOpCode, error) {
+func (match *MatchHardwareLength) Parse(main []byte) (int, bool) {
+	// 1. "--h-length (([0-9]+)(/([0-9]+))?) *" #1 #2 #3 #4
+	pattern := `--h-length (([0-9]+)(/([0-9]+))?) *`
+	reg := regexp.MustCompile(pattern)
+	matches := reg.FindSubmatch(main)
+	if len(matches) != 5 {
+		return 0, false
+	}
+	elems := strings.Split(string(matches[1]), "/")
+	if len(elems) >= 1 {
+		value, err := strconv.Atoi(string(matches[2]))
+		if err != nil {
+			return 0, false
+		}
+		match.Length = value
+	}
+	if len(elems) == 2 {
+		value, err := strconv.Atoi(string(matches[4]))
+		if err != nil {
+			return 0, false
+		}
+		match.Mask = value
+	}
+	return len(matches[0]), true
+}
+
+func NewMatchOpCodeWithMask(opcode network.ARPOpCode, mask uint16) (*MatchOpCode, error) {
 	match := &MatchOpCode{
 		baseMatch: baseMatch{
 			matchType: MatchTypeOpCode,
@@ -332,12 +476,12 @@ func NewMatchOpCodeWithMask(yes bool, opcode, mask [2]byte) (*MatchOpCode, error
 	return match, nil
 }
 
-func NewMatchOpCode(yes bool, opcode network.ARPOpCode) (*MatchOpCode, error) {
+func NewMatchOpCode(opcode network.ARPOpCode) (*MatchOpCode, error) {
 	match := &MatchOpCode{
 		baseMatch: baseMatch{
 			matchType: MatchTypeOpCode,
 		},
-		OpCode: opcode.Hex(),
+		OpCode: opcode,
 	}
 	match.setChild(match)
 	return match, nil
@@ -346,8 +490,10 @@ func NewMatchOpCode(yes bool, opcode network.ARPOpCode) (*MatchOpCode, error) {
 // The hardware length(number of bytes).
 type MatchOpCode struct {
 	baseMatch
-	OpCode  [2]byte
-	Mask    [2]byte
+	OpCode network.ARPOpCode
+	//OpCode  [2]byte
+	Mask uint16
+	//Mask    [2]byte
 	HasMask bool
 }
 
@@ -358,22 +504,49 @@ func (match *MatchOpCode) Short() string {
 func (match *MatchOpCode) ShortArgs() []string {
 	args := make([]string, 0, 2)
 	args = append(args, "--opcode")
-	code := hex.EncodeToString([]byte{match.OpCode[0], match.OpCode[1]})
+	code := match.OpCode.String()
 	if match.HasMask {
-		mask := hex.EncodeToString([]byte{match.Mask[0], match.Mask[1]})
+		mask := strconv.Itoa(int(match.Mask))
 		args = append(args, code+"/"+mask)
-		return args
+	} else {
+		args = append(args, code)
 	}
-	args = append(args, code)
 	return args
 }
 
-func NewMatchProtoTypeWithMask(yes bool, proto, mask [2]byte) (*MatchProtoType, error) {
+func (match *MatchOpCode) Parse(main []byte) (int, bool) {
+	// 1. "--opcode (([0-9]+)(/([0-9]+))?) *" #1 #2 #3 #4
+	pattern := `--opcode (([0-9]+)(/([0-9]+))?) *`
+	reg := regexp.MustCompile(pattern)
+	matches := reg.FindSubmatch(main)
+	if len(matches) != 5 {
+		return 0, false
+	}
+	elems := strings.Split(string(matches[1]), "/")
+	if len(elems) >= 1 {
+		value, err := strconv.ParseUint(string(matches[2]), 10, 16)
+		if err != nil {
+			return 0, false
+		}
+		match.OpCode = network.ARPOpCode(uint16(value))
+	}
+	if len(elems) == 2 {
+		value, err := strconv.ParseUint(string(matches[4]), 10, 16)
+		if err != nil {
+			return 0, false
+		}
+		match.Mask = uint16(value)
+		match.HasMask = true
+	}
+	return len(matches[0]), true
+}
+
+func NewMatchProtoTypeWithMask(protoType network.Protocol, mask uint16) (*MatchProtoType, error) {
 	match := &MatchProtoType{
 		baseMatch: baseMatch{
 			matchType: MatchTypeProtoType,
 		},
-		Typ:     proto,
+		Typ:     protoType,
 		HasMask: true,
 		Mask:    mask,
 	}
@@ -381,12 +554,12 @@ func NewMatchProtoTypeWithMask(yes bool, proto, mask [2]byte) (*MatchProtoType, 
 	return match, nil
 }
 
-func NewMatchProtoType(yes bool, protoType network.Protocol) (*MatchProtoType, error) {
+func NewMatchProtoType(protoType network.Protocol) (*MatchProtoType, error) {
 	match := &MatchProtoType{
 		baseMatch: baseMatch{
 			matchType: MatchTypeProtoType,
 		},
-		Typ: protoType.Hex(),
+		Typ: protoType,
 	}
 	match.setChild(match)
 	return match, nil
@@ -395,9 +568,9 @@ func NewMatchProtoType(yes bool, protoType network.Protocol) (*MatchProtoType, e
 // The protocol type in 2bytes.
 type MatchProtoType struct {
 	baseMatch
-	Typ [2]byte
+	Typ network.Protocol
 
-	Mask    [2]byte
+	Mask    uint16
 	HasMask bool
 }
 
@@ -408,17 +581,44 @@ func (match *MatchProtoType) Short() string {
 func (match *MatchProtoType) ShortArgs() []string {
 	args := make([]string, 0, 2)
 	args = append(args, "--proto-type")
-	typ := hex.EncodeToString([]byte{match.Typ[0], match.Typ[1]})
+	typ := match.Typ.Value()
 	if match.HasMask {
-		mask := hex.EncodeToString([]byte{match.Mask[0], match.Mask[1]})
+		mask := strconv.Itoa(int(match.Mask))
 		args = append(args, typ+"/"+mask)
-		return args
+	} else {
+		args = append(args, typ)
 	}
-	args = append(args, typ)
 	return args
 }
 
-func NewMatchHardwareTypeWithMask(yes bool, typ, mask [2]byte) (*MatchHardwareType, error) {
+func (match *MatchProtoType) Parse(main []byte) (int, bool) {
+	// 1. "--proto-type (([0-9]+)(/([0-9]+))?) *"
+	pattern := `--proto-type (([0-9]+)(/([0-9]+))?) *`
+	reg := regexp.MustCompile(pattern)
+	matches := reg.FindSubmatch(main)
+	if len(matches) != 5 {
+		return 0, false
+	}
+	elems := strings.Split(string(matches[1]), "/")
+	if len(elems) >= 1 {
+		value, err := strconv.Atoi(string(matches[2]))
+		if err != nil {
+			return 0, false
+		}
+		match.Typ = network.Protocol(value)
+	}
+	if len(elems) == 2 {
+		value, err := strconv.ParseUint(string(matches[4]), 10, 16)
+		if err != nil {
+			return 0, false
+		}
+		match.Mask = uint16(value)
+	}
+	return len(matches[0]), true
+
+}
+
+func NewMatchHardwareTypeWithMask(typ network.HardwareType, mask uint16) (*MatchHardwareType, error) {
 	match := &MatchHardwareType{
 		baseMatch: baseMatch{
 			matchType: MatchTypeHardwareType,
@@ -431,12 +631,12 @@ func NewMatchHardwareTypeWithMask(yes bool, typ, mask [2]byte) (*MatchHardwareTy
 	return match, nil
 }
 
-func NewMatchHardwareType(yes bool, typ network.HardwareType) (*MatchHardwareType, error) {
+func NewMatchHardwareType(typ network.HardwareType) (*MatchHardwareType, error) {
 	match := &MatchHardwareType{
 		baseMatch: baseMatch{
 			matchType: MatchTypeHardwareType,
 		},
-		Typ: typ.Hex(),
+		Typ: typ,
 	}
 	match.setChild(match)
 	return match, nil
@@ -445,9 +645,9 @@ func NewMatchHardwareType(yes bool, typ network.HardwareType) (*MatchHardwareTyp
 // The protocol type in 2bytes.
 type MatchHardwareType struct {
 	baseMatch
-	Typ [2]byte
+	Typ network.HardwareType
 
-	Mask    [2]byte
+	Mask    uint16
 	HasMask bool
 }
 
@@ -458,22 +658,48 @@ func (match *MatchHardwareType) Short() string {
 func (match *MatchHardwareType) ShortArgs() []string {
 	args := make([]string, 0, 2)
 	args = append(args, "--h-type")
-	typ := hex.EncodeToString([]byte{match.Typ[0], match.Typ[1]})
+	typ := match.Typ.String()
 	if match.HasMask {
-		mask := hex.EncodeToString([]byte{match.Mask[0], match.Mask[1]})
+		mask := strconv.Itoa(int(match.Mask))
 		args = append(args, typ+"/"+mask)
-		return args
+	} else {
+		args = append(args, typ)
 	}
-	args = append(args, typ)
 	return args
 }
 
-func NewMatchInInterface(yes bool, name string) (*MatchInInterface, error) {
+func (match *MatchHardwareType) Parse(main []byte) (int, bool) {
+	// 1. "--h-type (([0-9]+)(/([0-9]+))?) *" #1 #2 #3 #4
+	pattern := `--h-type (([0-9]+)(/([0-9]+))?) *`
+	reg := regexp.MustCompile(pattern)
+	matches := reg.FindSubmatch(main)
+	if len(matches) != 5 {
+		return 0, false
+	}
+	elems := strings.Split(string(matches[1]), "/")
+	if len(elems) >= 1 {
+		value, err := strconv.ParseUint(string(matches[2]), 10, 16)
+		if err != nil {
+			return 0, false
+		}
+		match.Typ = network.HardwareType(value)
+	}
+	if len(elems) == 2 {
+		value, err := strconv.ParseUint(string(matches[4]), 10, 16)
+		if err != nil {
+			return 0, false
+		}
+		match.Mask = uint16(value)
+	}
+	return len(matches[0]), true
+}
+
+func NewMatchInInterface(invert bool, name string) (*MatchInInterface, error) {
 	match := &MatchInInterface{
 		baseMatch: baseMatch{
 			matchType: MatchTypeInInterface,
 		},
-		InInterfaceInvert: !yes,
+		InInterfaceInvert: invert,
 		InInterface:       name,
 	}
 	match.setChild(match)
@@ -516,13 +742,28 @@ func (mInInterface *MatchInInterface) LongArgs() []string {
 	return args
 }
 
+func (mInInterface *MatchInInterface) Parse(main []byte) (int, bool) {
+	// 1. "(! )?-i ([[:graph:]]+) *" #1 #2
+	pattern := `(! )?-i ([[:graph:]]+) *`
+	reg := regexp.MustCompile(pattern)
+	matches := reg.FindSubmatch(main)
+	if len(matches) != 3 {
+		return 0, false
+	}
+	if len(matches[1]) != 0 {
+		mInInterface.InInterfaceInvert = true
+	}
+	mInInterface.InInterface = string(matches[2])
+	return len(matches[0]), true
+}
+
 // The interface via which a frame is going to be sent (for the OUTPUT and FORWARD chains).
-func NewMatchOutInterface(yes bool, name string) (*MatchOutInterface, error) {
+func NewMatchOutInterface(invert bool, name string) (*MatchOutInterface, error) {
 	match := &MatchOutInterface{
 		baseMatch: baseMatch{
 			matchType: MatchTypeOutInterface,
 		},
-		OutInterfaceInvert: !yes,
+		OutInterfaceInvert: invert,
 		OutInterface:       name,
 	}
 	match.setChild(match)
@@ -562,4 +803,75 @@ func (mOutInterface *MatchOutInterface) LongArgs() []string {
 	}
 	args = append(args, mOutInterface.OutInterface)
 	return args
+}
+
+func (mOutInterface *MatchOutInterface) Parse(main []byte) (int, bool) {
+	// 1. "(! )?-o ([[:graph:]]+) *" #1 #2
+	pattern := `(! )?-o ([[:graph:]]+) *`
+	reg := regexp.MustCompile(pattern)
+	matches := reg.FindSubmatch(main)
+	if len(matches) != 3 {
+		return 0, false
+	}
+	if len(matches[1]) != 0 {
+		mOutInterface.OutInterfaceInvert = true
+	}
+	mOutInterface.OutInterface = string(matches[2])
+	return len(matches[0]), true
+}
+
+var (
+	matchPrefixes = map[string]MatchType{
+		"-d":           MatchTypeDestinationIP,
+		"! -d":         MatchTypeDestinationIP,
+		"--dst-mac":    MatchTypeDestinationMAC,
+		"! --dst-mac":  MatchTypeDestinationMAC,
+		"-s":           MatchTypeSourceIP,
+		"! -s":         MatchTypeSourceIP,
+		"--src-mac":    MatchTypeSourceMAC,
+		"! --src-mac":  MatchTypeSourceMAC,
+		"--h-length":   MatchTypeHardwareLength,
+		"--opcode":     MatchTypeOpCode,
+		"--proto-type": MatchTypeProtoType,
+		"--h-type":     MatchTypeHardwareType,
+		"-i":           MatchTypeInInterface,
+		"! -i":         MatchTypeInInterface,
+		"-o":           MatchTypeOutInterface,
+		"! -o":         MatchTypeOutInterface,
+	}
+
+	matchTrie tree.Trie
+)
+
+func init() {
+	matchTrie = tree.NewTrie()
+	for prefix, typ := range matchPrefixes {
+		matchTrie.Add(prefix, typ)
+	}
+}
+
+func ParseMatch(params []byte) ([]Match, int, error) {
+	index := 0
+	matches := []Match{}
+	for len(params) > 0 {
+		node, ok := matchTrie.LPM(string(params))
+		if !ok {
+			break
+		}
+		typ := node.Value().(MatchType)
+		// get match by match type
+		match := MatchFactory(typ)
+		if match == nil {
+			return matches, index, xtables.ErrMatchParams
+		}
+		// index meaning the end of this match
+		offset, ok := match.Parse(params)
+		if !ok {
+			return matches, index, xtables.ErrMatchParams
+		}
+		index += offset
+		matches = append(matches, match)
+		params = params[offset:]
+	}
+	return matches, index, nil
 }

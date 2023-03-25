@@ -1,4 +1,4 @@
-package xlog
+package xtables
 
 type LogLevel int8
 

@@ -2,30 +2,71 @@ package ebtables
 
 import "strconv"
 
-type ChainType int
+const (
+	chainTypeNull        int = iota
+	chainTypePREROUTING      // PREROUTING
+	chainTypeINPUT           // INPUT
+	chainTypeFORWARD         // FORWARD
+	chainTypeOUTPUT          // OUTPUT
+	chainTypeBROUTING        // BROUTING
+	chainTypePOSTROUTING     // POSTROUTING
+	chainTypeUserDefined     // USER-DEFINED
+)
+
+type ChainType struct {
+	chainType   int
+	userDefined bool
+	name        string
+}
+
+func (ct ChainType) SetName(name string) {
+	ct.name = name
+}
 
 func (ct ChainType) Type() string {
 	return "ChainType"
 }
 
 func (ct ChainType) Value() string {
-	return strconv.Itoa(int(ct))
+	return strconv.Itoa(ct.chainType)
 }
 
-const (
-	_                    ChainType = iota
-	ChainTypePREROUTING            // PREROUTING
-	ChainTypeINPUT                 // INPUT
-	ChainTypeFORWARD               // FORWARD
-	ChainTypeOUTPUT                // OUTPUT
-	ChainTypeBROUTING              // BROUTING
-	ChainTypePOSTROUTING           // POSTROUTING
-	ChainTypeUserDefined           // USER-DEFINED
+func (ct ChainType) String() string {
+	switch ct.chainType {
+	case chainTypePREROUTING:
+		return "PREROUTING"
+	case chainTypeINPUT:
+		return "INPUT"
+	case chainTypeFORWARD:
+		return "FORWARD"
+	case chainTypeOUTPUT:
+		return "OUTPUT"
+	case chainTypeBROUTING:
+		return "BROUTING"
+	case chainTypePOSTROUTING:
+		return "POSTROUTING"
+	case chainTypeUserDefined:
+		return ct.name
+	}
+	return "Unknown"
+}
+
+var (
+	ChainTypeNull        = ChainType{chainTypeNull, false, ""}
+	ChainTypePREROUTING  = ChainType{chainTypePREROUTING, false, ""}
+	ChainTypeINPUT       = ChainType{chainTypeINPUT, false, ""}
+	ChainTypeFORWARD     = ChainType{chainTypeFORWARD, false, ""}
+	ChainTypeOUTPUT      = ChainType{chainTypeOUTPUT, false, ""}
+	ChainTypeBROUTING    = ChainType{chainTypeBROUTING, false, ""}
+	ChainTypePOSTROUTING = ChainType{chainTypePOSTROUTING, false, ""}
+	ChainTypeUserDefined = ChainType{chainTypeUserDefined, true, ""}
 )
 
 type Chain struct {
-	chainType   ChainType
-	userDefined bool
-	name        string
-	policy      Target
+	chainType ChainType
+	tableType TableType
+	//userDefined bool
+	//name    string
+	policy  Target
+	entries int
 }

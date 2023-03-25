@@ -26,6 +26,7 @@ const (
 	addrTypeIP
 	addrTypeIPNet
 	addrTypeMAC
+	addrTypeMACMask
 )
 
 // IP related
@@ -58,6 +59,13 @@ func (ip *IP) SetAnywhere(addrType AddressType) {
 		ip.ip = net.ParseIP("0.0.0.0")
 	case AddressTypeIPv6:
 		ip.ip = net.ParseIP("::")
+	}
+}
+
+func ParseIP(s string) Address {
+	ip := net.ParseIP(s)
+	return &IP{
+		ip: ip,
 	}
 }
 
@@ -166,6 +174,11 @@ func ParseAddress(address interface{}) (Address, error) {
 			return &HardwareAddr{
 				mac: ads.(net.HardwareAddr),
 			}, nil
+		case addrTypeMACMask:
+			return &HardwareAddr{
+				mac:  ads.([2]net.HardwareAddr)[0],
+				mask: ads.([2]net.HardwareAddr)[1],
+			}, nil
 		}
 	case net.HardwareAddr:
 		return &HardwareAddr{
@@ -200,22 +213,37 @@ func parseAddress(address string) (addrType, interface{}, error) {
 	if ip != nil {
 		return addrTypeIP, ip, nil
 	}
+
 	// mac
 	mac, err := net.ParseMAC(address)
 	if err == nil {
 		return addrTypeMAC, mac, nil
 	}
+
+	// mac with mask
+	addrMask := strings.Split(address, "/")
+	if len(addrMask) == 2 {
+		mac, err := net.ParseMAC(addrMask[0])
+		if err == nil {
+			mask, err := net.ParseMAC(addrMask[1])
+			if err == nil {
+				return addrTypeMACMask, [2]net.HardwareAddr{mac, mask}, nil
+			}
+		}
+		goto HOST
+	}
+
+HOST:
 	// host
 	host := &Host{}
-	hostMask := strings.Split(address, "/")
-	if len(hostMask) == 2 {
-		mask, err := strconv.Atoi(hostMask[1])
+	if len(addrMask) == 2 {
+		mask, err := strconv.Atoi(addrMask[1])
 		if err != nil {
 			return addrTypeUnknown, nil, ErrIllegalAddress
 		}
 		host.mask = mask
 	}
-	hostname := hostMask[0]
+	hostname := addrMask[0]
 	head, tail := 0, 0
 	// verification
 	for i := 0; i < len(hostname); i++ {
@@ -230,7 +258,6 @@ func parseAddress(address string) (addrType, interface{}, error) {
 				return addrTypeUnknown, nil, ErrIllegalAddress
 			}
 		}
-
 		if t == '.' {
 			if i-head > 63 {
 				return addrTypeUnknown, nil, ErrIllegalAddress

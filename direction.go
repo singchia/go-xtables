@@ -1,4 +1,4 @@
-package direction
+package xtables
 
 type Direction int
 

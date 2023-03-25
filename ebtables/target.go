@@ -1,14 +1,15 @@
 package ebtables
 
 import (
+	"bytes"
 	"fmt"
 	"net"
+	"regexp"
 	"strconv"
 	"strings"
 
-	"github.com/singchia/go-xtables/internal/operator"
-	"github.com/singchia/go-xtables/internal/xerror"
-	"github.com/singchia/go-xtables/pkg/network"
+	"github.com/singchia/go-hammer/tree"
+	"github.com/singchia/go-xtables"
 )
 
 type TargetType int
@@ -100,47 +101,37 @@ type Target interface {
 	Parse([]byte) (int, bool)
 }
 
-func NewTarget(targetType TargetType, args ...interface{}) (Target, error) {
+func TargetFactory(targetType TargetType) Target {
 	switch targetType {
-	case TargetTypeUnknown:
-		if len(args) != 1 {
-			goto Err
-		}
-		name, ok := args[0].(string)
-		if !ok {
-			goto Err
-		}
-		return NewTargetUnknown(name), nil
 	case TargetTypeAccept:
-		return NewTargetAccept(), nil
+		target := newTargetAccept()
+		return target
 	case TargetTypeDrop:
-		return NewTargetDrop(), nil
+		target := newTargetDrop()
+		return target
 	case TargetTypeReturn:
-		return NewTargetReturn(), nil
+		target := newTargetReturn()
+		return target
 	case TargetTypeJumpChain:
-		if len(args) != 1 {
-			goto Err
-		}
-		chain, ok := args[0].(string)
-		if !ok {
-			goto Err
-		}
-		return NewTargetJumpChain(chain), nil
+		target := newTargetJumpChain("")
+		return target
 	case TargetTypeARPReply:
-		return NewTargetARPReply()
+		target, _ := newTargetARPReply()
+		return target
 	case TargetTypeDNAT:
-		return NewTargetDNAT()
+		target, _ := newTargetDNAT()
+		return target
 	case TargetTypeMark:
-		return NewTargetMark()
+		target, _ := newTargetMark()
+		return target
 	case TargetTypeRedirect:
-		return NewTargetRedirect()
+		target, _ := newTargetRedirect()
+		return target
 	case TargetTypeSNAT:
-		return NewTargetSNAT()
-	default:
-		return NewTargetEmpty()
+		target, _ := newTargetSNAT()
+		return target
 	}
-Err:
-	return nil, xerror.ErrArgs
+	return nil
 }
 
 type baseTarget struct {
@@ -186,7 +177,7 @@ type TargetEmpty struct {
 	baseTarget
 }
 
-func NewTargetEmpty() (*TargetEmpty, error) {
+func newTargetEmpty() (*TargetEmpty, error) {
 	return &TargetEmpty{
 		baseTarget: baseTarget{
 			targetType: TargetTypeEmpty,
@@ -199,7 +190,7 @@ type TargetUnknown struct {
 	unknown string
 }
 
-func NewTargetUnknown(unknown string) *TargetUnknown {
+func newTargetUnknown(unknown string) *TargetUnknown {
 	return &TargetUnknown{
 		baseTarget: baseTarget{
 			targetType: TargetTypeUnknown,
@@ -216,7 +207,7 @@ type TargetAccept struct {
 	baseTarget
 }
 
-func NewTargetAccept() *TargetAccept {
+func newTargetAccept() *TargetAccept {
 	target := &TargetAccept{
 		baseTarget: baseTarget{
 			targetType: TargetTypeAccept,
@@ -242,11 +233,21 @@ func (ta *TargetAccept) LongArgs() []string {
 	return []string{"--jump", "ACCEPT"}
 }
 
+func (ta *TargetAccept) Parse(main []byte) (int, bool) {
+	pattern := `-j ACCEPT *`
+	reg := regexp.MustCompile(pattern)
+	matches := reg.FindSubmatch(main)
+	if len(matches) != 1 {
+		return 0, false
+	}
+	return len(matches[0]), true
+}
+
 type TargetContinue struct {
 	baseTarget
 }
 
-func NewTargetContinue() *TargetContinue {
+func newTargetContinue() *TargetContinue {
 	target := &TargetContinue{
 		baseTarget: baseTarget{
 			targetType: TargetTypeContinue,
@@ -272,11 +273,21 @@ func (tc *TargetContinue) LongArgs() []string {
 	return []string{"--jump", "CONTINUE"}
 }
 
+func (tc *TargetContinue) Parse(main []byte) (int, bool) {
+	pattern := `-j CONTINUE *`
+	reg := regexp.MustCompile(pattern)
+	matches := reg.FindSubmatch(main)
+	if len(matches) != 1 {
+		return 0, false
+	}
+	return len(matches[0]), true
+}
+
 type TargetDrop struct {
 	baseTarget
 }
 
-func NewTargetDrop() *TargetDrop {
+func newTargetDrop() *TargetDrop {
 	target := &TargetDrop{
 		baseTarget: baseTarget{
 			targetType: TargetTypeDrop,
@@ -302,11 +313,21 @@ func (td *TargetDrop) LongArgs() []string {
 	return []string{"--jump", "DROP"}
 }
 
+func (td *TargetDrop) Parse(main []byte) (int, bool) {
+	pattern := `-j DROP *`
+	reg := regexp.MustCompile(pattern)
+	matches := reg.FindSubmatch(main)
+	if len(matches) != 1 {
+		return 0, false
+	}
+	return len(matches[0]), true
+}
+
 type TargetReturn struct {
 	baseTarget
 }
 
-func NewTargetReturn() *TargetReturn {
+func newTargetReturn() *TargetReturn {
 	target := &TargetReturn{
 		baseTarget: baseTarget{
 			targetType: TargetTypeReturn,
@@ -332,12 +353,22 @@ func (tr *TargetReturn) LongArgs() []string {
 	return []string{"--jump", "RETURN"}
 }
 
+func (tr *TargetReturn) Parse(main []byte) (int, bool) {
+	pattern := `-j RETURN *`
+	reg := regexp.MustCompile(pattern)
+	matches := reg.FindSubmatch(main)
+	if len(matches) != 1 {
+		return 0, false
+	}
+	return len(matches[0]), true
+}
+
 type TargetJumpChain struct {
 	baseTarget
 	chain string
 }
 
-func NewTargetJumpChain(chain string) *TargetJumpChain {
+func newTargetJumpChain(chain string) *TargetJumpChain {
 	target := &TargetJumpChain{
 		baseTarget: baseTarget{
 			targetType: TargetTypeJumpChain,
@@ -364,14 +395,24 @@ func (tj *TargetJumpChain) LongArgs() []string {
 	return []string{"--jump", tj.chain}
 }
 
+func (tj *TargetJumpChain) Parse(main []byte) (int, bool) {
+	pattern := `-j ([[:graph:]]+) *`
+	reg := regexp.MustCompile(pattern)
+	matches := reg.FindSubmatch(main)
+	if len(matches) != 2 {
+		return 0, false
+	}
+	tj.chain = string(matches[1])
+	return len(matches[0]), true
+}
+
 type OptionTargetARPReply func(*TargetARPReply)
 
 // Specifies the MAC address to reply with: the Ethernet source MAC and the
 // ARP payload  source  MAC  will  be filled in with this address.
 func WithTargetARPReplyMAC(mac net.HardwareAddr) OptionTargetARPReply {
 	return func(ta *TargetARPReply) {
-		addr, _ := network.ParseAddress(mac)
-		ta.ARPReplyMAC = addr
+		ta.ARPReplyMAC = mac
 	}
 }
 
@@ -384,7 +425,7 @@ func WithTargetARPReplyTarget(typ TargetType) OptionTargetARPReply {
 	}
 }
 
-func NewTargetARPReply(opts ...OptionTargetARPReply) (*TargetARPReply, error) {
+func newTargetARPReply(opts ...OptionTargetARPReply) (*TargetARPReply, error) {
 	target := &TargetARPReply{
 		baseTarget: baseTarget{
 			targetType: TargetTypeARPReply,
@@ -401,7 +442,7 @@ func NewTargetARPReply(opts ...OptionTargetARPReply) (*TargetARPReply, error) {
 
 type TargetARPReply struct {
 	baseTarget
-	ARPReplyMAC    network.Address
+	ARPReplyMAC    net.HardwareAddr
 	ARPReplyTarget TargetType
 }
 
@@ -421,13 +462,46 @@ func (ta *TargetARPReply) ShortArgs() []string {
 	return args
 }
 
+func (ta *TargetARPReply) Parse(main []byte) (int, bool) {
+	// 1. "-j arpreply"
+	// 2. "( --arpreply-mac ([[:graph:]]+))?" #1 #2
+	// 3. "( --arpreply-target (ACCEPT|CONTINUE|DROP|RETURN))? *" #3 #4
+	pattern := `-j arpreply` +
+		`( --arpreply-mac ([[:graph:]]+))?` +
+		`( --arpreply-target (ACCEPT|CONTINUE|DROP|RETURN))? *`
+	reg := regexp.MustCompile(pattern)
+	matches := reg.FindSubmatch(main)
+	if len(matches) != 5 {
+		return 0, false
+	}
+	if len(matches[2]) != 0 {
+		mac, err := parseMAC(main)
+		if err != nil {
+			return 0, false
+		}
+		ta.ARPReplyMAC = mac
+	}
+	if len(matches[4]) != 0 {
+		switch string(matches[4]) {
+		case "ACCEPT":
+			ta.targetType = TargetTypeAccept
+		case "CONTINUE":
+			ta.targetType = TargetTypeContinue
+		case "DROP":
+			ta.targetType = TargetTypeDrop
+		case "RETURN":
+			ta.targetType = TargetTypeReturn
+		}
+	}
+	return len(matches[0]), true
+}
+
 type OptionTargetDNAT func(*TargetDNAT)
 
 // Change the destination MAC address to the specified address.
 func WithTargetDNATToDestination(mac net.HardwareAddr) OptionTargetDNAT {
 	return func(td *TargetDNAT) {
-		addr, _ := network.ParseAddress(mac)
-		td.ToDestination = addr
+		td.ToDestination = mac
 	}
 }
 
@@ -439,7 +513,7 @@ func WithTargetDNATTarget(typ TargetType) OptionTargetDNAT {
 	}
 }
 
-func NewTargetDNAT(opts ...OptionTargetDNAT) (*TargetDNAT, error) {
+func newTargetDNAT(opts ...OptionTargetDNAT) (*TargetDNAT, error) {
 	target := &TargetDNAT{
 		baseTarget: baseTarget{
 			targetType: TargetTypeDNAT,
@@ -456,7 +530,7 @@ func NewTargetDNAT(opts ...OptionTargetDNAT) (*TargetDNAT, error) {
 
 type TargetDNAT struct {
 	baseTarget
-	ToDestination network.Address
+	ToDestination net.HardwareAddr
 	DNATTarget    TargetType
 }
 
@@ -476,32 +550,66 @@ func (td *TargetDNAT) ShortArgs() []string {
 	return args
 }
 
+func (td *TargetDNAT) Parse(main []byte) (int, bool) {
+	// 1. "-j dnat"
+	// 2. "( --to-destination ([[:graph:]]+))?" #1 #2
+	// 3. "( --dnat-target (ACCEPT|CONTINUE|DROP|RETURN))? *" #3 #4
+	pattern := `-j dnat` +
+		`( --to-destination ([[:graph:]]+))?` +
+		`( --arpreply-target (ACCEPT|CONTINUE|DROP|RETURN))? *`
+	reg := regexp.MustCompile(pattern)
+	matches := reg.FindSubmatch(main)
+	if len(matches) != 5 {
+		return 0, false
+	}
+	if len(matches[2]) != 0 {
+		mac, err := parseMAC(main)
+		if err != nil {
+			return 0, false
+		}
+		td.ToDestination = mac
+	}
+	if len(matches[4]) != 0 {
+		switch string(matches[4]) {
+		case "ACCEPT":
+			td.DNATTarget = TargetTypeAccept
+		case "CONTINUE":
+			td.DNATTarget = TargetTypeContinue
+		case "DROP":
+			td.DNATTarget = TargetTypeDrop
+		case "RETURN":
+			td.DNATTarget = TargetTypeReturn
+		}
+	}
+	return len(matches[0]), true
+}
+
 type OptionTargetMark func(*TargetMark)
 
 func WithTargetMarkSet(mark int) OptionTargetMark {
 	return func(tm *TargetMark) {
-		tm.Operator = operator.OperatorSET
+		tm.Operator = xtables.OperatorSET
 		tm.Mark = mark
 	}
 }
 
 func WithTargetMarkOr(mark int) OptionTargetMark {
 	return func(tm *TargetMark) {
-		tm.Operator = operator.OperatorOR
+		tm.Operator = xtables.OperatorOR
 		tm.Mark = mark
 	}
 }
 
 func WithTargetMarkAnd(mark int) OptionTargetMark {
 	return func(tm *TargetMark) {
-		tm.Operator = operator.OperatorAND
+		tm.Operator = xtables.OperatorAND
 		tm.Mark = mark
 	}
 }
 
 func WithTargetMarkXor(mark int) OptionTargetMark {
 	return func(tm *TargetMark) {
-		tm.Operator = operator.OperatorXOR
+		tm.Operator = xtables.OperatorXOR
 		tm.Mark = mark
 	}
 }
@@ -516,7 +624,7 @@ func WithTargetMarkTarget(typ TargetType) OptionTargetMark {
 	}
 }
 
-func NewTargetMark(opts ...OptionTargetMark) (*TargetMark, error) {
+func newTargetMark(opts ...OptionTargetMark) (*TargetMark, error) {
 	target := &TargetMark{
 		baseTarget: baseTarget{
 			targetType: TargetTypeMark,
@@ -536,7 +644,7 @@ func NewTargetMark(opts ...OptionTargetMark) (*TargetMark, error) {
 // place. This allows for a form of communication between ebtables and iptables.
 type TargetMark struct {
 	baseTarget
-	Operator   operator.Operator
+	Operator   xtables.Operator
 	Mark       int
 	MarkTarget TargetType
 }
@@ -549,19 +657,61 @@ func (tm *TargetMark) ShortArgs() []string {
 	args := make([]string, 0, 12)
 	args = append(args, "-j", tm.targetType.String())
 	switch tm.Operator {
-	case operator.OperatorSET:
+	case xtables.OperatorSET:
 		args = append(args, "--mark-set", strconv.Itoa(tm.Mark))
-	case operator.OperatorOR:
+	case xtables.OperatorOR:
 		args = append(args, "--mark-or", strconv.Itoa(tm.Mark))
-	case operator.OperatorAND:
+	case xtables.OperatorAND:
 		args = append(args, "--mark-and", strconv.Itoa(tm.Mark))
-	case operator.OperatorXOR:
+	case xtables.OperatorXOR:
 		args = append(args, "--mark-xor", strconv.Itoa(tm.Mark))
 	}
 	if tm.MarkTarget != TargetTypeUnknown {
 		args = append(args, "--mark-target", tm.MarkTarget.String())
 	}
 	return args
+}
+
+func (tm *TargetMark) Parse(main []byte) (int, bool) {
+	// 1. "-j mark"
+	// 2. "(--mark-(set|or|and|xor) ([0-9]+))?" #1 #2 #3
+	// 3. "( --mark-target (ACCEPT|CONTINUE|DROP|RETURN))? *" #4 #5
+	pattern := `-j mark` +
+		`( --mark-(set|or|and|xor) ([0-9]+))?` +
+		`( --mark-target (ACCEPT|CONTINUE|DROP|RETURN))? *`
+	reg := regexp.MustCompile(pattern)
+	matches := reg.FindSubmatch(main)
+	if len(matches) != 6 {
+		return 0, false
+	}
+	value, err := strconv.Atoi(string(matches[3]))
+	if err != nil {
+		return 0, false
+	}
+	tm.Mark = value
+	switch string(matches[2]) {
+	case "set":
+		tm.Operator = xtables.OperatorSET
+	case "or":
+		tm.Operator = xtables.OperatorOR
+	case "and":
+		tm.Operator = xtables.OperatorAND
+	case "xor":
+		tm.Operator = xtables.OperatorXOR
+	}
+	if len(matches[5]) != 0 {
+		switch string(matches[5]) {
+		case "ACCEPT":
+			tm.MarkTarget = TargetTypeAccept
+		case "CONTINUE":
+			tm.MarkTarget = TargetTypeContinue
+		case "DROP":
+			tm.MarkTarget = TargetTypeDrop
+		case "RETURN":
+			tm.MarkTarget = TargetTypeReturn
+		}
+	}
+	return len(matches[0]), true
 }
 
 type OptionTargetRedirect func(*TargetRedirect)
@@ -578,7 +728,7 @@ func WithTargetRedirectTarget(typ TargetType) OptionTargetRedirect {
 	}
 }
 
-func NewTargetRedirect(opts ...OptionTargetRedirect) (*TargetRedirect, error) {
+func newTargetRedirect(opts ...OptionTargetRedirect) (*TargetRedirect, error) {
 	target := &TargetRedirect{
 		baseTarget: baseTarget{
 			targetType: TargetTypeRedirect,
@@ -622,13 +772,37 @@ func (tr *TargetRedirect) LongArgs() []string {
 	return tr.ShortArgs()
 }
 
+func (tr *TargetRedirect) Parse(main []byte) (int, bool) {
+	// 1. "-j redirect"
+	// 2. "(--redirect-target (ACCEPT|CONTINUE|DROP|RETURN))? *" #1 #2
+	pattern := `-j redirect` +
+		`(--redirect-target (ACCEPT|CONTINUE|DROP|RETURN))? *`
+	reg := regexp.MustCompile(pattern)
+	matches := reg.FindSubmatch(main)
+	if len(matches) != 3 {
+		return 0, false
+	}
+	if len(matches[2]) != 0 {
+		switch string(matches[2]) {
+		case "ACCEPT":
+			tr.RedirectTarget = TargetTypeAccept
+		case "CONTINUE":
+			tr.RedirectTarget = TargetTypeContinue
+		case "DROP":
+			tr.RedirectTarget = TargetTypeDrop
+		case "RETURN":
+			tr.RedirectTarget = TargetTypeReturn
+		}
+	}
+	return len(matches[0]), true
+}
+
 type OptionTargetSNAT func(*TargetSNAT)
 
 // Changes the source MAC address to the specified address.
 func WithTargetSNATToSource(mac net.HardwareAddr) OptionTargetSNAT {
 	return func(ts *TargetSNAT) {
-		addr, _ := network.ParseAddress(mac)
-		ts.ToSource = addr
+		ts.ToSource = mac
 	}
 }
 
@@ -651,7 +825,7 @@ func WithTargetSNATARP() OptionTargetSNAT {
 	}
 }
 
-func NewTargetSNAT(opts ...OptionTargetSNAT) (*TargetSNAT, error) {
+func newTargetSNAT(opts ...OptionTargetSNAT) (*TargetSNAT, error) {
 	target := &TargetSNAT{
 		baseTarget: baseTarget{
 			targetType: TargetTypeSNAT,
@@ -668,7 +842,7 @@ func NewTargetSNAT(opts ...OptionTargetSNAT) (*TargetSNAT, error) {
 // It specifies that the source MAC address has to be changed.
 type TargetSNAT struct {
 	baseTarget
-	ToSource   network.Address
+	ToSource   net.HardwareAddr
 	SNATTarget TargetType
 	SNATARP    bool
 }
@@ -690,4 +864,103 @@ func (ts *TargetSNAT) ShortArgs() []string {
 		args = append(args, "--snat-arp")
 	}
 	return args
+}
+
+func (ts *TargetSNAT) Parse(main []byte) (int, bool) {
+	// 1. "-j snat"
+	// 2. "( --to-source ([[:graph:]]+))?" #1 #2
+	// 3. "( --snat-target (ACCEPT|CONTINUE|DROP|RETURN))?" #3 #4
+	// 4. "( --snat-arp)? *" #5
+	pattern := `-j snat` +
+		`( --to-source ([[:graph:]]+))?` +
+		`( --snat-target (ACCEPT|CONTINUE|DROP|RETURN))?` +
+		`( --snat-arp)? *`
+	reg := regexp.MustCompile(pattern)
+	matches := reg.FindSubmatch(main)
+	if len(matches) != 5 {
+		return 0, false
+	}
+	if len(matches[2]) != 0 {
+		mac, err := parseMAC(main)
+		if err != nil {
+			return 0, false
+		}
+		ts.ToSource = mac
+	}
+	if len(matches[4]) != 0 {
+		switch string(matches[4]) {
+		case "ACCEPT":
+			ts.SNATTarget = TargetTypeAccept
+		case "CONTINUE":
+			ts.SNATTarget = TargetTypeContinue
+		case "DROP":
+			ts.SNATTarget = TargetTypeDrop
+		case "RETURN":
+			ts.SNATTarget = TargetTypeReturn
+		}
+	}
+	if len(matches[5]) != 0 {
+		ts.SNATARP = true
+	}
+	return len(matches[0]), true
+}
+
+// for the case:
+// 0:0:aa:bb:cc:dd
+func parseMAC(mac []byte) (net.HardwareAddr, error) {
+	parts := bytes.Split(mac, []byte{':'})
+	newParts := make([][]byte, len(parts))
+	for i, part := range parts {
+		if len(part) == 1 {
+			newParts[i] = []byte{'0', part[0]}
+		} else if len(part) == 2 {
+			newParts[i] = []byte{part[0], part[1]}
+		}
+	}
+	newMac := bytes.Join(newParts, []byte{':'})
+	mac, err := net.ParseMAC(string(newMac))
+	return mac, err
+}
+
+var (
+	targetPrefixes = map[string]TargetType{
+		"-j ACCEPT":   TargetTypeAccept,
+		"-j CONTINUE": TargetTypeContinue,
+		"-j DROP":     TargetTypeDrop,
+		"-j RETURN":   TargetTypeReturn,
+		"-j":          TargetTypeJumpChain,
+		"-j arpreply": TargetTypeARPReply,
+		"-j dnat":     TargetTypeDNAT,
+		"-j mark":     TargetTypeMark,
+		"-j redirect": TargetTypeRedirect,
+		"-j snat":     TargetTypeSNAT,
+	}
+
+	targetTrie tree.Trie
+)
+
+func init() {
+	targetTrie = tree.NewTrie()
+	for prefix, typ := range targetPrefixes {
+		targetTrie.Add(prefix, typ)
+	}
+}
+
+func parseTarget(params []byte) (Target, int, error) {
+	node, ok := targetTrie.LPM(string(params))
+	if !ok {
+		return nil, 0, xtables.ErrMatchParams
+	}
+	typ := node.Value().(TargetType)
+	// get target by target type
+	target := TargetFactory(typ)
+	if target == nil {
+		return nil, 0, xtables.ErrMatchParams
+	}
+	// index meaning the end of this match
+	offset, ok := target.Parse(params)
+	if !ok {
+		return nil, 0, xtables.ErrMatchParams
+	}
+	return target, offset, nil
 }

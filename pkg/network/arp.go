@@ -2,6 +2,7 @@ package network
 
 import (
 	"strconv"
+	"strings"
 )
 
 // refer to https://www.iana.org/assignments/arp-parameters/arp-parameters.xhtml
@@ -46,3 +47,32 @@ const (
 	ARPOpCodeOPEXP1                ARPOpCode = 24
 	ARPOpCodeOPEXP2                ARPOpCode = 25
 )
+
+func ParseARPOpCode(code string) (ARPOpCode, error) {
+	cd, err := strconv.ParseUint(code, 10, 16)
+	if err == nil {
+		return ARPOpCode(cd), nil
+	}
+	switch strings.ToUpper(code) {
+	case "REQUEST":
+		return ARPOpCodeRequest, nil
+	case "REPLY":
+		return ARPOpCodeReply, nil
+	case "REQUEST_REVERSE":
+		return ARPOpCodeRequestReverse, nil
+	case "REPLY_REVERSE":
+		return ARPOpCodeReplyReverse, nil
+	case "DRARP_REQUEST":
+		return ARPOpCodeDRARPRequest, nil
+	case "DRARP_REPLY":
+		return ARPOpCodeDRARPReply, nil
+	case "DRARP_ERROR":
+		return ARPOpCodeDRARPError, nil
+	case "INARP_REQUEST":
+		return ARPOpCodeInARPRequest, nil
+	case "ARP_NAK":
+		// ebtables bug, the decimal should be 9.
+		return ARPOpCodeInARPNAK, nil
+	}
+	return 0, err
+}

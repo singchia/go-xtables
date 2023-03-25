@@ -1,10 +1,9 @@
 package ebtables
 
 import (
-	"strconv"
 	"strings"
 
-	"github.com/singchia/go-xtables/internal/xerror"
+	"github.com/singchia/go-xtables"
 )
 
 type Statement struct {
@@ -16,6 +15,7 @@ type Statement struct {
 	options          map[OptionType]Option
 	target           Target
 	command          Command
+	watcher          Watcher
 
 	// TODO
 	// constraints *constraints
@@ -23,7 +23,8 @@ type Statement struct {
 
 func NewStatement() *Statement {
 	state := &Statement{
-		table:   TableTypeFilter,
+		table:   TableTypeNull,
+		chain:   ChainTypeNull,
 		matches: make(map[MatchType]Match),
 		options: make(map[OptionType]Option),
 	}
@@ -46,12 +47,14 @@ func (statement *Statement) Elems() ([]string, error) {
 	switch statement.table {
 	case TableTypeNat:
 		tableName = "nat"
+	case TableTypeBRoute:
+		tableName = "broute"
 	}
 	elems = append(elems, tableName)
 
 	// command
 	if statement.command == nil {
-		return nil, xerror.ErrCommandRequired
+		return nil, xtables.ErrCommandRequired
 	}
 	elems = append(elems, statement.command.Short())
 
@@ -65,29 +68,49 @@ func (statement *Statement) Elems() ([]string, error) {
 		chainName = "FORWARD"
 	case ChainTypeOUTPUT:
 		chainName = "OUTPUT"
+	case ChainTypeBROUTING:
+		chainName = "BROUTING"
 	case ChainTypePOSTROUTING:
 		chainName = "POSTROUTING"
 	case ChainTypeUserDefined:
 		chainName = statement.userDefinedChain
 	}
-	if chainName == "" {
-		return nil, xerror.ErrChainRequired
+	if chainName != "" {
+		elems = append(elems, chainName)
 	}
-	elems = append(elems, chainName)
 
 	// command policy and rename specific
 	switch statement.command.Type() {
 	case CommandTypePolicy:
-		elems = append(elems, statement.command.(*Policy).targetType.String())
+		elems = append(elems,
+			statement.command.(*Policy).targetType.String())
 	case CommandTypeRenameChain:
-		elems = append(elems, statement.command.(*RenameChain).newChain)
+		elems = append(elems, statement.command.(*RenameChain).newname)
+	case CommandTypeListRules, CommandTypeListChains:
+		ln, ok := statement.options[OptionTypeListNumbers]
+		if ok {
+			elems = append(elems, ln.ShortArgs()...)
+			delete(statement.options, OptionTypeListNumbers)
+		}
+		lc, ok := statement.options[OptionTypeListCounters]
+		if ok {
+			elems = append(elems, lc.ShortArgs()...)
+			delete(statement.options, OptionTypeListCounters)
+		}
+		lmac2, ok := statement.options[OptionTypeListMACSameLength]
+		if ok {
+			elems = append(elems, lmac2.ShortArgs()...)
+			delete(statement.options, OptionTypeListMACSameLength)
+		}
 	}
 
-	// rulenum
-	hasRulenum, ok := statement.command.(HasRulenum)
-	if ok && hasRulenum.Rulenum() != 0 {
-		elems = append(elems, strconv.Itoa(int(hasRulenum.Rulenum())))
-	}
+	/*
+		// rulenum
+		hasRulenum, ok := statement.command.(HasRulenum)
+		if ok && hasRulenum.Rulenum() != 0 {
+			elems = append(elems, strconv.Itoa(int(hasRulenum.Rulenum())))
+		}
+	*/
 
 	// options
 	for _, option := range statement.options {

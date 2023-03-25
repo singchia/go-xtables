@@ -1,9 +1,3 @@
-/*
- * Apache License 2.0
- *
- * Copyright (c) 2022, Austin Zhai
- * All rights reserved.
- */
 package iptables
 
 import (
@@ -78,11 +72,11 @@ func (bo baseOption) LongArgs() []string {
 	return bo.ShortArgs()
 }
 
-func NewOptionFragment(yes bool) (*OptionFragment, error) {
+func newOptionFragment(invert bool) (*OptionFragment, error) {
 	option := &OptionFragment{
 		baseOption: baseOption{
 			optionType: OptionTypeFragment,
-			invert:     !yes,
+			invert:     invert,
 		},
 	}
 	option.setChild(option)
@@ -121,7 +115,7 @@ func (opt *OptionFragment) LongArgs() []string {
 	return []string{"--fragment"}
 }
 
-func NewOptionSetCounters(packets, bytes uint64) (*OptionSetCounters, error) {
+func newOptionSetCounters(packets, bytes uint64) (*OptionSetCounters, error) {
 	option := &OptionSetCounters{
 		baseOption: baseOption{
 			optionType: OptionTypeSetCounters,
@@ -161,7 +155,7 @@ func (opt *OptionSetCounters) LongArgs() []string {
 	}
 }
 
-func NewOptionVerbose() (*OptionVerbose, error) {
+func newOptionVerbose() (*OptionVerbose, error) {
 	option := &OptionVerbose{
 		baseOption: baseOption{
 			optionType: OptionTypeVerbose,
@@ -191,7 +185,7 @@ func (opt *OptionVerbose) LongArgs() []string {
 	return []string{"--verbose"}
 }
 
-func NewOptionWait(seconds uint32) (*OptionWait, error) {
+func newOptionWait(seconds uint32) (*OptionWait, error) {
 	option := &OptionWait{
 		baseOption: baseOption{
 			optionType: OptionTypeWait,
@@ -239,7 +233,7 @@ func (opt *OptionWait) LongArgs() []string {
 	return []string{"--wait", strconv.FormatUint(uint64(opt.seconds), 10)}
 }
 
-func NewOptionWaitInterval(microseconds uint64) (*OptionWaitInterval, error) {
+func newOptionWaitInterval(microseconds uint64) (*OptionWaitInterval, error) {
 	option := &OptionWaitInterval{
 		baseOption: baseOption{
 			optionType: OptionTypeWaitInterval,
@@ -271,7 +265,7 @@ func (opt *OptionWaitInterval) LongArgs() []string {
 	return []string{"--wait-interval", strconv.FormatUint(opt.microseconds, 10)}
 }
 
-func NewOptionNumeric() (*OptionNumeric, error) {
+func newOptionNumeric() (*OptionNumeric, error) {
 	option := &OptionNumeric{
 		baseOption: baseOption{
 			optionType: OptionTypeNumeric,
@@ -293,7 +287,7 @@ func (opt *OptionNumeric) ShortArgs() []string {
 	return []string{"-n"}
 }
 
-func NewOptionExact() (*OptionExact, error) {
+func newOptionExact() (*OptionExact, error) {
 	option := &OptionExact{
 		baseOption: baseOption{
 			optionType: OptionTypeExact,
@@ -327,7 +321,7 @@ func (opt *OptionExact) LongArgs() []string {
 	return []string{"--exact"}
 }
 
-func NewOptionLineNumbers() (*OptionLineNumbers, error) {
+func newOptionLineNumbers() (*OptionLineNumbers, error) {
 	option := &OptionLineNumbers{
 		baseOption: baseOption{
 			optionType: OptionTypeLineNumbers,
@@ -351,7 +345,7 @@ func (opt *OptionLineNumbers) ShortArgs() []string {
 	return []string{"--line-numbers"}
 }
 
-func NewOptionModprobe(command string) (*OptionModprobe, error) {
+func newOptionModprobe(command string) (*OptionModprobe, error) {
 	option := &OptionModprobe{
 		baseOption: baseOption{
 			optionType: OptionTypeModprobe,

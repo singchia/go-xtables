@@ -25,7 +25,9 @@ func (ot OptionType) Value() string {
 const (
 	_ OptionType = iota
 	OptionTypeConcurrent
-	OptionTypeLineNumbers
+	OptionTypeListNumbers
+	OptionTypeListCounters
+	OptionTypeListMACSameLength
 	OptionTypeModprobe
 	OptionTypeSetCounters
 	OptionTypeAtomicFile
@@ -75,7 +77,7 @@ func (bo baseOption) LongArgs() []string {
 	return bo.ShortArgs()
 }
 
-func NewOptionConcurrent() (*OptionConcurrent, error) {
+func newOptionConcurrent() (*OptionConcurrent, error) {
 	option := &OptionConcurrent{
 		baseOption: baseOption{
 			optionType: OptionTypeConcurrent,
@@ -99,10 +101,10 @@ func (opt *OptionConcurrent) ShortArgs() []string {
 	return []string{"--concurrent"}
 }
 
-func NewOptionLineNumbers() (*OptionLineNumbers, error) {
-	option := &OptionLineNumbers{
+func newOptionListNumbers() (*OptionListNumbers, error) {
+	option := &OptionListNumbers{
 		baseOption: baseOption{
-			optionType: OptionTypeLineNumbers,
+			optionType: OptionTypeListNumbers,
 		},
 	}
 	option.setChild(option)
@@ -110,19 +112,53 @@ func NewOptionLineNumbers() (*OptionLineNumbers, error) {
 }
 
 // Must be shown with List command.
-type OptionLineNumbers struct {
+type OptionListNumbers struct {
 	baseOption
 }
 
-func (opt *OptionLineNumbers) Short() string {
+func (opt *OptionListNumbers) Short() string {
 	return strings.Join(opt.ShortArgs(), " ")
 }
 
-func (opt *OptionLineNumbers) ShortArgs() []string {
+func (opt *OptionListNumbers) ShortArgs() []string {
 	return []string{"--Ln"}
 }
 
-func NewOptionModprobe(program string) (*OptionModprobe, error) {
+func newOptionListCounters() (*OptionListCounters, error) {
+	option := &OptionListCounters{
+		baseOption: baseOption{
+			optionType: OptionTypeListCounters,
+		},
+	}
+	option.setChild(option)
+	return option, nil
+}
+
+type OptionListCounters struct {
+	baseOption
+}
+
+func (opt *OptionListCounters) Short() string {
+	return strings.Join(opt.ShortArgs(), " ")
+}
+
+func (opt *OptionListCounters) ShortArgs() []string {
+	return []string{"--Lc"}
+}
+
+type OptionListMACSameLength struct {
+	baseOption
+}
+
+func (opt *OptionListMACSameLength) Short() string {
+	return strings.Join(opt.ShortArgs(), " ")
+}
+
+func (opt *OptionListMACSameLength) ShortArgs() []string {
+	return []string{"--Lx"}
+}
+
+func newOptionModprobe(program string) (*OptionModprobe, error) {
 	option := &OptionModprobe{
 		baseOption: baseOption{
 			optionType: OptionTypeModprobe,
@@ -147,7 +183,7 @@ func (opt *OptionModprobe) ShortArgs() []string {
 	return []string{"--modprobe", opt.program}
 }
 
-func NewOptionSetCounters(packets, bytes uint64) (*OptionSetCounters, error) {
+func newOptionSetCounters(packets, bytes uint64) (*OptionSetCounters, error) {
 	option := &OptionSetCounters{
 		baseOption: baseOption{
 			optionType: OptionTypeSetCounters,
@@ -191,7 +227,7 @@ func (opt *OptionSetCounters) LongArgs() []string {
 	}
 }
 
-func NewOptionAtomicFile(path string) (*OptionAtomicFile, error) {
+func newOptionAtomicFile(path string) (*OptionAtomicFile, error) {
 	option := &OptionAtomicFile{
 		baseOption: baseOption{
 			optionType: OptionTypeAtomicFile,

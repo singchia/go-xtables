@@ -13,7 +13,7 @@ func (ct ChainType) Value() string {
 }
 
 const (
-	_                    ChainType = iota
+	ChainTypeNull        ChainType = iota
 	ChainTypePREROUTING            // PREROUTING
 	ChainTypeINPUT                 // INPUT
 	ChainTypeFORWARD               // FORWARD
@@ -24,6 +24,7 @@ const (
 
 type Chain struct {
 	chainType   ChainType
+	tableType   TableType
 	userDefined bool
 	name        string
 	references  int
