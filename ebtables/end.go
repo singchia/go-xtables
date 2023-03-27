@@ -2,6 +2,7 @@ package ebtables
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/singchia/go-xtables"
 	"github.com/singchia/go-xtables/internal/xutil"
@@ -78,8 +79,11 @@ func (ebtables *EBTables) ListRules() ([]*Rule, error) {
 	if ebtables.statement.err != nil {
 		return nil, ebtables.statement.err
 	}
-	command := newListRules()
+	command := newListRules(ChainTypeNull)
 	ebtables.statement.command = command
+	ebtables.statement.options[OptionTypeListNumbers], _ = newOptionListNumbers()
+	ebtables.statement.options[OptionTypeListCounters], _ = newOptionListCounters()
+	ebtables.statement.options[OptionTypeListMACSameLength], _ = newOptionListMACSameLength()
 	data, err := ebtables.exec()
 	if err != nil {
 		return nil, err
@@ -93,14 +97,32 @@ func (ebtables *EBTables) ListChains() ([]*Chain, error) {
 	if ebtables.statement.err != nil {
 		return nil, ebtables.statement.err
 	}
-	command := newListChains()
+	command := newListChains(ChainTypeNull)
 	ebtables.statement.command = command
+	ebtables.statement.options[OptionTypeListNumbers], _ = newOptionListNumbers()
+	ebtables.statement.options[OptionTypeListCounters], _ = newOptionListCounters()
+	ebtables.statement.options[OptionTypeListMACSameLength], _ = newOptionListMACSameLength()
 	data, err := ebtables.exec()
 	if err != nil {
 		return nil, err
 	}
 	chains, _, err := parse(data, parseTable, parseChain, parseRule)
 	return chains, err
+}
+
+func (ebtables *EBTables) Dump() ([]string, error) {
+	if ebtables.statement.err != nil {
+		return nil, ebtables.statement.err
+	}
+	command := newDump(ChainTypeNull)
+	ebtables.statement.command = command
+	ebtables.statement.options[OptionTypeListChange], _ = newOptionListChange()
+	data, err := ebtables.exec()
+	if err != nil {
+		return nil, err
+	}
+	fmt.Println(string(data))
+	return nil, nil
 }
 
 // If no table specified, the delete-chain will be applied to all tables

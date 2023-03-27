@@ -1081,7 +1081,7 @@ func (mIP *MatchIP) ShortArgs() []string {
 func (mIP *MatchIP) Parse(main []byte) (int, bool) {
 	// 1. "--ip-(source|destination|tos|protocol|source-port|destination-port)" #1
 	// 2. "( !)? ([[:graph:]]+) *" #2 #3
-	pattern := `--ip-(source|destination|tos|protocol|source-port|destination-port)` +
+	pattern := `--ip-(src|source|dst|destination|tos|proto|protocol|source-port|destination-port)` +
 		`( !)? ([[:graph:]]+) *`
 	reg := regexp.MustCompile(pattern)
 	index := 0
@@ -1096,14 +1096,14 @@ func (mIP *MatchIP) Parse(main []byte) (int, bool) {
 		}
 		value := string(matches[3])
 		switch string(matches[2]) {
-		case "source":
+		case "source", "src":
 			addr, err := network.ParseAddress(value)
 			if err != nil {
 				goto END
 			}
 			mIP.Source = addr
 			mIP.SourceInvert = invert
-		case "destination":
+		case "destination", "dst":
 			addr, err := network.ParseAddress(value)
 			if err != nil {
 				goto END
@@ -1117,7 +1117,7 @@ func (mIP *MatchIP) Parse(main []byte) (int, bool) {
 			}
 			mIP.TOS = tos
 			mIP.TOSInvert = invert
-		case "protocol":
+		case "protocol", "proto":
 			proto, err := network.ParseProtocol(value)
 			if err != nil {
 				goto END
@@ -1393,7 +1393,7 @@ func (mIP *MatchIPv6) ShortArgs() []string {
 func (mIP *MatchIPv6) Parse(main []byte) (int, bool) {
 	// 1. "--ip6-(source|destination|tclass|protocol|source-port|destination-port|icmp-type)" #1
 	// 2. "( !)? ([[:graph:]]+) *" #2 #3
-	pattern := `--ip-(source|destination|tos|protocol|source-port|destination-port|icmp-type)` +
+	pattern := `--ip6-(src|source|dst|destination|tos|proto|protocol|source-port|destination-port|icmp-type)` +
 		`( !)? ([[:graph:]]+) *`
 	reg := regexp.MustCompile(pattern)
 	index := 0
@@ -1408,21 +1408,21 @@ func (mIP *MatchIPv6) Parse(main []byte) (int, bool) {
 		}
 		value := string(matches[3])
 		switch string(matches[2]) {
-		case "source":
+		case "source", "src":
 			addr, err := network.ParseAddress(value)
 			if err != nil {
 				goto END
 			}
 			mIP.Source = addr
 			mIP.SourceInvert = invert
-		case "destination":
+		case "destination", "dst":
 			addr, err := network.ParseAddress(value)
 			if err != nil {
 				goto END
 			}
 			mIP.Destination = addr
 			mIP.DestinationInvert = invert
-		case "protocol":
+		case "protocol", "proto":
 			proto, err := network.ParseProtocol(value)
 			if err != nil {
 				goto END
@@ -1623,7 +1623,8 @@ func (mLimit *MatchLimit) Parse(main []byte) (int, bool) {
 				goto END
 			}
 			mLimit.Limit = xtables.Rate{
-				number, unit,
+				Rate: number,
+				Unit: unit,
 			}
 			mLimit.HasLimit = true
 		default:
@@ -2832,15 +2833,21 @@ var (
 		"--arp-gratuitous":       MatchTypeARP,
 		"! --arp-gratuitous":     MatchTypeARP,
 		"--ip-source":            MatchTypeIP,
+		"--ip-src":               MatchTypeIP,
 		"--ip-destination":       MatchTypeIP,
+		"--ip-dst":               MatchTypeIP,
 		"--ip-tos":               MatchTypeIP,
 		"--ip-protocol":          MatchTypeIP,
+		"--ip-proto":             MatchTypeIP,
 		"--ip-source-port":       MatchTypeIP,
 		"--ip-destination-port":  MatchTypeIP,
 		"--ip6-source":           MatchTypeIPv6,
+		"--ip6-src":              MatchTypeIPv6,
 		"--ip6-destination":      MatchTypeIPv6,
+		"--ip6-dst":              MatchTypeIPv6,
 		"--ip6-tclass":           MatchTypeIPv6,
 		"--ip6-protocol":         MatchTypeIPv6,
+		"--ip6-proto":            MatchTypeIPv6,
 		"--ip6-source-port":      MatchTypeIPv6,
 		"--ip6-destination-port": MatchTypeIPv6,
 		"--ip6-icmp-type":        MatchTypeIPv6,
@@ -2892,6 +2899,7 @@ func parseMatch(params []byte) ([]Match, int, error) {
 		// index meaning the end of this match
 		offset, ok := match.Parse(params)
 		if !ok {
+			fmt.Println("singchia watching", string(params))
 			return matches, index, xtables.ErrMatchParams
 		}
 		index += offset

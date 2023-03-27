@@ -43,7 +43,7 @@ func (statement *Statement) Elems() ([]string, error) {
 	// table
 	elems := []string{}
 	elems = append(elems, "-t")
-	tableName, chainName := "filter", ""
+	tableName := "filter"
 	switch statement.table {
 	case TableTypeNat:
 		tableName = "nat"
@@ -56,37 +56,15 @@ func (statement *Statement) Elems() ([]string, error) {
 	if statement.command == nil {
 		return nil, xtables.ErrCommandRequired
 	}
-	elems = append(elems, statement.command.Short())
 
 	// chain
-	switch statement.chain {
-	case ChainTypePREROUTING:
-		chainName = "PREROUTING"
-	case ChainTypeINPUT:
-		chainName = "INPUT"
-	case ChainTypeFORWARD:
-		chainName = "FORWARD"
-	case ChainTypeOUTPUT:
-		chainName = "OUTPUT"
-	case ChainTypeBROUTING:
-		chainName = "BROUTING"
-	case ChainTypePOSTROUTING:
-		chainName = "POSTROUTING"
-	case ChainTypeUserDefined:
-		chainName = statement.userDefinedChain
-	}
-	if chainName != "" {
-		elems = append(elems, chainName)
-	}
+	statement.command.SetChainType(statement.chain)
+	elems = append(elems, statement.command.ShortArgs()...)
 
-	// command policy and rename specific
+	// command tails
 	switch statement.command.Type() {
-	case CommandTypePolicy:
-		elems = append(elems,
-			statement.command.(*Policy).targetType.String())
-	case CommandTypeRenameChain:
-		elems = append(elems, statement.command.(*RenameChain).newname)
-	case CommandTypeListRules, CommandTypeListChains:
+	case CommandTypeList, CommandTypeListRules, CommandTypeListChains:
+		// default with --Ln --Lc --Lmac2
 		ln, ok := statement.options[OptionTypeListNumbers]
 		if ok {
 			elems = append(elems, ln.ShortArgs()...)
@@ -102,15 +80,15 @@ func (statement *Statement) Elems() ([]string, error) {
 			elems = append(elems, lmac2.ShortArgs()...)
 			delete(statement.options, OptionTypeListMACSameLength)
 		}
-	}
 
-	/*
-		// rulenum
-		hasRulenum, ok := statement.command.(HasRulenum)
-		if ok && hasRulenum.Rulenum() != 0 {
-			elems = append(elems, strconv.Itoa(int(hasRulenum.Rulenum())))
+	case CommandTypeDump:
+		// default with --Lx
+		lx, ok := statement.options[OptionTypeListChange]
+		if ok {
+			elems = append(elems, lx.ShortArgs()...)
+			delete(statement.options, OptionTypeListChange)
 		}
-	*/
+	}
 
 	// options
 	for _, option := range statement.options {

@@ -57,6 +57,45 @@ func initEBTables(t *testing.T) {
 	assert.Equal(t, nil, err)
 }
 
+func TestFlush(t *testing.T) {
+	set()
+	defer unset()
+
+	err := NewEBTables().Flush()
+	assert.Equal(t, nil, err)
+}
+
+func TestListRules(t *testing.T) {
+	set()
+	defer unset()
+
+	err := NewEBTables().Flush()
+	assert.Equal(t, nil, err)
+
+	rules, err := NewEBTables().Table(TableTypeFilter).ListRules()
+	assert.Equal(t, nil, err)
+	assert.Equal(t, 0, len(rules))
+}
+
+func TestListChains(t *testing.T) {
+	set()
+	defer unset()
+
+	err := NewEBTables().Flush()
+	assert.Equal(t, nil, err)
+
+	chains, err := NewEBTables().Table(TableTypeFilter).ListChains()
+	assert.Equal(t, nil, err)
+	assert.Equal(t, 3, len(chains))
+}
+
+func TestDump(t *testing.T) {
+	set()
+	defer unset()
+
+	NewEBTables().Table(TableTypeFilter).Dump()
+}
+
 func TestAppend(t *testing.T) {
 	set()
 	defer unset()
@@ -74,7 +113,6 @@ func TestAppend(t *testing.T) {
 func TestDelete(t *testing.T) {
 	set()
 	defer unset()
-	initEBTables(t)
 
 	sip := net.ParseIP("192.168.0.2")
 
@@ -83,7 +121,7 @@ func TestDelete(t *testing.T) {
 		MatchProtocol(false, network.EthernetTypeIPv4).
 		MatchIP(WithMatchIPSource(false, network.NewIP(sip))).
 		TargetAccept().
-		Insert(1)
+		Insert()
 	assert.Equal(t, nil, err)
 
 	err = NewEBTables().Table(TableTypeNat).
@@ -91,7 +129,7 @@ func TestDelete(t *testing.T) {
 		MatchProtocol(false, network.EthernetTypeIPv4).
 		MatchIP(WithMatchIPSource(false, network.NewIP(sip))).
 		TargetAccept().
-		Delete(0)
+		Delete()
 	assert.Equal(t, nil, err)
 }
 
@@ -106,6 +144,6 @@ func TestInsert(t *testing.T) {
 		MatchProtocol(false, network.EthernetTypeIPv4).
 		MatchIP(WithMatchIPSource(false, network.NewIP(sip))).
 		TargetAccept().
-		Insert(1)
+		Insert()
 	assert.Equal(t, nil, err)
 }

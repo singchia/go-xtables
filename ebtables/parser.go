@@ -3,6 +3,7 @@ package ebtables
 import (
 	"bufio"
 	"bytes"
+	"fmt"
 	"regexp"
 	"strconv"
 	"strings"
@@ -203,6 +204,7 @@ func parseRule(line []byte, chain *Chain) (*Rule, error) {
 	line = line[index:]
 
 	// then target
+	fmt.Println("singchia watching", string(line))
 	target, index, err := parseTarget(line)
 	if err != nil {
 		return nil, err

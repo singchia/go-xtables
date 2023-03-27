@@ -949,18 +949,19 @@ func init() {
 func parseTarget(params []byte) (Target, int, error) {
 	node, ok := targetTrie.LPM(string(params))
 	if !ok {
-		return nil, 0, xtables.ErrMatchParams
+		fmt.Println("singchia watching 1", string(params))
+		return nil, 0, xtables.ErrTargetNotFound
 	}
 	typ := node.Value().(TargetType)
 	// get target by target type
 	target := TargetFactory(typ)
 	if target == nil {
-		return nil, 0, xtables.ErrMatchParams
+		return nil, 0, xtables.ErrTargetParams
 	}
 	// index meaning the end of this match
 	offset, ok := target.Parse(params)
 	if !ok {
-		return nil, 0, xtables.ErrMatchParams
+		return nil, 0, xtables.ErrTargetParams
 	}
 	return target, offset, nil
 }

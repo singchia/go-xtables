@@ -18,31 +18,34 @@ func (ct CommandType) Value() string {
 }
 
 const (
-	_                         CommandType = iota
-	CommandTypeAppend                     // append
-	CommandTypeChangeCounters             // change counters
-	CommandTypeDelete                     // delete
-	CommandTypeInsert                     // insert
-	CommandTypeFlush                      // flush
-	CommandTypePolicy                     // policy
-	CommandTypeListRules                  // list
-	CommandTypeZero                       // zero
-	//CommandTypeList                       // list
-	CommandTypeDump         // list with --Lx
-	CommandTypeNewChain     // new_chain
-	CommandTypeDeleteChain  // delete_chain
-	CommandTypeRenameChain  // rename_chain
-	CommandTypeListChains   // go-xtables support
-	CommandTypeInitTable    // init_table
-	CommandTypeAtomicInit   // atomic_init
-	CommandTypeAtomicSave   // atomic_save
-	CommandTypeAtomicCommit // atomic_commit
+	_                         CommandType = iota // default
+	CommandTypeAppend                            // append
+	CommandTypeChangeCounters                    // change counters
+	CommandTypeDelete                            // delete
+	CommandTypeInsert                            // insert
+	CommandTypeFlush                             // flush
+	CommandTypePolicy                            // policy
+	CommandTypeFind                              // find
+	CommandTypeListRules                         // list
+	CommandTypeZero                              // zero
+	CommandTypeList                              // list
+	CommandTypeDump                              // list with --Lx
+	CommandTypeNewChain                          // new_chain
+	CommandTypeDeleteChain                       // delete_chain
+	CommandTypeRenameChain                       // rename_chain
+	CommandTypeListChains                        // go-xtables support
+	CommandTypeInitTable                         // init_table
+	CommandTypeAtomicInit                        // atomic_init
+	CommandTypeAtomicSave                        // atomic_save
+	CommandTypeAtomicCommit                      // atomic_commit
 )
 
 type Command interface {
 	Type() CommandType
 	Short() string
 	Long() string
+	ShortArgs() []string
+	LongArgs() []string
 	SetChainType(chain ChainType)
 }
 
@@ -52,54 +55,55 @@ type baseCommand struct {
 	chain       ChainType
 }
 
-func (bc baseCommand) setChild(child Command) {
+func (bc *baseCommand) setChild(child Command) {
 	bc.child = child
 }
 
-func (bc baseCommand) Type() CommandType {
+func (bc *baseCommand) Type() CommandType {
 	return bc.commandType
 }
 
-func (bc baseCommand) Short() string {
+func (bc *baseCommand) Short() string {
 	if bc.child != nil {
 		return bc.child.Short()
 	}
 	return ""
 }
 
-func (bc baseCommand) ShortArgs() []string {
-	if bm.child != nil {
-		return bm.child.ShortArgs()
+func (bc *baseCommand) ShortArgs() []string {
+	if bc.child != nil {
+		return bc.child.ShortArgs()
 	}
 	return nil
 }
 
-func (bc baseCommand) Long() string {
+func (bc *baseCommand) Long() string {
 	if bc.child != nil {
-		return bc.child.Long()
+		return bc.child.Short()
 	}
 	return bc.Short()
 }
 
-func (bc baseCommand) LongArgs() []string {
-	if bm.child != nil {
-		return bm.child.LongArgs()
+func (bc *baseCommand) LongArgs() []string {
+	if bc.child != nil {
+		return bc.child.ShortArgs()
 	}
-	return nil
+	return bc.ShortArgs()
 }
 
-func (bc baseCommand) SetChainType(chain ChainType) {
-	if bc.chain != nil {
-		return bc.child.SetChainType(chain)
-	}
+func (bc *baseCommand) SetChainType(chain ChainType) {
 	bc.chain = chain
 }
 
-/*
+// Warpper of List for rule searching.
+type Find struct {
+	*List
+}
+
 func NewFind() *Find {
 	command := &Find{
 		List: &List{
-			baseCommand: baseCommand{
+			baseCommand: &baseCommand{
 				commandType: CommandTypeFind,
 			},
 		},
@@ -107,11 +111,6 @@ func NewFind() *Find {
 	command.setChild(command)
 	return command
 }
-
-type Find struct {
-	*List
-}
-*/
 
 func newAppend(chain ChainType) *Append {
 	command := &Append{
@@ -153,30 +152,37 @@ type OptionCommandChangeCounters func(*ChangeCounters)
 func WithCommandChangeCountersRuleNumber(num int) OptionCommandChangeCounters {
 	return func(cmd *ChangeCounters) {
 		cmd.ruleNum = num
+		cmd.hasRuleNum = true
 	}
 }
 
 func WithCommandChangeCountersStartRuleNumber(num int) OptionCommandChangeCounters {
 	return func(cmd *ChangeCounters) {
 		cmd.startRuleNum = num
+		cmd.hasStartRuleNum = true
 	}
 }
 
 func WithCommandChangeCountersEndNumber(num int) OptionCommandChangeCounters {
 	return func(cmd *ChangeCounters) {
 		cmd.endRuleNum = num
+		cmd.hasEndRuleNum = true
 	}
 }
 
-func WithCommandChangeCountersPacketCount(count int) OptionCommandChangeCounters {
+func WithCommandChangeCountersPacketCount(count int, operator xtables.Operator) OptionCommandChangeCounters {
 	return func(cmd *ChangeCounters) {
 		cmd.packetCnt = count
+		cmd.hasPacketCnt = true
+		cmd.packetOperator = operator
 	}
 }
 
-func WithCommandChangeCountersByteCount(count int) OptionCommandChangeCounters {
+func WithCommandChangeCountersByteCount(count int, operator xtables.Operator) OptionCommandChangeCounters {
 	return func(cmd *ChangeCounters) {
 		cmd.byteCnt = count
+		cmd.hasByteCnt = true
+		cmd.byteOperator = operator
 	}
 }
 
@@ -225,40 +231,86 @@ func (cmd *ChangeCounters) ShortArgs() []string {
 	} else {
 		if cmd.hasStartRuleNum {
 			if cmd.hasEndRuleNum {
-				args = append(args, strconv.Itoa(cmd.startRuleNum))
+				args = append(args, strconv.Itoa(cmd.startRuleNum)+":")
 			} else {
 				args = append(args, strconv.Itoa(cmd.startRuleNum)+":"+strconv.Itoa(cmd.endRuleNum))
 			}
 		}
 	}
+
+	if cmd.hasPacketCnt {
+		packetCnt := strconv.Itoa(cmd.packetCnt)
+		if cmd.packetOperator != xtables.OperatorNull {
+			packetCnt = cmd.packetOperator.String() + packetCnt
+		}
+		args = append(args, packetCnt)
+	}
+	if cmd.hasByteCnt {
+		byteCnt := strconv.Itoa(cmd.byteCnt)
+		if cmd.byteOperator != xtables.OperatorNull {
+			byteCnt = cmd.packetOperator.String() + byteCnt
+		}
+		args = append(args, byteCnt)
+	}
+	return args
 }
 
 func (cmd *ChangeCounters) Short() string {
-	return "-C"
+	return strings.Join(cmd.ShortArgs(), " ")
+}
+
+func (cmd *ChangeCounters) LongArgs() []string {
+	args := make([]string, 0, 5)
+	args = append(args, "--change-counters", cmd.chain.String())
+	if cmd.hasRuleNum {
+		args = append(args, strconv.Itoa(cmd.ruleNum))
+	} else {
+		if cmd.hasStartRuleNum {
+			if cmd.hasEndRuleNum {
+				args = append(args, strconv.Itoa(cmd.startRuleNum)+":")
+			} else {
+				args = append(args, strconv.Itoa(cmd.startRuleNum)+":"+strconv.Itoa(cmd.endRuleNum))
+			}
+		}
+	}
+
+	if cmd.hasPacketCnt {
+		args = append(args, strconv.Itoa(cmd.packetCnt))
+	}
+	if cmd.hasByteCnt {
+		args = append(args, strconv.Itoa(cmd.byteCnt))
+	}
+	return args
 }
 
 func (cmd *ChangeCounters) Long() string {
-	return "--change-counters"
+	return strings.Join(cmd.LongArgs(), " ")
 }
 
 type OptionCommandDelete func(*Delete)
 
 func WithCommandDeleteStartRuleNumber(num int) OptionCommandDelete {
-	return func(del *Delete) {
-		del.startRuleNum = num
+	return func(cmd *Delete) {
+		cmd.startRuleNum = num
+		cmd.hasStartRuleNum = true
+
 	}
 }
 
 func WithCommandDeleteEndRuleNumber(num int) OptionCommandDelete {
-	return func(del *Delete) {
-		del.endRuleNum = num
+	return func(cmd *Delete) {
+		cmd.endRuleNum = num
+		cmd.hasEndRuleNum = true
 	}
 }
 
 type Delete struct {
 	baseCommand
-	startRuleNum int
-	endRuleNum   int
+	startRuleNum    int
+	hasStartRuleNum bool
+
+	endRuleNum    int
+	hasEndRuleNum bool
 }
 
 func newDelete(chain ChainType, opts ...OptionCommandDelete) *Delete {
@@ -275,25 +327,53 @@ func newDelete(chain ChainType, opts ...OptionCommandDelete) *Delete {
 	return command
 }
 
-func (del *Delete) Short() string {
-	return "-D"
+func (cmd *Delete) ShortArgs() []string {
+	args := make([]string, 0, 3)
+	args = append(args, "-D", cmd.chain.String())
+	if cmd.hasStartRuleNum {
+		if cmd.hasEndRuleNum {
+			args = append(args, strconv.Itoa(cmd.startRuleNum)+":")
+		} else {
+			args = append(args, strconv.Itoa(cmd.startRuleNum)+":"+strconv.Itoa(cmd.endRuleNum))
+		}
+	}
+	return args
 }
 
-func (del *Delete) Long() string {
-	return "--delete"
+func (cmd *Delete) Short() string {
+	return strings.Join(cmd.ShortArgs(), " ")
+}
+
+func (cmd *Delete) LongArgs() []string {
+	args := make([]string, 0, 3)
+	args = append(args, "--delete", cmd.chain.String())
+	if cmd.hasStartRuleNum {
+		if cmd.hasEndRuleNum {
+			args = append(args, strconv.Itoa(cmd.startRuleNum)+":")
+		} else {
+			args = append(args, strconv.Itoa(cmd.startRuleNum)+":"+strconv.Itoa(cmd.endRuleNum))
+		}
+	}
+	return args
+}
+
+func (cmd *Delete) Long() string {
+	return strings.Join(cmd.LongArgs(), " ")
 }
 
 type OptionCommandInsert func(*Insert)
 
 func WithCommandInsertRuleNumber(ruleNum int) OptionCommandInsert {
-	return func(irt *Insert) {
-		irt.ruleNum = ruleNum
+	return func(cmd *Insert) {
+		cmd.ruleNum = ruleNum
+		cmd.hasRuleNum = true
 	}
 }
 
 type Insert struct {
 	baseCommand
-	ruleNum int
+	ruleNum    int
+	hasRuleNum bool
 }
 
 func newInsert(chain ChainType, opts ...OptionCommandInsert) *Insert {
@@ -307,30 +387,80 @@ func newInsert(chain ChainType, opts ...OptionCommandInsert) *Insert {
 	return command
 }
 
-func (insert *Insert) Short() string {
-	return "-I"
+func (cmd *Insert) ShortArgs() []string {
+	args := make([]string, 0, 2)
+	args = append(args, "-I", cmd.chain.String())
+	return args
 }
 
-func (insert *Insert) Long() string {
-	return "--insert"
+func (cmd *Insert) Short() string {
+	return strings.Join(cmd.ShortArgs(), " ")
 }
 
+func (cmd *Insert) LongArgs() []string {
+	args := make([]string, 0, 2)
+	args = append(args, "--insert", cmd.chain.String())
+	return args
+}
+
+func (cmd *Insert) Long() string {
+	return strings.Join(cmd.LongArgs(), " ")
+}
+
+// If no chain is selected, then every chain will be listed.
 type List struct {
-	baseCommand
+	*baseCommand
+	chain ChainType
 }
 
-func (list *List) Short() string {
-	return "-L"
+func newList(chain ChainType) *List {
+	command := &List{
+		baseCommand: &baseCommand{
+			commandType: CommandTypeList,
+			chain:       chain,
+		},
+	}
+	command.setChild(command)
+	return command
 }
 
-func (list *List) Long() string {
-	return "--list"
+func (cmd *List) ShortArgs() []string {
+	args := make([]string, 0, 2)
+	if cmd.chain != ChainTypeNull {
+		args = append(args, "-L", cmd.chain.String())
+	} else {
+		args = append(args, "-L")
+	}
+	return args
+}
+
+func (cmd *List) Short() string {
+	return strings.Join(cmd.ShortArgs(), " ")
+}
+
+func (cmd *List) LongArgs() []string {
+	args := make([]string, 0, 2)
+	if cmd.chain != ChainTypeNull {
+		args = append(args, "--list", cmd.chain.String())
+	} else {
+		args = append(args, "--list")
+	}
+	return args
+}
+
+func (cmd *List) Long() string {
+	return strings.Join(cmd.LongArgs(), " ")
+}
+
+// -L --Lx
+type Dump struct {
+	*List
 }
 
 func newDump(chain ChainType) *Dump {
 	command := &Dump{
 		List: &List{
-			baseCommand: baseCommand{
+			baseCommand: &baseCommand{
 				commandType: CommandTypeDump,
 				chain:       chain,
 			},
@@ -340,9 +470,9 @@ func newDump(chain ChainType) *Dump {
 	return command
 }
 
-// -L --Lx
-type Dump struct {
-	*List
+// If no chain is selected, then every chain will be flushed.
+type Flush struct {
+	baseCommand
 }
 
 func newFlush(chain ChainType) *Flush {
@@ -356,21 +486,43 @@ func newFlush(chain ChainType) *Flush {
 	return command
 }
 
-type Flush struct {
-	baseCommand
+func (cmd *Flush) ShortArgs() []string {
+	args := make([]string, 0, 2)
+	if cmd.chain != ChainTypeNull {
+		args = append(args, "-F", cmd.chain.String())
+	} else {
+		args = append(args, "-F")
+	}
+	return args
 }
 
-func (flush *Flush) Short() string {
-	return "-F"
+func (cmd *Flush) Short() string {
+	return strings.Join(cmd.ShortArgs(), " ")
 }
 
-func (flush *Flush) Long() string {
-	return "--flush"
+func (cmd *Flush) LongArgs() []string {
+	args := make([]string, 0, 2)
+	if cmd.chain != ChainTypeNull {
+		args = append(args, "--flush", cmd.chain.String())
+	} else {
+		args = append(args, "--flush")
+	}
+	return args
+}
+
+func (cmd *Flush) Long() string {
+	return strings.Join(cmd.LongArgs(), " ")
+}
+
+// Set the policy for the chain to the given target. The policy can be ACCEPT, DROP or RETURN.
+type Policy struct {
+	*baseCommand
+	targetType TargetType
 }
 
 func newPolicy(chain ChainType, target TargetType) *Policy {
 	command := &Policy{
-		baseCommand: baseCommand{
+		baseCommand: &baseCommand{
 			commandType: CommandTypePolicy,
 			chain:       chain,
 		},
@@ -380,22 +532,35 @@ func newPolicy(chain ChainType, target TargetType) *Policy {
 	return command
 }
 
-type Policy struct {
-	baseCommand
-	targetType TargetType
+func (cmd *Policy) ShortArgs() []string {
+	args := make([]string, 0, 3)
+	args = append(args, "-P", cmd.chain.String(), cmd.targetType.String())
+	return args
 }
 
-func (policy *Policy) Short() string {
-	return "-P"
+func (cmd *Policy) Short() string {
+	return strings.Join(cmd.ShortArgs(), " ")
 }
 
-func (policy *Policy) Long() string {
-	return "--policy"
+func (cmd *Policy) LongArgs() []string {
+	args := make([]string, 0, 3)
+	args = append(args, "--policy", cmd.chain.String(), cmd.targetType.String())
+	return args
+}
+
+func (cmd *Policy) Long() string {
+	return strings.Join(cmd.LongArgs(), " ")
+}
+
+// Set the counters of the selected chain to zero. If no chain is selected, all the counters are set to zero.
+type Zero struct {
+	*baseCommand
+	rnum uint32
 }
 
 func newZero(chain ChainType) *Zero {
 	command := &Zero{
-		baseCommand: baseCommand{
+		baseCommand: &baseCommand{
 			commandType: CommandTypeZero,
 			chain:       chain,
 		},
@@ -404,49 +569,80 @@ func newZero(chain ChainType) *Zero {
 	return command
 }
 
-type Zero struct {
-	baseCommand
-	rnum uint32
+func (cmd *Zero) ShortArgs() []string {
+	args := make([]string, 0, 2)
+	if cmd.chain != ChainTypeNull {
+		args = append(args, "-Z", cmd.chain.String())
+	} else {
+		args = append(args, "-Z")
+	}
+	return args
 }
 
-func (zero *Zero) Rulenum() uint32 {
-	return zero.rnum
+func (cmd *Zero) Short() string {
+	return strings.Join(cmd.ShortArgs(), " ")
 }
 
-func (zero *Zero) Short() string {
-	return "-Z"
+func (cmd *Zero) LongArgs() []string {
+	args := make([]string, 0, 2)
+	if cmd.chain != ChainTypeNull {
+		args = append(args, "--zero", cmd.chain.String())
+	} else {
+		args = append(args, "--zero")
+	}
+	return args
 }
 
-func (zero *Zero) Long() string {
-	return "--zero"
+func (cmd *Zero) Long() string {
+	return strings.Join(cmd.LongArgs(), " ")
 }
 
+// Create a new user-defined chain with the given name.
 type NewChain struct {
-	baseCommand
+	*baseCommand
 	chainName string
 }
 
-func newNewChain() *NewChain {
+func newNewChain(chainName string) *NewChain {
 	command := &NewChain{
-		baseCommand: baseCommand{
+		baseCommand: &baseCommand{
 			commandType: CommandTypeNewChain,
 		},
+		chainName: chainName,
 	}
 	command.setChild(command)
 	return command
 }
 
-func (nc *NewChain) Short() string {
-	return "-N"
+func (cmd *NewChain) ShortArgs() []string {
+	args := make([]string, 0, 2)
+	args = append(args, "-N", cmd.chainName)
+	return args
 }
 
-func (nc *NewChain) Long() string {
-	return "--new-chain"
+func (cmd *NewChain) Short() string {
+	return strings.Join(cmd.ShortArgs(), " ")
+}
+
+func (cmd *NewChain) LongArgs() []string {
+	args := make([]string, 0, 2)
+	args = append(args, "--new-chain", cmd.chainName)
+	return args
+}
+
+func (cmd *NewChain) Long() string {
+	return strings.Join(cmd.LongArgs(), " ")
+}
+
+// Delete the specified user-defined chain. There must be no remaining references (jumps) to the specified chain.
+type DeleteChain struct {
+	*baseCommand
+	chainName string
 }
 
 func newDeleteChain() *DeleteChain {
 	command := &DeleteChain{
-		baseCommand: baseCommand{
+		baseCommand: &baseCommand{
 			commandType: CommandTypeDeleteChain,
 		},
 	}
@@ -454,45 +650,37 @@ func newDeleteChain() *DeleteChain {
 	return command
 }
 
-type DeleteChain struct {
-	baseCommand
+func (cmd *DeleteChain) ShortArgs() []string {
+	args := make([]string, 0, 2)
+	args = append(args, "-X", cmd.chainName)
+	return args
 }
 
-func (dc *DeleteChain) Short() string {
-	return "-X"
+func (cmd *DeleteChain) Short() string {
+	return strings.Join(cmd.ShortArgs(), " ")
 }
 
-func (dc *DeleteChain) Long() string {
-	return "--delete-chain"
+func (cmd *DeleteChain) LongArgs() []string {
+	args := make([]string, 0, 2)
+	args = append(args, "--delete-chain", cmd.chainName)
+	return args
 }
 
-func newListRules() *ListRules {
-	command := &ListRules{
-		baseCommand: baseCommand{
-			commandType: CommandTypeListRules,
-		},
-	}
-	command.setChild(command)
-	return command
+func (cmd *DeleteChain) Long() string {
+	return strings.Join(cmd.LongArgs(), " ")
 }
 
+// Wrapper of List for list rules.
 type ListRules struct {
-	baseCommand
+	*List
 }
 
-func (list *ListRules) Short() string {
-	return "-L"
-}
-
-func (list *ListRules) Long() string {
-	return "--list"
-}
-
-func newListChains() *ListChains {
-	command := &ListChains{
-		ListRules: &ListRules{
-			baseCommand: baseCommand{
-				commandType: CommandTypeListChains,
+func newListRules(chain ChainType) *ListRules {
+	command := &ListRules{
+		List: &List{
+			baseCommand: &baseCommand{
+				commandType: CommandTypeListRules,
+				chain:       chain,
 			},
 		},
 	}
@@ -500,18 +688,33 @@ func newListChains() *ListChains {
 	return command
 }
 
+// Wrapper of List for list chains.
 type ListChains struct {
-	*ListRules
+	*List
 }
 
+func newListChains(chain ChainType) *ListChains {
+	command := &ListChains{
+		List: &List{
+			baseCommand: &baseCommand{
+				commandType: CommandTypeListChains,
+				chain:       chain,
+			},
+		},
+	}
+	command.setChild(command)
+	return command
+}
+
+// Rename the specified chain to a new name.
 type RenameChain struct {
-	baseCommand
+	*baseCommand
 	newname string // user supplied name.
 }
 
 func newRenameChain(chain ChainType, newname string) *RenameChain {
 	command := &RenameChain{
-		baseCommand: baseCommand{
+		baseCommand: &baseCommand{
 			commandType: CommandTypeRenameChain,
 			chain:       chain,
 		},
@@ -521,17 +724,34 @@ func newRenameChain(chain ChainType, newname string) *RenameChain {
 	return command
 }
 
-func (renameChain *RenameChain) Short() string {
-	return "-E"
+func (cmd *RenameChain) ShortArgs() []string {
+	args := make([]string, 0, 3)
+	args = append(args, "-E", cmd.chain.String(), cmd.newname)
+	return args
 }
 
-func (renameChain *RenameChain) Long() string {
-	return "--rename-chain"
+func (cmd *RenameChain) Short() string {
+	return strings.Join(cmd.ShortArgs(), " ")
+}
+
+func (cmd *RenameChain) LongArgs() []string {
+	args := make([]string, 0, 3)
+	args = append(args, "--rename-chain", cmd.chain.String(), cmd.newname)
+	return args
+}
+
+func (cmd *RenameChain) Long() string {
+	return strings.Join(cmd.LongArgs(), " ")
+}
+
+// Replace the current table data by the initial table data.
+type InitTable struct {
+	*baseCommand
 }
 
 func newInitTable() *InitTable {
 	command := &InitTable{
-		baseCommand: baseCommand{
+		baseCommand: &baseCommand{
 			commandType: CommandTypeInitTable,
 		},
 	}
@@ -539,17 +759,24 @@ func newInitTable() *InitTable {
 	return command
 }
 
-type InitTable struct {
-	baseCommand
+func (cmd *InitTable) ShortArgs() []string {
+	args := make([]string, 0, 1)
+	args = append(args, "--init-table")
+	return args
 }
 
-func (initTable *InitTable) Short() string {
-	return "--init-table"
+func (cmd *InitTable) Short() string {
+	return strings.Join(cmd.ShortArgs(), " ")
+}
+
+// Copy the kernel's initial data of the table to the specified file.
+type AtomicInit struct {
+	*baseCommand
 }
 
 func newAtomicInit() *AtomicInit {
 	command := &AtomicInit{
-		baseCommand: baseCommand{
+		baseCommand: &baseCommand{
 			commandType: CommandTypeAtomicInit,
 		},
 	}
@@ -557,17 +784,24 @@ func newAtomicInit() *AtomicInit {
 	return command
 }
 
-type AtomicInit struct {
-	baseCommand
+func (cmd *AtomicInit) ShortArgs() []string {
+	args := make([]string, 0, 1)
+	args = append(args, "--atomic-init")
+	return args
 }
 
-func (atomicInit *AtomicInit) Short() string {
-	return "--atomic-init"
+func (cmd *AtomicInit) Short() string {
+	return strings.Join(cmd.ShortArgs(), " ")
+}
+
+// Copy the kernel's current data of the table to the specified file.
+type AtomicSave struct {
+	*baseCommand
 }
 
 func newAtomicSave() *AtomicSave {
 	command := &AtomicSave{
-		baseCommand: baseCommand{
+		baseCommand: &baseCommand{
 			commandType: CommandTypeAtomicSave,
 		},
 	}
@@ -575,17 +809,24 @@ func newAtomicSave() *AtomicSave {
 	return command
 }
 
-type AtomicSave struct {
-	baseCommand
+func (cmd *AtomicSave) ShortArgs() []string {
+	args := make([]string, 0, 1)
+	args = append(args, "--atomic-save")
+	return args
 }
 
-func (atomicSave *AtomicSave) Short() string {
-	return "--atomic-save"
+func (cmd *AtomicSave) Short() string {
+	return strings.Join(cmd.ShortArgs(), " ")
 }
 
+type AtomicCommit struct {
+	*baseCommand
+}
+
+// Replace the kernel table data with the data contained in the specified file.
 func newAtomicCommit() *AtomicCommit {
 	command := &AtomicCommit{
-		baseCommand: baseCommand{
+		baseCommand: &baseCommand{
 			commandType: CommandTypeAtomicCommit,
 		},
 	}
@@ -593,10 +834,12 @@ func newAtomicCommit() *AtomicCommit {
 	return command
 }
 
-type AtomicCommit struct {
-	baseCommand
+func (cmd *AtomicCommit) ShortArgs() []string {
+	args := make([]string, 0, 1)
+	args = append(args, "--atomic-commit")
+	return args
 }
 
-func (atomicCommit *AtomicCommit) Short() string {
-	return "--atomic-commit"
+func (cmd *AtomicCommit) Short() string {
+	return strings.Join(cmd.ShortArgs(), " ")
 }

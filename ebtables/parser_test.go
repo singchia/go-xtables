@@ -23,8 +23,8 @@ func TestParseChain(t *testing.T) {
 
 func iterateChains(t *testing.T, chains []*Chain) {
 	for _, chain := range chains {
-		t.Log(chain.chainType.String(), chain.userDefined,
-			chain.name, chain.policy.Type().String())
+		t.Log(chain.chainType.String(), chain.chainType.userDefined,
+			chain.chainType.name, chain.policy.Type().String())
 	}
 }
 
@@ -42,7 +42,7 @@ func iterateRules(t *testing.T, rules []*Rule) {
 		if err != nil {
 			continue
 		}
-		t.Log(rule.ChainType().String(), rule.chain.userDefined, rule.lineNumber,
+		t.Log(rule.ChainType().String(), rule.chain.chainType.userDefined, rule.lineNumber,
 			string(matches), string(options), string(watchers), rule.target.Type().String(),
 			rule.packets, rule.bytes)
 	}
