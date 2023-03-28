@@ -14,7 +14,8 @@ func (ebtables *EBTables) Chain(chain ChainType) *EBTables {
 
 func (ebtables *EBTables) UserDefinedChain(chain string) *EBTables {
 	ebtables.statement.chain = ChainTypeUserDefined
-	ebtables.statement.userDefinedChain = chain
+	ebtables.statement.chain.name = chain
+	ebtables.statement.chain.userDefined = true
 	return ebtables
 }
 
@@ -280,11 +281,11 @@ func (ebtables *EBTables) OptionModprobe(program string) *EBTables {
 	return ebtables
 }
 
-func (ebtables *EBTables) OptionSetCounters(packets, bytes uint64) *EBTables {
+func (ebtables *EBTables) OptionCounters(packets, bytes int64) *EBTables {
 	if ebtables.statement.err != nil {
 		return ebtables
 	}
-	option, err := newOptionSetCounters(packets, bytes)
+	option, err := newOptionCounters(packets, bytes)
 	if err != nil {
 		ebtables.statement.err = err
 		return ebtables
@@ -418,7 +419,7 @@ func (ebtables *EBTables) WatcherLog(opts ...OptionWatcherLog) *EBTables {
 		ebtables.statement.err = err
 		return ebtables
 	}
-	ebtables.statement.watcher = watcher
+	ebtables.statement.watchers[watcher.Type()] = watcher
 	return ebtables
 }
 
@@ -431,7 +432,7 @@ func (ebtables *EBTables) WatcherULog(opts ...OptionWatcherULog) *EBTables {
 		ebtables.statement.err = err
 		return ebtables
 	}
-	ebtables.statement.watcher = watcher
+	ebtables.statement.watchers[watcher.Type()] = watcher
 	return ebtables
 }
 
@@ -444,6 +445,6 @@ func (ebtables *EBTables) WatcherNFLog(opts ...OptionWatcherNFLog) *EBTables {
 		ebtables.statement.err = err
 		return ebtables
 	}
-	ebtables.statement.watcher = watcher
+	ebtables.statement.watchers[watcher.Type()] = watcher
 	return ebtables
 }

@@ -12,6 +12,18 @@ func (tt TableType) Value() string {
 	return strconv.Itoa(int(tt))
 }
 
+func (tt TableType) String() string {
+	switch tt {
+	case TableTypeFilter:
+		return "filter"
+	case TableTypeNat:
+		return "nat"
+	case TableTypeBRoute:
+		return "broute"
+	}
+	return "unknown"
+}
+
 const (
 	TableTypeNull   TableType = iota
 	TableTypeFilter           // filter

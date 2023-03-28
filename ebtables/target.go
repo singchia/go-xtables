@@ -99,6 +99,7 @@ type Target interface {
 	ShortArgs() []string
 	LongArgs() []string
 	Parse([]byte) (int, bool)
+	Equal(Target) bool
 }
 
 func TargetFactory(targetType TargetType) Target {
@@ -139,60 +140,64 @@ type baseTarget struct {
 	child      Target
 }
 
-func (bt baseTarget) setChild(child Target) {
+func (bt *baseTarget) setChild(child Target) {
 	bt.child = child
 }
 
-func (bt baseTarget) Type() TargetType {
+func (bt *baseTarget) Type() TargetType {
 	return bt.targetType
 }
 
-func (bt baseTarget) Short() string {
+func (bt *baseTarget) Short() string {
 	if bt.child != nil {
 		return bt.child.Short()
 	}
 	return ""
 }
 
-func (bt baseTarget) ShortArgs() []string {
+func (bt *baseTarget) ShortArgs() []string {
 	if bt.child != nil {
 		return bt.child.ShortArgs()
 	}
 	return nil
 }
 
-func (bt baseTarget) Long() string {
+func (bt *baseTarget) Long() string {
 	return bt.Short()
 }
 
-func (bt baseTarget) LongArgs() []string {
+func (bt *baseTarget) LongArgs() []string {
 	return bt.ShortArgs()
 }
 
-func (bt baseTarget) Parse([]byte) (int, bool) {
+func (bt *baseTarget) Parse([]byte) (int, bool) {
 	return 0, false
 }
 
+func (bt *baseTarget) Equal(tgt Target) bool {
+	return bt.Short() == tgt.Short()
+}
+
 type TargetEmpty struct {
-	baseTarget
+	*baseTarget
 }
 
 func newTargetEmpty() (*TargetEmpty, error) {
 	return &TargetEmpty{
-		baseTarget: baseTarget{
+		baseTarget: &baseTarget{
 			targetType: TargetTypeEmpty,
 		},
 	}, nil
 }
 
 type TargetUnknown struct {
-	baseTarget
+	*baseTarget
 	unknown string
 }
 
 func newTargetUnknown(unknown string) *TargetUnknown {
 	return &TargetUnknown{
-		baseTarget: baseTarget{
+		baseTarget: &baseTarget{
 			targetType: TargetTypeUnknown,
 		},
 		unknown: unknown,
@@ -204,12 +209,12 @@ func (tu *TargetUnknown) Unknown() string {
 }
 
 type TargetAccept struct {
-	baseTarget
+	*baseTarget
 }
 
 func newTargetAccept() *TargetAccept {
 	target := &TargetAccept{
-		baseTarget: baseTarget{
+		baseTarget: &baseTarget{
 			targetType: TargetTypeAccept,
 		},
 	}
@@ -244,12 +249,12 @@ func (ta *TargetAccept) Parse(main []byte) (int, bool) {
 }
 
 type TargetContinue struct {
-	baseTarget
+	*baseTarget
 }
 
 func newTargetContinue() *TargetContinue {
 	target := &TargetContinue{
-		baseTarget: baseTarget{
+		baseTarget: &baseTarget{
 			targetType: TargetTypeContinue,
 		},
 	}
@@ -284,12 +289,12 @@ func (tc *TargetContinue) Parse(main []byte) (int, bool) {
 }
 
 type TargetDrop struct {
-	baseTarget
+	*baseTarget
 }
 
 func newTargetDrop() *TargetDrop {
 	target := &TargetDrop{
-		baseTarget: baseTarget{
+		baseTarget: &baseTarget{
 			targetType: TargetTypeDrop,
 		},
 	}
@@ -324,12 +329,12 @@ func (td *TargetDrop) Parse(main []byte) (int, bool) {
 }
 
 type TargetReturn struct {
-	baseTarget
+	*baseTarget
 }
 
 func newTargetReturn() *TargetReturn {
 	target := &TargetReturn{
-		baseTarget: baseTarget{
+		baseTarget: &baseTarget{
 			targetType: TargetTypeReturn,
 		},
 	}
@@ -364,13 +369,13 @@ func (tr *TargetReturn) Parse(main []byte) (int, bool) {
 }
 
 type TargetJumpChain struct {
-	baseTarget
+	*baseTarget
 	chain string
 }
 
 func newTargetJumpChain(chain string) *TargetJumpChain {
 	target := &TargetJumpChain{
-		baseTarget: baseTarget{
+		baseTarget: &baseTarget{
 			targetType: TargetTypeJumpChain,
 		},
 		chain: chain,
@@ -427,7 +432,7 @@ func WithTargetARPReplyTarget(typ TargetType) OptionTargetARPReply {
 
 func newTargetARPReply(opts ...OptionTargetARPReply) (*TargetARPReply, error) {
 	target := &TargetARPReply{
-		baseTarget: baseTarget{
+		baseTarget: &baseTarget{
 			targetType: TargetTypeARPReply,
 		},
 		ARPReplyMAC:    nil,
@@ -441,7 +446,7 @@ func newTargetARPReply(opts ...OptionTargetARPReply) (*TargetARPReply, error) {
 }
 
 type TargetARPReply struct {
-	baseTarget
+	*baseTarget
 	ARPReplyMAC    net.HardwareAddr
 	ARPReplyTarget TargetType
 }
@@ -515,7 +520,7 @@ func WithTargetDNATTarget(typ TargetType) OptionTargetDNAT {
 
 func newTargetDNAT(opts ...OptionTargetDNAT) (*TargetDNAT, error) {
 	target := &TargetDNAT{
-		baseTarget: baseTarget{
+		baseTarget: &baseTarget{
 			targetType: TargetTypeDNAT,
 		},
 		ToDestination: nil,
@@ -529,7 +534,7 @@ func newTargetDNAT(opts ...OptionTargetDNAT) (*TargetDNAT, error) {
 }
 
 type TargetDNAT struct {
-	baseTarget
+	*baseTarget
 	ToDestination net.HardwareAddr
 	DNATTarget    TargetType
 }
@@ -626,7 +631,7 @@ func WithTargetMarkTarget(typ TargetType) OptionTargetMark {
 
 func newTargetMark(opts ...OptionTargetMark) (*TargetMark, error) {
 	target := &TargetMark{
-		baseTarget: baseTarget{
+		baseTarget: &baseTarget{
 			targetType: TargetTypeMark,
 		},
 		MarkTarget: TargetTypeAccept,
@@ -643,7 +648,7 @@ func newTargetMark(opts ...OptionTargetMark) (*TargetMark, error) {
 // if the bridge-nf code is compiled into the kernel. Both put the marking at the same
 // place. This allows for a form of communication between ebtables and iptables.
 type TargetMark struct {
-	baseTarget
+	*baseTarget
 	Operator   xtables.Operator
 	Mark       int
 	MarkTarget TargetType
@@ -730,7 +735,7 @@ func WithTargetRedirectTarget(typ TargetType) OptionTargetRedirect {
 
 func newTargetRedirect(opts ...OptionTargetRedirect) (*TargetRedirect, error) {
 	target := &TargetRedirect{
-		baseTarget: baseTarget{
+		baseTarget: &baseTarget{
 			targetType: TargetTypeRedirect,
 		},
 		RedirectTarget: TargetTypeAccept,
@@ -747,7 +752,7 @@ func newTargetRedirect(opts ...OptionTargetRedirect) (*TargetRedirect, error) {
 // chain of the nat table. The MAC address of the bridge is used as destination
 // address.
 type TargetRedirect struct {
-	baseTarget
+	*baseTarget
 	RedirectTarget TargetType
 }
 
@@ -827,7 +832,7 @@ func WithTargetSNATARP() OptionTargetSNAT {
 
 func newTargetSNAT(opts ...OptionTargetSNAT) (*TargetSNAT, error) {
 	target := &TargetSNAT{
-		baseTarget: baseTarget{
+		baseTarget: &baseTarget{
 			targetType: TargetTypeSNAT,
 		},
 	}
@@ -841,7 +846,7 @@ func newTargetSNAT(opts ...OptionTargetSNAT) (*TargetSNAT, error) {
 // The snat target can only be used in the POSTROUTING chain of the nat table.
 // It specifies that the source MAC address has to be changed.
 type TargetSNAT struct {
-	baseTarget
+	*baseTarget
 	ToSource   net.HardwareAddr
 	SNATTarget TargetType
 	SNATARP    bool
@@ -949,7 +954,6 @@ func init() {
 func parseTarget(params []byte) (Target, int, error) {
 	node, ok := targetTrie.LPM(string(params))
 	if !ok {
-		fmt.Println("singchia watching 1", string(params))
 		return nil, 0, xtables.ErrTargetNotFound
 	}
 	typ := node.Value().(TargetType)

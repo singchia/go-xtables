@@ -37,7 +37,7 @@ const (
 	EthernetType802_1Q                      EthernetType = 0x8100 // 802.1Q Virtual LAN tagged frame
 	EthernetTypeIPX                         EthernetType = 0x8137 // Novell IPX
 	EthernetTypeNetBEUI                     EthernetType = 0x8191
-	EthernetTypeIPv6                        EthernetType = 0x8dd6
+	EthernetTypeIPv6                        EthernetType = 0x86dd
 	EthernetTypeCiscoDiscovery              EthernetType = 0x2000
 	EthernetTypeNortelDiscovery             EthernetType = 0x01a2
 	EthernetTypeTransparentEthernetBridging EthernetType = 0x6558

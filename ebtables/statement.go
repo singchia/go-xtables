@@ -7,15 +7,14 @@ import (
 )
 
 type Statement struct {
-	err              error
-	table            TableType
-	chain            ChainType
-	userDefinedChain string
-	matches          map[MatchType]Match
-	options          map[OptionType]Option
-	target           Target
-	command          Command
-	watcher          Watcher
+	err      error
+	table    TableType
+	chain    ChainType
+	matches  map[MatchType]Match
+	options  map[OptionType]Option
+	watchers map[WatcherType]Watcher
+	target   Target
+	command  Command
 
 	// TODO
 	// constraints *constraints
@@ -23,10 +22,11 @@ type Statement struct {
 
 func NewStatement() *Statement {
 	state := &Statement{
-		table:   TableTypeNull,
-		chain:   ChainTypeNull,
-		matches: make(map[MatchType]Match),
-		options: make(map[OptionType]Option),
+		table:    TableTypeNull,
+		chain:    ChainTypeNull,
+		matches:  make(map[MatchType]Match),
+		options:  make(map[OptionType]Option),
+		watchers: make(map[WatcherType]Watcher),
 	}
 	return state
 }
@@ -106,6 +106,14 @@ func (statement *Statement) Elems() ([]string, error) {
 		}
 	}
 
+	// watcher
+	for _, watcher := range statement.watchers {
+		args := watcher.ShortArgs()
+		if args != nil {
+			elems = append(elems, args...)
+		}
+	}
+
 	// target
 	if statement.target != nil {
 		args := statement.target.ShortArgs()
@@ -113,6 +121,7 @@ func (statement *Statement) Elems() ([]string, error) {
 			elems = append(elems, args...)
 		}
 	}
+
 	return elems, nil
 }
 

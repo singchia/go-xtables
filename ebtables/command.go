@@ -112,6 +112,10 @@ func NewFind() *Find {
 	return command
 }
 
+type Append struct {
+	baseCommand
+}
+
 func newAppend(chain ChainType) *Append {
 	command := &Append{
 		baseCommand: baseCommand{
@@ -121,10 +125,6 @@ func newAppend(chain ChainType) *Append {
 	}
 	command.setChild(command)
 	return command
-}
-
-type Append struct {
-	baseCommand
 }
 
 func (cmd *Append) ShortArgs() []string {

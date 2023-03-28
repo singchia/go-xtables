@@ -3,7 +3,6 @@ package ebtables
 import (
 	"bufio"
 	"bytes"
-	"fmt"
 	"regexp"
 	"strconv"
 	"strings"
@@ -163,19 +162,15 @@ func parseChain(line []byte) (*Chain, error) {
 func parseRule(line []byte, chain *Chain) (*Rule, error) {
 	rule := &Rule{
 		chain:      chain,
-		matches:    []Match{},
-		options:    []Option{},
 		matchMap:   map[MatchType]Match{},
 		optionMap:  map[OptionType]Option{},
 		watcherMap: map[WatcherType]Watcher{},
-		packets:    -1,
-		bytes:      -1,
 		lineNumber: -1,
 	}
 	delimiter := []byte{'.', ' '}
 	index := bytes.Index(line, delimiter)
 	if index > 0 && index < len(line) {
-		ln, err := strconv.Atoi(string(line[:index]))
+		ln, err := strconv.Atoi(strings.TrimSpace(string(line[:index])))
 		if err == nil {
 			rule.lineNumber = ln
 			line = line[index+len(delimiter):]
@@ -186,7 +181,6 @@ func parseRule(line []byte, chain *Chain) (*Rule, error) {
 	if err != nil {
 		return nil, err
 	}
-	rule.matches = append(rule.matches, matches...)
 	for _, match := range matches {
 		rule.matchMap[match.Type()] = match
 	}
@@ -197,14 +191,12 @@ func parseRule(line []byte, chain *Chain) (*Rule, error) {
 	if err != nil {
 		return nil, err
 	}
-	rule.watchers = append(rule.watchers, watchers...)
 	for _, watcher := range watchers {
 		rule.watcherMap[watcher.Type()] = watcher
 	}
 	line = line[index:]
 
 	// then target
-	fmt.Println("singchia watching", string(line))
 	target, index, err := parseTarget(line)
 	if err != nil {
 		return nil, err
@@ -215,9 +207,10 @@ func parseRule(line []byte, chain *Chain) (*Rule, error) {
 	// then pkt and bytes count
 	pcnt, bcnt, ok := parsePktsAndBytes(line)
 	if ok {
-		rule.packets = pcnt
-		rule.bytes = bcnt
+		opt, _ := newOptionCounters(pcnt, bcnt)
+		rule.optionMap[opt.Type()] = opt
 	}
+
 	return rule, nil
 }
 

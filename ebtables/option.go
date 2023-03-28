@@ -30,7 +30,7 @@ const (
 	OptionTypeListChange
 	OptionTypeListMACSameLength
 	OptionTypeModprobe
-	OptionTypeSetCounters
+	OptionTypeCounters
 	OptionTypeAtomicFile
 )
 
@@ -40,6 +40,7 @@ type Option interface {
 	ShortArgs() []string
 	Long() string
 	LongArgs() []string
+	Equal(Option) bool
 }
 
 type baseOption struct {
@@ -48,45 +49,49 @@ type baseOption struct {
 	invert     bool
 }
 
-func (bo baseOption) setChild(child Option) {
+func (bo *baseOption) setChild(child Option) {
 	bo.child = child
 }
 
-func (bo baseOption) Type() OptionType {
+func (bo *baseOption) Type() OptionType {
 	return bo.optionType
 }
 
-func (bo baseOption) Short() string {
+func (bo *baseOption) Short() string {
 	if bo.child != nil {
 		return bo.child.Short()
 	}
 	return ""
 }
 
-func (bo baseOption) ShortArgs() []string {
+func (bo *baseOption) ShortArgs() []string {
 	if bo.child != nil {
 		return bo.child.ShortArgs()
 	}
 	return nil
 }
 
-func (bo baseOption) Long() string {
+func (bo *baseOption) Long() string {
 	return bo.Short()
 }
 
-func (bo baseOption) LongArgs() []string {
+func (bo *baseOption) LongArgs() []string {
 	return bo.ShortArgs()
+}
+
+func (bo *baseOption) Equal(opt Option) bool {
+	return bo.Short() == opt.Short()
 }
 
 // Use a file lock to support concurrent scripts updating the
 // ebtables kernel tables.
 type OptionConcurrent struct {
-	baseOption
+	*baseOption
 }
 
 func newOptionConcurrent() (*OptionConcurrent, error) {
 	option := &OptionConcurrent{
-		baseOption: baseOption{
+		baseOption: &baseOption{
 			optionType: OptionTypeConcurrent,
 		},
 	}
@@ -104,12 +109,12 @@ func (opt *OptionConcurrent) ShortArgs() []string {
 
 // Must be shown with List command.
 type OptionListNumbers struct {
-	baseOption
+	*baseOption
 }
 
 func newOptionListNumbers() (*OptionListNumbers, error) {
 	option := &OptionListNumbers{
-		baseOption: baseOption{
+		baseOption: &baseOption{
 			optionType: OptionTypeListNumbers,
 		},
 	}
@@ -127,12 +132,12 @@ func (opt *OptionListNumbers) ShortArgs() []string {
 
 // Shows the counters.
 type OptionListCounters struct {
-	baseOption
+	*baseOption
 }
 
 func newOptionListCounters() (*OptionListCounters, error) {
 	option := &OptionListCounters{
-		baseOption: baseOption{
+		baseOption: &baseOption{
 			optionType: OptionTypeListCounters,
 		},
 	}
@@ -151,12 +156,12 @@ func (opt *OptionListCounters) ShortArgs() []string {
 // Changes the output so that it produces a set of ebtables commands that
 // construct the contents of the chain.
 type OptionListChange struct {
-	baseOption
+	*baseOption
 }
 
 func newOptionListChange() (*OptionListChange, error) {
 	option := &OptionListChange{
-		baseOption: baseOption{
+		baseOption: &baseOption{
 			optionType: OptionTypeListChange,
 		},
 	}
@@ -174,12 +179,12 @@ func (opt *OptionListChange) Short() string {
 
 // Shows all MAC addresses with the same length.
 type OptionListMACSameLength struct {
-	baseOption
+	*baseOption
 }
 
 func newOptionListMACSameLength() (*OptionListMACSameLength, error) {
 	option := &OptionListMACSameLength{
-		baseOption: baseOption{
+		baseOption: &baseOption{
 			optionType: OptionTypeListMACSameLength,
 		},
 	}
@@ -198,13 +203,13 @@ func (opt *OptionListMACSameLength) ShortArgs() []string {
 // When talking to the kernel, use this program to try to automatically
 // load missing kernel modules.
 type OptionModprobe struct {
-	baseOption
+	*baseOption
 	program string
 }
 
 func newOptionModprobe(program string) (*OptionModprobe, error) {
 	option := &OptionModprobe{
-		baseOption: baseOption{
+		baseOption: &baseOption{
 			optionType: OptionTypeModprobe,
 		},
 	}
@@ -224,16 +229,16 @@ func (opt *OptionModprobe) ShortArgs() []string {
 // the  new rule will be set to packets, resp. bytes. If used with the
 // Check or Delete commands, only rules with a packet and byte count
 // queal to packets, resp. bytes will match.
-type OptionSetCounters struct {
-	baseOption
-	packets uint64
-	bytes   uint64
+type OptionCounters struct {
+	*baseOption
+	packets int64
+	bytes   int64
 }
 
-func newOptionSetCounters(packets, bytes uint64) (*OptionSetCounters, error) {
-	option := &OptionSetCounters{
-		baseOption: baseOption{
-			optionType: OptionTypeSetCounters,
+func newOptionCounters(packets, bytes int64) (*OptionCounters, error) {
+	option := &OptionCounters{
+		baseOption: &baseOption{
+			optionType: OptionTypeCounters,
 		},
 		packets: packets,
 		bytes:   bytes,
@@ -242,25 +247,25 @@ func newOptionSetCounters(packets, bytes uint64) (*OptionSetCounters, error) {
 	return option, nil
 }
 
-func (opt *OptionSetCounters) Short() string {
+func (opt *OptionCounters) Short() string {
 	return fmt.Sprintf("-c %d %d", opt.packets, opt.bytes)
 }
 
-func (opt *OptionSetCounters) ShortArgs() []string {
+func (opt *OptionCounters) ShortArgs() []string {
 	return []string{"-c",
-		strconv.FormatUint(opt.packets, 10),
-		strconv.FormatUint(opt.bytes, 10),
+		strconv.FormatInt(opt.packets, 10),
+		strconv.FormatInt(opt.bytes, 10),
 	}
 }
 
-func (opt *OptionSetCounters) Long() string {
+func (opt *OptionCounters) Long() string {
 	return fmt.Sprintf("--set-counters %d %d", opt.packets, opt.bytes)
 }
 
-func (opt *OptionSetCounters) LongArgs() []string {
+func (opt *OptionCounters) LongArgs() []string {
 	return []string{"--set-counters",
-		strconv.FormatUint(opt.packets, 10),
-		strconv.FormatUint(opt.bytes, 10),
+		strconv.FormatInt(opt.packets, 10),
+		strconv.FormatInt(opt.bytes, 10),
 	}
 }
 
@@ -268,13 +273,13 @@ func (opt *OptionSetCounters) LongArgs() []string {
 // to operate on will be extracted from the file and the result of the
 // operation will be saved back into the file.
 type OptionAtomicFile struct {
-	baseOption
+	*baseOption
 	path string
 }
 
 func newOptionAtomicFile(path string) (*OptionAtomicFile, error) {
 	option := &OptionAtomicFile{
-		baseOption: baseOption{
+		baseOption: &baseOption{
 			optionType: OptionTypeAtomicFile,
 		},
 		path: path,

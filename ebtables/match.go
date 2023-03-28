@@ -79,6 +79,7 @@ type Match interface {
 	LongArgs() []string
 	Parse([]byte) (int, bool)
 	Depends() []MatchType
+	Equal(Match) bool
 }
 
 func matchFactory(matchType MatchType) Match {
@@ -143,38 +144,42 @@ type baseMatch struct {
 	child     Match
 }
 
-func (bm baseMatch) setChild(child Match) {
+func (bm *baseMatch) setChild(child Match) {
 	bm.child = child
 }
 
-func (bm baseMatch) Type() MatchType {
+func (bm *baseMatch) Type() MatchType {
 	return bm.matchType
 }
 
-func (bm baseMatch) Short() string {
+func (bm *baseMatch) Short() string {
 	if bm.child != nil {
 		return bm.child.Short()
 	}
 	return ""
 }
 
-func (bm baseMatch) ShortArgs() []string {
+func (bm *baseMatch) ShortArgs() []string {
 	if bm.child != nil {
 		return bm.child.ShortArgs()
 	}
 	return nil
 }
 
-func (bm baseMatch) Long() string {
+func (bm *baseMatch) Long() string {
 	return bm.Short()
 }
 
-func (bm baseMatch) LongArgs() []string {
+func (bm *baseMatch) LongArgs() []string {
 	return bm.LongArgs()
 }
 
 func (bm *baseMatch) Parse(params []byte) (int, bool) {
 	return 0, false
+}
+
+func (bm *baseMatch) Equal(mth Match) bool {
+	return bm.Short() == mth.Short()
 }
 
 func (bm *baseMatch) Depends() []MatchType {
@@ -206,7 +211,7 @@ func WithMatch802dot3Type(invert bool, typ [2]byte) OptionMatch802dot3 {
 
 func newMatch802dot3(opts ...OptionMatch802dot3) (*Match802dot3, error) {
 	match := &Match802dot3{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchType802dot3,
 		},
 	}
@@ -219,7 +224,7 @@ func newMatch802dot3(opts ...OptionMatch802dot3) (*Match802dot3, error) {
 
 // Specify 802.3 DSAP/SSAP fields or SNAP type. The protocol must be specified as LENGTH
 type Match802dot3 struct {
-	baseMatch
+	*baseMatch
 	// sap
 	SAP       byte
 	HasSAP    bool
@@ -350,7 +355,7 @@ func WithMatchAmongSrcFile(invert bool, path string) OptionMatchAmong {
 
 func newMatchAmong(opts ...OptionMatchAmong) (*MatchAmong, error) {
 	match := &MatchAmong{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeAmong,
 		},
 	}
@@ -379,7 +384,7 @@ func newMatchAmong(opts ...OptionMatchAmong) (*MatchAmong, error) {
 // and MAC/IP address pairs. If the MAC address doesn't match any entry from
 // the list, the frame doesn't match the rule unless invert=true was used.
 type MatchAmong struct {
-	baseMatch
+	*baseMatch
 	Dst     []*Among
 	Src     []*Among
 	DstFile string
@@ -603,7 +608,7 @@ func WithMatchARPGratuitous(invert bool) OptionMatchARP {
 
 func newMatchARP(opts ...OptionMatchARP) (*MatchARP, error) {
 	match := &MatchARP{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeARP,
 		},
 	}
@@ -616,7 +621,7 @@ func newMatchARP(opts ...OptionMatchARP) (*MatchARP, error) {
 
 // Specify (R)ARP fields. The protocol must be specified as ARP or RARP.
 type MatchARP struct {
-	baseMatch
+	*baseMatch
 	OpCode        network.ARPOpCode
 	HWType        network.HardwareType
 	ProtoType     network.EthernetType
@@ -786,7 +791,7 @@ END:
 // The destination MAC address with or without mask.
 func newMatchDestination(invert bool, addr network.Address) (*MatchDestination, error) {
 	match := &MatchDestination{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeDestination,
 		},
 		DestinationInvert: invert,
@@ -797,7 +802,7 @@ func newMatchDestination(invert bool, addr network.Address) (*MatchDestination, 
 }
 
 type MatchDestination struct {
-	baseMatch
+	*baseMatch
 	Destination network.Address
 	// invert
 	DestinationInvert bool
@@ -852,7 +857,7 @@ func (mDestination *MatchDestination) Parse(main []byte) (int, bool) {
 
 func newMatchInInterface(invert bool, name string) (*MatchInInterface, error) {
 	match := &MatchInInterface{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeInInterface,
 		},
 		InInterfaceInvert: invert,
@@ -863,7 +868,7 @@ func newMatchInInterface(invert bool, name string) (*MatchInInterface, error) {
 }
 
 type MatchInInterface struct {
-	baseMatch
+	*baseMatch
 	InInterface string
 	// invert
 	InInterfaceInvert bool
@@ -984,13 +989,14 @@ func WithMatchIPDestinationPort(invert bool, port ...int) OptionMatchIP {
 
 func newMatchIP(opts ...OptionMatchIP) (*MatchIP, error) {
 	match := &MatchIP{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeIP,
 		},
 		SourcePortMin:      -1,
 		SourcePortMax:      -1,
 		DestinationPortMin: -1,
 		DestinationPortMax: -1,
+		Protocol:           -1,
 	}
 	match.setChild(match)
 	for _, opt := range opts {
@@ -1001,7 +1007,7 @@ func newMatchIP(opts ...OptionMatchIP) (*MatchIP, error) {
 
 // Specify IPv4 fields.
 type MatchIP struct {
-	baseMatch
+	*baseMatch
 	Source                                 network.Address
 	Destination                            network.Address
 	TOS                                    network.TOS
@@ -1095,7 +1101,7 @@ func (mIP *MatchIP) Parse(main []byte) (int, bool) {
 			invert = true
 		}
 		value := string(matches[3])
-		switch string(matches[2]) {
+		switch string(matches[1]) {
 		case "source", "src":
 			addr, err := network.ParseAddress(value)
 			if err != nil {
@@ -1267,13 +1273,14 @@ func WithMatchIPv6ICMPType(invert bool, typeMin, typeMax network.ICMPv6Type,
 
 func newMatchIPv6(opts ...OptionMatchIPv6) (*MatchIPv6, error) {
 	match := &MatchIPv6{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeIPv6,
 		},
 		SourcePortMin:      -1,
 		SourcePortMax:      -1,
 		DestinationPortMin: -1,
 		DestinationPortMax: -1,
+		Protocol:           -1,
 		ICMPTypeMin:        network.ICMPv6TypeNull,
 		ICMPTypeMax:        network.ICMPv6TypeNull,
 		ICMPCodeMin:        network.ICMPv6CodeNull,
@@ -1288,7 +1295,7 @@ func newMatchIPv6(opts ...OptionMatchIPv6) (*MatchIPv6, error) {
 
 // Specify IPv6 fields. The protocol must be specified as IPv6.
 type MatchIPv6 struct {
-	baseMatch
+	*baseMatch
 	Source                                 network.Address
 	Destination                            network.Address
 	TrafficClass                           byte
@@ -1407,7 +1414,7 @@ func (mIP *MatchIPv6) Parse(main []byte) (int, bool) {
 			invert = true
 		}
 		value := string(matches[3])
-		switch string(matches[2]) {
+		switch string(matches[1]) {
 		case "source", "src":
 			addr, err := network.ParseAddress(value)
 			if err != nil {
@@ -1550,7 +1557,7 @@ func WithMatchLimitBurst(number int) OptionMatchLimit {
 
 func newMatchLimit(opts ...OptionMatchLimit) (*MatchLimit, error) {
 	match := &MatchLimit{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeLimit,
 		},
 		LimitBurst: -1,
@@ -1567,7 +1574,7 @@ func newMatchLimit(opts ...OptionMatchLimit) (*MatchLimit, error) {
 // with the LOG watcher to give limited logging, for example. It's use is the
 // same as the limit match of iptables.
 type MatchLimit struct {
-	baseMatch
+	*baseMatch
 	Limit      xtables.Rate
 	HasLimit   bool
 	LimitBurst int
@@ -1651,7 +1658,7 @@ END:
 // name that begins with this name(disregarding '+') will match.
 func newMatchLogicalIn(invert bool, name string) (*MatchLogicalIn, error) {
 	match := &MatchLogicalIn{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeLogicalIn,
 		},
 		LogicalIn:       name,
@@ -1662,7 +1669,7 @@ func newMatchLogicalIn(invert bool, name string) (*MatchLogicalIn, error) {
 }
 
 type MatchLogicalIn struct {
-	baseMatch
+	*baseMatch
 	LogicalIn string
 	// invert
 	LogicalInInvert bool
@@ -1703,7 +1710,7 @@ func (mLogicalIn *MatchLogicalIn) Parse(main []byte) (int, bool) {
 // name that begins with this name(disregarding '+') will match.
 func newMatchLogicalOut(invert bool, name string) (*MatchLogicalOut, error) {
 	match := &MatchLogicalOut{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeLogicalOut,
 		},
 		LogicalOut:       name,
@@ -1714,7 +1721,7 @@ func newMatchLogicalOut(invert bool, name string) (*MatchLogicalOut, error) {
 }
 
 type MatchLogicalOut struct {
-	baseMatch
+	*baseMatch
 	LogicalOut string
 	// invert
 	LogicalOutInvert bool
@@ -1762,7 +1769,7 @@ type OptionMatchMark func(*MatchMark)
 // is useful to match multiple mark values.
 func newMatchMark(invert bool, value, mask int) (*MatchMark, error) {
 	match := &MatchMark{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeMark,
 		},
 		Value:      -1,
@@ -1776,7 +1783,7 @@ func newMatchMark(invert bool, value, mask int) (*MatchMark, error) {
 }
 
 type MatchMark struct {
-	baseMatch
+	*baseMatch
 	Value int
 	Mask  int
 	// invert
@@ -1835,7 +1842,7 @@ func (mMark *MatchMark) Parse(main []byte) (int, bool) {
 
 func newMatchOutInterface(invert bool, name string) (*MatchOutInterface, error) {
 	match := &MatchOutInterface{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeOutInterface,
 		},
 		OutInterfaceInvert: invert,
@@ -1846,7 +1853,7 @@ func newMatchOutInterface(invert bool, name string) (*MatchOutInterface, error) 
 }
 
 type MatchOutInterface struct {
-	baseMatch
+	*baseMatch
 	OutInterface string
 	// invert
 	OutInterfaceInvert bool
@@ -1897,7 +1904,7 @@ func (mOutInterface *MatchOutInterface) Parse(main []byte) (int, bool) {
 
 func newMatchPktType(invert bool, pktType network.PktType) (*MatchPktType, error) {
 	match := &MatchPktType{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypePktType,
 		},
 		PktTypeInvert: invert,
@@ -1908,7 +1915,7 @@ func newMatchPktType(invert bool, pktType network.PktType) (*MatchPktType, error
 }
 
 type MatchPktType struct {
-	baseMatch
+	*baseMatch
 	PktType network.PktType
 	// invert
 	PktTypeInvert bool
@@ -1951,7 +1958,7 @@ func (mPktType *MatchPktType) Parse(main []byte) (int, bool) {
 
 func newMatchProtocol(invert bool, protocol network.EthernetType) (*MatchProtocol, error) {
 	match := &MatchProtocol{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeProtocol,
 		},
 		ProtocolInvert: invert,
@@ -1969,7 +1976,7 @@ func newMatchProtocol(invert bool, protocol network.EthernetType) (*MatchProtoco
 // frames where the protocol field is used as the length field are assumed to
 // be of the same 'protocol', related to 802.3.
 type MatchProtocol struct {
-	baseMatch
+	*baseMatch
 	Protocol network.EthernetType
 	// invert
 	ProtocolInvert bool
@@ -2025,7 +2032,7 @@ func (mProtocol *MatchProtocol) Parse(main []byte) (int, bool) {
 // The source MAC address with or without mask.
 func newMatchSource(invert bool, addr network.Address) (*MatchSource, error) {
 	match := &MatchSource{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeSource,
 		},
 		SourceInvert: invert,
@@ -2036,7 +2043,7 @@ func newMatchSource(invert bool, addr network.Address) (*MatchSource, error) {
 }
 
 type MatchSource struct {
-	baseMatch
+	*baseMatch
 	Source network.Address
 	// invert
 	SourceInvert bool
@@ -2252,7 +2259,7 @@ func WithMatchSTPForwardDelay(invert bool, delay ...uint16) OptionMatchSTP {
 
 func newMatchSTP(opts ...OptionMatchSTP) (*MatchSTP, error) {
 	match := &MatchSTP{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeSTP,
 		},
 	}
@@ -2267,7 +2274,7 @@ func newMatchSTP(opts ...OptionMatchSTP) (*MatchSTP, error) {
 // for that option is used, while if the upper bound is omitted, the
 // highest possible upper bound for that option is used.
 type MatchSTP struct {
-	baseMatch
+	*baseMatch
 	Typ     uint8
 	HasType bool
 
@@ -2692,7 +2699,7 @@ func WithMatchVLANEncapsulation(invert bool, encapsulation [2]byte) OptionMatchV
 
 func newMatchVLAN(opts ...OptionMatchVLAN) (*MatchVLAN, error) {
 	match := &MatchVLAN{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeVLAN,
 		},
 		ID:       -1,
@@ -2706,7 +2713,7 @@ func newMatchVLAN(opts ...OptionMatchVLAN) (*MatchVLAN, error) {
 }
 
 type MatchVLAN struct {
-	baseMatch
+	*baseMatch
 	ID               int
 	Priority         int
 	Encapsulation    [2]byte
@@ -2899,7 +2906,6 @@ func parseMatch(params []byte) ([]Match, int, error) {
 		// index meaning the end of this match
 		offset, ok := match.Parse(params)
 		if !ok {
-			fmt.Println("singchia watching", string(params))
 			return matches, index, xtables.ErrMatchParams
 		}
 		index += offset

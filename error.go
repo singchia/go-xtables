@@ -1,6 +1,9 @@
 package xtables
 
-import "errors"
+import (
+	"errors"
+	"strings"
+)
 
 var (
 	ErrUnsupportedAddress       = errors.New("unsupported address")
@@ -20,3 +23,24 @@ var (
 	ErrIllegalTargetType        = errors.New("illegal target type")
 	ErrArgsWithoutMAC           = errors.New("args without mac address")
 )
+
+type CommandError struct {
+	Err     error
+	Message string
+}
+
+func (ce *CommandError) Error() string {
+	return ce.Error() + ";" + ce.Message
+}
+
+func (ce *CommandError) IsRuleNotExistError() bool {
+	return strings.Contains(ce.Message, "rule does not exist")
+}
+
+func ErrAndStdErr(err error, stderr []byte) error {
+	ce := &CommandError{
+		Err:     err,
+		Message: string(stderr),
+	}
+	return ce
+}

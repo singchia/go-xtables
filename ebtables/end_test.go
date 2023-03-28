@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"bou.ke/monkey"
+	"github.com/singchia/go-xtables"
 	"github.com/singchia/go-xtables/pkg/cmd"
 	"github.com/singchia/go-xtables/pkg/network"
 	"github.com/stretchr/testify/assert"
@@ -110,6 +111,52 @@ func TestAppend(t *testing.T) {
 	assert.Equal(t, nil, err)
 }
 
+func TestChangeCounters(t *testing.T) {
+	set()
+	defer unset()
+
+	dip := net.ParseIP("2001:db8:3333:4444:5555:6666:7777:8888")
+
+	err := NewEBTables().
+		Table(TableTypeFilter).
+		Chain(ChainTypeOUTPUT).
+		MatchProtocol(false, network.EthernetTypeIPv6).
+		MatchIPv6(WithMatchIPv6Destination(false, network.NewIP(dip))).
+		TargetAccept().
+		DeleteAll()
+
+	err = NewEBTables().
+		Table(TableTypeFilter).
+		Chain(ChainTypeOUTPUT).
+		MatchProtocol(false, network.EthernetTypeIPv6).
+		MatchIPv6(WithMatchIPv6Destination(false, network.NewIP(dip))).
+		TargetAccept().
+		OptionCounters(0, 0).
+		Insert()
+	assert.Equal(t, nil, err)
+
+	err = NewEBTables().
+		Table(TableTypeFilter).
+		Chain(ChainTypeOUTPUT).
+		MatchProtocol(false, network.EthernetTypeIPv6).
+		MatchIPv6(WithMatchIPv6Destination(false, network.NewIP(dip))).
+		TargetAccept().
+		ChangeCounters(WithCommandChangeCountersByteCount(1024, xtables.OperatorNull),
+			WithCommandChangeCountersPacketCount(1024, xtables.OperatorNull))
+	assert.Equal(t, nil, err)
+
+	rules, err := NewEBTables().
+		Table(TableTypeFilter).
+		Chain(ChainTypeOUTPUT).
+		MatchProtocol(false, network.EthernetTypeIPv6).
+		MatchIPv6(WithMatchIPv6Destination(false, network.NewIP(dip))).
+		OptionCounters(1024, 1024).
+		TargetAccept().
+		FindRules()
+	assert.Equal(t, nil, err)
+	assert.Equal(t, 1, len(rules))
+}
+
 func TestDelete(t *testing.T) {
 	set()
 	defer unset()
@@ -131,6 +178,41 @@ func TestDelete(t *testing.T) {
 		TargetAccept().
 		Delete()
 	assert.Equal(t, nil, err)
+}
+
+func TestDeleteAll(t *testing.T) {
+	set()
+	defer unset()
+
+	var err error
+	sip := net.ParseIP("192.168.0.2")
+
+	for i := 0; i < 10; i++ {
+		err = NewEBTables().Table(TableTypeNat).
+			Chain(ChainTypePREROUTING).
+			MatchProtocol(false, network.EthernetTypeIPv4).
+			MatchIP(WithMatchIPSource(false, network.NewIP(sip))).
+			TargetAccept().
+			Insert()
+		assert.Equal(t, nil, err)
+	}
+
+	err = NewEBTables().Table(TableTypeNat).
+		Chain(ChainTypePREROUTING).
+		MatchProtocol(false, network.EthernetTypeIPv4).
+		MatchIP(WithMatchIPSource(false, network.NewIP(sip))).
+		TargetAccept().
+		DeleteAll()
+	assert.Equal(t, nil, err)
+
+	rules, err := NewEBTables().Table(TableTypeNat).
+		Chain(ChainTypePREROUTING).
+		MatchProtocol(false, network.EthernetTypeIPv4).
+		MatchIP(WithMatchIPSource(false, network.NewIP(sip))).
+		TargetAccept().
+		FindRules()
+	assert.Equal(t, nil, err)
+	assert.Equal(t, 0, len(rules))
 }
 
 func TestInsert(t *testing.T) {

@@ -32,6 +32,7 @@ type Watcher interface {
 	Long() string
 	LongArgs() []string
 	Parse([]byte) (int, bool)
+	Equal(Watcher) bool
 }
 
 func watcherFactory(watcherType WatcherType) Watcher {
@@ -55,34 +56,38 @@ type baseWatcher struct {
 	invert      bool
 }
 
-func (bw baseWatcher) setChild(child Watcher) {
+func (bw *baseWatcher) setChild(child Watcher) {
 	bw.child = child
 }
 
-func (bw baseWatcher) Type() WatcherType {
+func (bw *baseWatcher) Type() WatcherType {
 	return bw.watcherType
 }
 
-func (bw baseWatcher) Short() string {
+func (bw *baseWatcher) Short() string {
 	if bw.child != nil {
 		return bw.child.Short()
 	}
 	return ""
 }
 
-func (bw baseWatcher) ShortArgs() []string {
+func (bw *baseWatcher) ShortArgs() []string {
 	if bw.child != nil {
 		return bw.child.ShortArgs()
 	}
 	return nil
 }
 
-func (bw baseWatcher) Long() string {
+func (bw *baseWatcher) Long() string {
 	return bw.Short()
 }
 
-func (bw baseWatcher) LongArgs() []string {
+func (bw *baseWatcher) LongArgs() []string {
 	return bw.ShortArgs()
+}
+
+func (bw *baseWatcher) Equal(wth Watcher) bool {
+	return bw.Short() == wth.Short()
 }
 
 type OptionWatcherLog func(*WatcherLog)
@@ -136,7 +141,7 @@ func WithWatcherARP() OptionWatcherLog {
 
 func newWatcherLog(opts ...OptionWatcherLog) (*WatcherLog, error) {
 	watcher := &WatcherLog{
-		baseWatcher: baseWatcher{
+		baseWatcher: &baseWatcher{
 			watcherType: WatcherTypeLog,
 		},
 		Level: -1,
@@ -150,7 +155,7 @@ func newWatcherLog(opts ...OptionWatcherLog) (*WatcherLog, error) {
 
 // The log watcher writes descriptive data about a frame to the syslog.
 type WatcherLog struct {
-	baseWatcher
+	*baseWatcher
 	Default bool
 	Level   xtables.LogLevel
 	Prefix  string
@@ -289,7 +294,7 @@ func WithWatcherNFLogThreshold(size uint64) OptionWatcherNFLog {
 
 func newWatcherNFLog(opts ...OptionWatcherNFLog) (*WatcherNFLog, error) {
 	watcher := &WatcherNFLog{
-		baseWatcher: baseWatcher{
+		baseWatcher: &baseWatcher{
 			watcherType: WatcherTypeNFLog,
 		},
 		Group: 1,
@@ -307,7 +312,7 @@ func newWatcherNFLog(opts ...OptionWatcherNFLog) (*WatcherNFLog, error) {
 // a netlink socket to the specified multicast group. One or more userspace
 // processes may subscribe to the group to receive the packets.
 type WatcherNFLog struct {
-	baseWatcher
+	*baseWatcher
 	Default      bool
 	Group        uint32
 	HasGroup     bool
@@ -443,7 +448,7 @@ func WithWatcherQThreshold(threshold int) OptionWatcherULog {
 
 func newWatcherULog(opts ...OptionWatcherULog) (*WatcherULog, error) {
 	watcher := &WatcherULog{
-		baseWatcher: baseWatcher{
+		baseWatcher: &baseWatcher{
 			watcherType: WatcherTypeULog,
 		},
 		NetlinkGroup:   1,
@@ -458,7 +463,7 @@ func newWatcherULog(opts ...OptionWatcherULog) (*WatcherULog, error) {
 }
 
 type WatcherULog struct {
-	baseWatcher
+	*baseWatcher
 	Default        bool
 	Prefix         string
 	NetlinkGroup   int8

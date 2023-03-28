@@ -202,14 +202,28 @@ func parseAddress(address string) (addrType, interface{}, error) {
 	if length == 0 || length > 253 {
 		return addrTypeUnknown, nil, ErrIllegalAddress
 	}
+	parts := strings.Split(address, "/")
+	if len(parts) == 2 {
+		ip := net.ParseIP(parts[1])
+		if ip != nil {
+			// ffff::ffff
+			mask := net.IPMask(ip)
+			ones, _ := mask.Size()
+			address = parts[0] + "/" + strconv.Itoa(ones)
+		}
+	}
 
 	// ip net
-	_, ipNet, err := net.ParseCIDR(address)
+	ip, ipNet, err := net.ParseCIDR(address)
 	if err == nil {
+		ones, size := ipNet.Mask.Size()
+		if (ones == 128 || ones == 32) && size == ones {
+			return addrTypeIP, ip, nil
+		}
 		return addrTypeIPNet, ipNet, nil
 	}
 	// ip
-	ip := net.ParseIP(address)
+	ip = net.ParseIP(address)
 	if ip != nil {
 		return addrTypeIP, ip, nil
 	}

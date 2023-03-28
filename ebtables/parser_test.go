@@ -43,7 +43,6 @@ func iterateRules(t *testing.T, rules []*Rule) {
 			continue
 		}
 		t.Log(rule.ChainType().String(), rule.chain.chainType.userDefined, rule.lineNumber,
-			string(matches), string(options), string(watchers), rule.target.Type().String(),
-			rule.packets, rule.bytes)
+			string(matches), string(options), string(watchers), rule.target.Type().String())
 	}
 }

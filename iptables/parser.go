@@ -77,7 +77,7 @@ func parseRule(line []byte, head []string, chain *Chain) (*Rule, error) {
 		field := string(fields[i])
 		switch name {
 		case "num":
-			num, err := strconv.Atoi(field)
+			num, err := strconv.Atoi(strings.TrimSpace(field))
 			if err != nil {
 				return nil, err
 			}
