@@ -27,3 +27,29 @@ func NewEBTables() *EBTables {
 	}
 	return tables
 }
+
+func (ebtables *EBTables) dump() *EBTables {
+	newebtables := &EBTables{
+		statement: &Statement{
+			err:      ebtables.statement.err,
+			table:    ebtables.statement.table,
+			chain:    ebtables.statement.chain,
+			matches:  make(map[MatchType]Match),
+			options:  make(map[OptionType]Option),
+			watchers: make(map[WatcherType]Watcher),
+			target:   ebtables.statement.target,
+			command:  ebtables.statement.command,
+		},
+		cmdName: ebtables.cmdName,
+	}
+	for k, v := range ebtables.statement.matches {
+		newebtables.statement.matches[k] = v
+	}
+	for k, v := range ebtables.statement.options {
+		newebtables.statement.options[k] = v
+	}
+	for k, v := range ebtables.statement.watchers {
+		newebtables.statement.watchers[k] = v
+	}
+	return newebtables
+}

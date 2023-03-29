@@ -23,6 +23,10 @@ type Rule struct {
 
 	// target
 	target Target
+
+	// counters
+	packetCounter int64
+	byteCounter   int64
 }
 
 func (rule *Rule) String() string {
@@ -108,6 +112,11 @@ OUTER:
 }
 
 func (rule *Rule) HasTarget(target Target) bool {
+	if target == nil {
+		return true
+	} else if rule.target == nil {
+		return false
+	}
 	return rule.target.Equal(target)
 }
 

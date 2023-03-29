@@ -56,10 +56,14 @@ func (statement *Statement) Elems() ([]string, error) {
 	if statement.command == nil {
 		return nil, xtables.ErrCommandRequired
 	}
-
 	// chain
-	statement.command.SetChainType(statement.chain)
-	elems = append(elems, statement.command.ShortArgs()...)
+	if statement.command.Type() != CommandTypeAtomicInit &&
+		statement.command.Type() != CommandTypeAtomicSave &&
+		statement.command.Type() != CommandTypeAtomicCommit {
+
+		statement.command.SetChainType(statement.chain)
+		elems = append(elems, statement.command.ShortArgs()...)
+	}
 
 	// command tails
 	switch statement.command.Type() {
@@ -120,6 +124,13 @@ func (statement *Statement) Elems() ([]string, error) {
 		if args != nil {
 			elems = append(elems, args...)
 		}
+	}
+
+	// atomic-xxx command
+	if statement.command.Type() == CommandTypeAtomicInit ||
+		statement.command.Type() == CommandTypeAtomicSave ||
+		statement.command.Type() == CommandTypeAtomicCommit {
+		elems = append(elems, statement.command.ShortArgs()...)
 	}
 
 	return elems, nil

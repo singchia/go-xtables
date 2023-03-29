@@ -1,8 +1,6 @@
 package ebtables
 
 import (
-	"fmt"
-
 	"github.com/singchia/go-xtables"
 	"github.com/singchia/go-xtables/pkg/cmd"
 )
@@ -91,6 +89,43 @@ func (ebtables *EBTables) Insert(opts ...OptionCommandInsert) error {
 	return nil
 }
 
+func (ebtables *EBTables) FindChains() ([]*Chain, error) {
+	if ebtables.statement.err != nil {
+		return nil, ebtables.statement.err
+	}
+	chainType := ebtables.statement.chain
+	ebtables.statement.chain = ChainTypeNull
+
+	command := newList(ChainTypeNull)
+	ebtables.statement.command = command
+
+	data, err := ebtables.exec()
+	if err != nil {
+		return nil, xtables.ErrAndStdErr(err, data)
+	}
+
+	chains, _, err := parse(data, parseTable, parseChain, nil)
+	if err != nil {
+		return nil, err
+	}
+	foundChains := []*Chain{}
+	for _, chain := range chains {
+		if chain.chainType.chainType == chainTypeUserDefined &&
+			chain.chainType.name != chainType.name {
+			continue
+		}
+		if chain.chainType.chainType == chainTypeUserDefined &&
+			chain.chainType.name == chainType.name {
+			foundChains = append(foundChains, chain)
+			continue
+		}
+		if chain.chainType == chainType {
+			foundChains = append(foundChains, chain)
+		}
+	}
+	return foundChains, nil
+}
+
 func (ebtables *EBTables) FindRules() ([]*Rule, error) {
 	if ebtables.statement.err != nil {
 		return nil, ebtables.statement.err
@@ -123,13 +158,10 @@ func (ebtables *EBTables) FindRules() ([]*Rule, error) {
 	for _, rule := range rules {
 		yes := rule.HasAllOptions(optionsMap)
 		if !yes {
-			fmt.Println("singchia watching 1", rule.String())
 			continue
 		}
 		yes = rule.HasAllMatchers(matchesMap)
 		if !yes {
-			fmt.Println("singchia watching 2", rule.String())
-
 			continue
 		}
 		yes = rule.HasAllWatchers(watchersMap)
@@ -192,8 +224,7 @@ func (ebtables *EBTables) Dump() ([]string, error) {
 	if err != nil {
 		return nil, xtables.ErrAndStdErr(err, data)
 	}
-	fmt.Println(string(data)) // TODO
-	return nil, nil
+	return dump(data)
 }
 
 // If no table specified, the delete-chain will be applied to all tables
@@ -278,10 +309,9 @@ func (ebtables *EBTables) Policy(target TargetType) error {
 	if ebtables.statement.chain == ChainTypeNull {
 		for _, table := range tables {
 			for _, chain := range TableChains[table] {
-				ebtables.Table(table).Chain(chain)
-				command := newPolicy(ChainTypeNull, target)
-				ebtables.statement.command = command
-				data, err := ebtables.exec()
+				newebtables := ebtables.Table(table).Chain(chain)
+				newebtables.statement.command = newPolicy(ChainTypeNull, target)
+				data, err := newebtables.exec()
 				if err != nil {
 					return xtables.ErrAndStdErr(err, data)
 				}
@@ -290,10 +320,9 @@ func (ebtables *EBTables) Policy(target TargetType) error {
 		return nil
 	} else {
 		for _, table := range tables {
-			ebtables.Table(table)
-			command := newPolicy(ChainTypeNull, target)
-			ebtables.statement.command = command
-			data, err := ebtables.exec()
+			newebtables := ebtables.Table(table)
+			newebtables.statement.command = newPolicy(ChainTypeNull, target)
+			data, err := newebtables.exec()
 			if err != nil {
 				return xtables.ErrAndStdErr(err, data)
 			}
@@ -307,6 +336,71 @@ func (ebtables *EBTables) Zero() error {
 		return ebtables.statement.err
 	}
 	command := newZero(ChainTypeNull)
+	ebtables.statement.command = command
+	data, err := ebtables.exec()
+	if err != nil {
+		return xtables.ErrAndStdErr(err, data)
+	}
+	return nil
+}
+
+func (ebtables *EBTables) NewChain(chainName string) error {
+	if ebtables.statement.err != nil {
+		return ebtables.statement.err
+	}
+	command := newNewChain(chainName)
+	ebtables.statement.command = command
+	data, err := ebtables.exec()
+	if err != nil {
+		return xtables.ErrAndStdErr(err, data)
+	}
+	return nil
+}
+
+func (ebtables *EBTables) InitTable() error {
+	if ebtables.statement.err != nil {
+		return ebtables.statement.err
+	}
+	command := newInitTable()
+	ebtables.statement.command = command
+	data, err := ebtables.exec()
+	if err != nil {
+		return xtables.ErrAndStdErr(err, data)
+	}
+	return nil
+}
+
+func (ebtables *EBTables) AtomicInit() error {
+	if ebtables.statement.err != nil {
+		return ebtables.statement.err
+	}
+	command := newAtomicInit()
+	ebtables.statement.command = command
+	data, err := ebtables.exec()
+	if err != nil {
+		return xtables.ErrAndStdErr(err, data)
+	}
+	return nil
+}
+
+func (ebtables *EBTables) AtomicSave() error {
+	if ebtables.statement.err != nil {
+		return ebtables.statement.err
+	}
+	command := newAtomicSave()
+	ebtables.statement.command = command
+	data, err := ebtables.exec()
+	if err != nil {
+		return xtables.ErrAndStdErr(err, data)
+	}
+	return nil
+}
+
+func (ebtables *EBTables) AtomicCommit() error {
+	if ebtables.statement.err != nil {
+		return ebtables.statement.err
+	}
+	command := newAtomicCommit()
 	ebtables.statement.command = command
 	data, err := ebtables.exec()
 	if err != nil {

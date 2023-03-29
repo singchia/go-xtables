@@ -65,8 +65,6 @@ var (
 type Chain struct {
 	chainType ChainType
 	tableType TableType
-	//userDefined bool
-	//name    string
-	policy  Target
-	entries int
+	policy    Target
+	entries   int
 }

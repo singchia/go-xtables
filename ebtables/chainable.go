@@ -3,20 +3,23 @@ package ebtables
 import "github.com/singchia/go-xtables/pkg/network"
 
 func (ebtables *EBTables) Table(table TableType) *EBTables {
-	ebtables.statement.table = table
-	return ebtables
+	newebtables := ebtables.dump()
+	newebtables.statement.table = table
+	return newebtables
 }
 
 func (ebtables *EBTables) Chain(chain ChainType) *EBTables {
-	ebtables.statement.chain = chain
-	return ebtables
+	newebtables := ebtables.dump()
+	newebtables.statement.chain = chain
+	return newebtables
 }
 
 func (ebtables *EBTables) UserDefinedChain(chain string) *EBTables {
-	ebtables.statement.chain = ChainTypeUserDefined
-	ebtables.statement.chain.name = chain
-	ebtables.statement.chain.userDefined = true
-	return ebtables
+	newebtables := ebtables.dump()
+	newebtables.statement.chain = ChainTypeUserDefined
+	newebtables.statement.chain.name = chain
+	newebtables.statement.chain.userDefined = true
+	return newebtables
 }
 
 // matches
@@ -193,13 +196,14 @@ func (ebtables *EBTables) MatchProtocol(invert bool, protocol network.EthernetTy
 	if ebtables.statement.err != nil {
 		return ebtables
 	}
+	newebtables := ebtables.dump()
 	match, err := newMatchProtocol(invert, protocol)
 	if err != nil {
-		ebtables.statement.err = err
+		newebtables.statement.err = err
 		return ebtables
 	}
-	ebtables.statement.addMatch(match)
-	return ebtables
+	newebtables.statement.addMatch(match)
+	return newebtables
 }
 
 func (ebtables *EBTables) MatchSource(invert bool, addr network.Address) *EBTables {

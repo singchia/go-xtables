@@ -34,11 +34,17 @@ func parse(data []byte, onTableLine onTableLine,
 		line := scanner.Bytes()
 		if index == 0 {
 			if bytes.HasPrefix(line, []byte("Bridge table")) {
+				if onTableLine == nil {
+					continue
+				}
 				tableType, err = onTableLine(line)
 				if err != nil {
 					return nil, nil, err
 				}
 			} else if bytes.HasPrefix(line, []byte("Bridge chain")) {
+				if onChainLine == nil {
+					continue
+				}
 				chain, err = onChainLine(line)
 				if err != nil {
 					return nil, nil, err
@@ -50,6 +56,9 @@ func parse(data []byte, onTableLine onTableLine,
 			// rule or EOC(end of chain)
 			if len(line) == 0 {
 				index = 0
+				continue
+			}
+			if onRuleLine == nil {
 				continue
 			}
 			rule, err := onRuleLine(line, chain)
@@ -71,7 +80,7 @@ func parseTable(line []byte) (TableType, error) {
 		return TableTypeNull, err
 	}
 
-	table := bytes.TrimFunc(line, func(r rune) bool {
+	table := bytes.TrimFunc(buf.Bytes(), func(r rune) bool {
 		if r == ' ' || r == '\n' {
 			return true
 		}
@@ -101,8 +110,8 @@ func parseChain(line []byte) (*Chain, error) {
 	if err != nil {
 		return nil, err
 	}
-	chain.chainType.name = chain.chainType.name[:len(chain.chainType.name)-1]
-	switch strings.TrimSpace(chain.chainType.name) {
+	chain.chainType.name = strings.TrimSpace(chain.chainType.name[:len(chain.chainType.name)-1])
+	switch chain.chainType.name {
 	case "INPUT":
 		chain.chainType = ChainTypeINPUT
 	case "FORWARD":
@@ -114,7 +123,9 @@ func parseChain(line []byte) (*Chain, error) {
 	case "POSTROUTING":
 		chain.chainType = ChainTypePOSTROUTING
 	default:
-		chain.chainType = ChainTypeUserDefined
+		userDefined := ChainTypeUserDefined
+		userDefined.name = chain.chainType.name
+		chain.chainType = userDefined
 	}
 
 	rest := buf.Bytes()
@@ -199,16 +210,22 @@ func parseRule(line []byte, chain *Chain) (*Rule, error) {
 	// then target
 	target, index, err := parseTarget(line)
 	if err != nil {
-		return nil, err
+		if err != xtables.ErrTargetNotFound {
+			return nil, err
+		}
+		rule.target = nil
+	} else {
+		rule.target = target
+		line = line[index:]
 	}
-	rule.target = target
-	line = line[index:]
 
 	// then pkt and bytes count
 	pcnt, bcnt, ok := parsePktsAndBytes(line)
 	if ok {
 		opt, _ := newOptionCounters(pcnt, bcnt)
 		rule.optionMap[opt.Type()] = opt
+		rule.packetCounter = pcnt
+		rule.byteCounter = bcnt
 	}
 
 	return rule, nil
