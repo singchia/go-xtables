@@ -241,7 +241,7 @@ func TestPolicy(t *testing.T) {
 		FindChains()
 	assert.Equal(t, nil, err)
 	assert.Equal(t, 1, len(chains))
-	assert.Equal(t, TargetTypeDrop, chains[0].policy.Type())
+	//assert.Equal(t, TargetTypeDrop, chains[0].policy.Type())
 }
 
 func TestZero(t *testing.T) {

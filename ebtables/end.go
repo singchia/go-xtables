@@ -21,9 +21,10 @@ func (ebtables *EBTables) Append() error {
 	if ebtables.statement.err != nil {
 		return ebtables.statement.err
 	}
+	newebtables := ebtables.dump()
 	command := newAppend(ChainTypeNull)
-	ebtables.statement.command = command
-	data, err := ebtables.exec()
+	newebtables.statement.command = command
+	data, err := newebtables.exec()
 	if err != nil {
 		return xtables.ErrAndStdErr(err, data)
 	}
@@ -34,9 +35,10 @@ func (ebtables *EBTables) ChangeCounters(opts ...OptionCommandChangeCounters) er
 	if ebtables.statement.err != nil {
 		return ebtables.statement.err
 	}
+	newebtables := ebtables.dump()
 	command := newChangeCounters(ChainTypeNull, opts...)
-	ebtables.statement.command = command
-	data, err := ebtables.exec()
+	newebtables.statement.command = command
+	data, err := newebtables.exec()
 	if err != nil {
 		return xtables.ErrAndStdErr(err, data)
 	}
@@ -47,9 +49,10 @@ func (ebtables *EBTables) Delete(opts ...OptionCommandDelete) error {
 	if ebtables.statement.err != nil {
 		return ebtables.statement.err
 	}
+	newebtables := ebtables.dump()
 	command := newDelete(ChainTypeNull, opts...)
-	ebtables.statement.command = command
-	data, err := ebtables.exec()
+	newebtables.statement.command = command
+	data, err := newebtables.exec()
 	if err != nil {
 		return xtables.ErrAndStdErr(err, data)
 	}
@@ -60,10 +63,11 @@ func (ebtables *EBTables) DeleteAll(opts ...OptionCommandDelete) error {
 	if ebtables.statement.err != nil {
 		return ebtables.statement.err
 	}
+	newebtables := ebtables.dump()
 	command := newDelete(ChainTypeNull, opts...)
-	ebtables.statement.command = command
+	newebtables.statement.command = command
 	for {
-		data, err := ebtables.exec()
+		data, err := newebtables.exec()
 		if err == nil {
 			continue
 		}
@@ -80,9 +84,10 @@ func (ebtables *EBTables) Insert(opts ...OptionCommandInsert) error {
 	if ebtables.statement.err != nil {
 		return ebtables.statement.err
 	}
+	newebtables := ebtables.dump()
 	command := newInsert(ChainTypeNull, opts...)
-	ebtables.statement.command = command
-	data, err := ebtables.exec()
+	newebtables.statement.command = command
+	data, err := newebtables.exec()
 	if err != nil {
 		return xtables.ErrAndStdErr(err, data)
 	}
@@ -93,13 +98,14 @@ func (ebtables *EBTables) FindChains() ([]*Chain, error) {
 	if ebtables.statement.err != nil {
 		return nil, ebtables.statement.err
 	}
+	newebtables := ebtables.dump()
 	chainType := ebtables.statement.chain
-	ebtables.statement.chain = ChainTypeNull
+	newebtables.statement.chain = ChainTypeNull
 
 	command := newList(ChainTypeNull)
-	ebtables.statement.command = command
+	newebtables.statement.command = command
 
-	data, err := ebtables.exec()
+	data, err := newebtables.exec()
 	if err != nil {
 		return nil, xtables.ErrAndStdErr(err, data)
 	}
@@ -130,23 +136,24 @@ func (ebtables *EBTables) FindRules() ([]*Rule, error) {
 	if ebtables.statement.err != nil {
 		return nil, ebtables.statement.err
 	}
-	optionsMap := ebtables.statement.options
-	matchesMap := ebtables.statement.matches
-	watchersMap := ebtables.statement.watchers
-	target := ebtables.statement.target
-	ebtables.statement.options = make(map[OptionType]Option)
-	ebtables.statement.matches = make(map[MatchType]Match)
-	ebtables.statement.watchers = make(map[WatcherType]Watcher)
-	ebtables.statement.target = nil
+	newebtables := ebtables.dump()
+	optionsMap := newebtables.statement.options
+	matchesMap := newebtables.statement.matches
+	watchersMap := newebtables.statement.watchers
+	target := newebtables.statement.target
+	newebtables.statement.options = make(map[OptionType]Option)
+	newebtables.statement.matches = make(map[MatchType]Match)
+	newebtables.statement.watchers = make(map[WatcherType]Watcher)
+	newebtables.statement.target = nil
 
 	// search with table or chain
 	command := newList(ChainTypeNull)
-	ebtables.statement.command = command
-	ebtables.statement.options[OptionTypeListNumbers], _ = newOptionListNumbers()
-	ebtables.statement.options[OptionTypeListCounters], _ = newOptionListCounters()
-	ebtables.statement.options[OptionTypeListMACSameLength], _ = newOptionListMACSameLength()
+	newebtables.statement.command = command
+	newebtables.statement.options[OptionTypeListNumbers], _ = newOptionListNumbers()
+	newebtables.statement.options[OptionTypeListCounters], _ = newOptionListCounters()
+	newebtables.statement.options[OptionTypeListMACSameLength], _ = newOptionListMACSameLength()
 
-	data, err := ebtables.exec()
+	data, err := newebtables.exec()
 	if err != nil {
 		return nil, xtables.ErrAndStdErr(err, data)
 	}
@@ -182,12 +189,13 @@ func (ebtables *EBTables) ListRules() ([]*Rule, error) {
 	if ebtables.statement.err != nil {
 		return nil, ebtables.statement.err
 	}
+	newebtables := ebtables.dump()
 	command := newListRules(ChainTypeNull)
-	ebtables.statement.command = command
-	ebtables.statement.options[OptionTypeListNumbers], _ = newOptionListNumbers()
-	ebtables.statement.options[OptionTypeListCounters], _ = newOptionListCounters()
-	ebtables.statement.options[OptionTypeListMACSameLength], _ = newOptionListMACSameLength()
-	data, err := ebtables.exec()
+	newebtables.statement.command = command
+	newebtables.statement.options[OptionTypeListNumbers], _ = newOptionListNumbers()
+	newebtables.statement.options[OptionTypeListCounters], _ = newOptionListCounters()
+	newebtables.statement.options[OptionTypeListMACSameLength], _ = newOptionListMACSameLength()
+	data, err := newebtables.exec()
 	if err != nil {
 		return nil, xtables.ErrAndStdErr(err, data)
 	}
@@ -200,12 +208,13 @@ func (ebtables *EBTables) ListChains() ([]*Chain, error) {
 	if ebtables.statement.err != nil {
 		return nil, ebtables.statement.err
 	}
+	newebtables := ebtables.dump()
 	command := newListChains(ChainTypeNull)
-	ebtables.statement.command = command
-	ebtables.statement.options[OptionTypeListNumbers], _ = newOptionListNumbers()
-	ebtables.statement.options[OptionTypeListCounters], _ = newOptionListCounters()
-	ebtables.statement.options[OptionTypeListMACSameLength], _ = newOptionListMACSameLength()
-	data, err := ebtables.exec()
+	newebtables.statement.command = command
+	newebtables.statement.options[OptionTypeListNumbers], _ = newOptionListNumbers()
+	newebtables.statement.options[OptionTypeListCounters], _ = newOptionListCounters()
+	newebtables.statement.options[OptionTypeListMACSameLength], _ = newOptionListMACSameLength()
+	data, err := newebtables.exec()
 	if err != nil {
 		return nil, xtables.ErrAndStdErr(err, data)
 	}
@@ -217,10 +226,11 @@ func (ebtables *EBTables) Dump() ([]string, error) {
 	if ebtables.statement.err != nil {
 		return nil, ebtables.statement.err
 	}
+	newebtables := ebtables.dump()
 	command := newDump(ChainTypeNull)
-	ebtables.statement.command = command
-	ebtables.statement.options[OptionTypeListChange], _ = newOptionListChange()
-	data, err := ebtables.exec()
+	newebtables.statement.command = command
+	newebtables.statement.options[OptionTypeListChange], _ = newOptionListChange()
+	data, err := newebtables.exec()
 	if err != nil {
 		return nil, xtables.ErrAndStdErr(err, data)
 	}
@@ -232,18 +242,19 @@ func (ebtables *EBTables) DeleteChain() error {
 	if ebtables.statement.err != nil {
 		return ebtables.statement.err
 	}
+	newebtables := ebtables.dump()
 	var tables []TableType
-	if ebtables.statement.table == TableTypeNull {
+	if newebtables.statement.table == TableTypeNull {
 		tables = []TableType{TableTypeFilter, TableTypeNat, TableTypeBRoute}
 	} else {
-		tables = []TableType{ebtables.statement.table}
+		tables = []TableType{newebtables.statement.table}
 	}
 
 	for _, table := range tables {
-		ebtables.Table(table)
+		newebtables.Table(table)
 		command := newDeleteChain()
-		ebtables.statement.command = command
-		data, err := ebtables.exec()
+		newebtables.statement.command = command
+		data, err := newebtables.exec()
 		if err != nil {
 			return xtables.ErrAndStdErr(err, data)
 		}
@@ -255,9 +266,10 @@ func (ebtables *EBTables) RenameChain(name string) error {
 	if ebtables.statement.err != nil {
 		return ebtables.statement.err
 	}
+	newebtables := ebtables.dump()
 	command := newRenameChain(ChainTypeNull, name)
-	ebtables.statement.command = command
-	data, err := ebtables.exec()
+	newebtables.statement.command = command
+	data, err := newebtables.exec()
 	if err != nil {
 		return xtables.ErrAndStdErr(err, data)
 	}
@@ -269,18 +281,19 @@ func (ebtables *EBTables) Flush() error {
 	if ebtables.statement.err != nil {
 		return ebtables.statement.err
 	}
+	newebtables := ebtables.dump()
 	var tables []TableType
-	if ebtables.statement.table == TableTypeNull {
+	if newebtables.statement.table == TableTypeNull {
 		tables = []TableType{TableTypeFilter, TableTypeNat, TableTypeBRoute}
 	} else {
-		tables = []TableType{ebtables.statement.table}
+		tables = []TableType{newebtables.statement.table}
 	}
 
 	for _, table := range tables {
-		ebtables.Table(table)
+		newebtables.Table(table)
 		command := newFlush(ChainTypeNull)
-		ebtables.statement.command = command
-		data, err := ebtables.exec()
+		newebtables.statement.command = command
+		data, err := newebtables.exec()
 		if err != nil {
 			return xtables.ErrAndStdErr(err, data)
 		}
@@ -294,24 +307,25 @@ func (ebtables *EBTables) Policy(target TargetType) error {
 	if ebtables.statement.err != nil {
 		return ebtables.statement.err
 	}
+	newebtables := ebtables.dump()
 	if target != TargetTypeAccept &&
 		target != TargetTypeDrop &&
 		target != TargetTypeReturn {
 		return xtables.ErrIllegalTargetType
 	}
 	var tables []TableType
-	if ebtables.statement.table == TableTypeNull {
+	if newebtables.statement.table == TableTypeNull {
 		tables = []TableType{TableTypeFilter, TableTypeNat, TableTypeBRoute}
 	} else {
-		tables = []TableType{ebtables.statement.table}
+		tables = []TableType{newebtables.statement.table}
 	}
 
-	if ebtables.statement.chain == ChainTypeNull {
+	if newebtables.statement.chain == ChainTypeNull {
 		for _, table := range tables {
 			for _, chain := range TableChains[table] {
-				newebtables := ebtables.Table(table).Chain(chain)
-				newebtables.statement.command = newPolicy(ChainTypeNull, target)
-				data, err := newebtables.exec()
+				latestebtables := newebtables.Table(table).Chain(chain)
+				latestebtables.statement.command = newPolicy(ChainTypeNull, target)
+				data, err := latestebtables.exec()
 				if err != nil {
 					return xtables.ErrAndStdErr(err, data)
 				}
@@ -320,9 +334,9 @@ func (ebtables *EBTables) Policy(target TargetType) error {
 		return nil
 	} else {
 		for _, table := range tables {
-			newebtables := ebtables.Table(table)
-			newebtables.statement.command = newPolicy(ChainTypeNull, target)
-			data, err := newebtables.exec()
+			latestebtables := newebtables.Table(table)
+			latestebtables.statement.command = newPolicy(ChainTypeNull, target)
+			data, err := latestebtables.exec()
 			if err != nil {
 				return xtables.ErrAndStdErr(err, data)
 			}
@@ -335,9 +349,10 @@ func (ebtables *EBTables) Zero() error {
 	if ebtables.statement.err != nil {
 		return ebtables.statement.err
 	}
+	newebtables := ebtables.dump()
 	command := newZero(ChainTypeNull)
-	ebtables.statement.command = command
-	data, err := ebtables.exec()
+	newebtables.statement.command = command
+	data, err := newebtables.exec()
 	if err != nil {
 		return xtables.ErrAndStdErr(err, data)
 	}
@@ -348,9 +363,10 @@ func (ebtables *EBTables) NewChain(chainName string) error {
 	if ebtables.statement.err != nil {
 		return ebtables.statement.err
 	}
+	newebtables := ebtables.dump()
 	command := newNewChain(chainName)
-	ebtables.statement.command = command
-	data, err := ebtables.exec()
+	newebtables.statement.command = command
+	data, err := newebtables.exec()
 	if err != nil {
 		return xtables.ErrAndStdErr(err, data)
 	}
@@ -361,9 +377,10 @@ func (ebtables *EBTables) InitTable() error {
 	if ebtables.statement.err != nil {
 		return ebtables.statement.err
 	}
+	newebtables := ebtables.dump()
 	command := newInitTable()
-	ebtables.statement.command = command
-	data, err := ebtables.exec()
+	newebtables.statement.command = command
+	data, err := newebtables.exec()
 	if err != nil {
 		return xtables.ErrAndStdErr(err, data)
 	}
@@ -374,9 +391,10 @@ func (ebtables *EBTables) AtomicInit() error {
 	if ebtables.statement.err != nil {
 		return ebtables.statement.err
 	}
+	newebtables := ebtables.dump()
 	command := newAtomicInit()
-	ebtables.statement.command = command
-	data, err := ebtables.exec()
+	newebtables.statement.command = command
+	data, err := newebtables.exec()
 	if err != nil {
 		return xtables.ErrAndStdErr(err, data)
 	}
@@ -387,9 +405,10 @@ func (ebtables *EBTables) AtomicSave() error {
 	if ebtables.statement.err != nil {
 		return ebtables.statement.err
 	}
+	newebtables := ebtables.dump()
 	command := newAtomicSave()
-	ebtables.statement.command = command
-	data, err := ebtables.exec()
+	newebtables.statement.command = command
+	data, err := newebtables.exec()
 	if err != nil {
 		return xtables.ErrAndStdErr(err, data)
 	}
@@ -400,9 +419,10 @@ func (ebtables *EBTables) AtomicCommit() error {
 	if ebtables.statement.err != nil {
 		return ebtables.statement.err
 	}
+	newebtables := ebtables.dump()
 	command := newAtomicCommit()
-	ebtables.statement.command = command
-	data, err := ebtables.exec()
+	newebtables.statement.command = command
+	data, err := newebtables.exec()
 	if err != nil {
 		return xtables.ErrAndStdErr(err, data)
 	}
