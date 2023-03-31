@@ -429,15 +429,15 @@ func (bm baseMatch) Short() string {
 	return ""
 }
 
-func (bm baseMatch) ShortArgs() []string {
+func (bm *baseMatch) ShortArgs() []string {
 	return nil
 }
 
-func (bm baseMatch) Long() string {
+func (bm *baseMatch) Long() string {
 	return ""
 }
 
-func (bm baseMatch) LongArgs() []string {
+func (bm *baseMatch) LongArgs() []string {
 	return nil
 }
 
@@ -454,7 +454,7 @@ func (bm *baseMatch) Depends() []MatchType {
 }
 
 type MatchIPv4 struct {
-	baseMatch
+	*baseMatch
 }
 
 func (mIPv4 *MatchIPv4) Short() string {
@@ -474,7 +474,7 @@ func (mIPv4 *MatchIPv4) LongArgs() []string {
 }
 
 type MatchIPv6 struct {
-	baseMatch
+	*baseMatch
 }
 
 func (mIPv6 *MatchIPv6) Short() string {
@@ -494,7 +494,7 @@ func (mIPv6 *MatchIPv6) LongArgs() []string {
 }
 
 type MatchProtocol struct {
-	baseMatch
+	*baseMatch
 	Protocol network.Protocol
 }
 
@@ -527,13 +527,13 @@ func (mProtocol *MatchProtocol) LongArgs() []string {
 }
 
 type MatchSource struct {
-	baseMatch
+	*baseMatch
 	address network.Address
 }
 
 func newMatchSource(invert bool, address network.Address) (*MatchSource, error) {
 	return &MatchSource{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeSource,
 		},
 		address: address,
@@ -569,13 +569,13 @@ func (mSrc *MatchSource) LongArgs() []string {
 }
 
 type MatchDestination struct {
-	baseMatch
+	*baseMatch
 	address network.Address
 }
 
 func newMatchDestination(invert bool, address network.Address) (*MatchDestination, error) {
 	return &MatchDestination{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeDestination,
 		},
 		address: address,
@@ -611,13 +611,13 @@ func (mDst *MatchDestination) LongArgs() []string {
 }
 
 type MatchInInterface struct {
-	baseMatch
+	*baseMatch
 	iface string
 }
 
 func newMatchInInterface(invert bool, iface string) (*MatchInInterface, error) {
 	return &MatchInInterface{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeInInterface,
 			invert:    invert,
 		},
@@ -654,13 +654,13 @@ func (mInIface *MatchInInterface) LongArgs() []string {
 }
 
 type MatchOutInterface struct {
-	baseMatch
+	*baseMatch
 	iface string
 }
 
 func newMatchOutInterface(invert bool, iface string) (*MatchOutInterface, error) {
 	return &MatchOutInterface{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeOutInterface,
 			invert:    invert,
 		},
@@ -800,7 +800,7 @@ func WithMatchAddrLimitIfaceOut() OptionMatchAddrType {
 
 func newMatchAddrType(opts ...OptionMatchAddrType) (*MatchAddrType, error) {
 	match := &MatchAddrType{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeAddrType,
 		},
 	}
@@ -812,7 +812,7 @@ func newMatchAddrType(opts ...OptionMatchAddrType) (*MatchAddrType, error) {
 
 // Non-numeric unsupported
 type MatchAddrType struct {
-	baseMatch
+	*baseMatch
 	// src type
 	SrcTypeInvert bool
 	SrcType       AddrType
@@ -959,7 +959,7 @@ func WithMatchAHReserved() OptionMatchAH {
 
 func newMatchAH(opts ...OptionMatchAH) (*MatchAH, error) {
 	match := &MatchAH{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeAH,
 		},
 		SPIMin: -1,
@@ -975,7 +975,7 @@ func newMatchAH(opts ...OptionMatchAH) (*MatchAH, error) {
 // Both ipv4 and ipv6
 // Non-numeric unsupported
 type MatchAH struct {
-	baseMatch
+	*baseMatch
 	// spi
 	SPIMin int
 	SPIMax int
@@ -1119,7 +1119,7 @@ func WithMatchBPFObjectPinnedPath(path string) OptionMatchBPF {
 
 func newMatchBPF(opts ...OptionMatchBPF) (*MatchBPF, error) {
 	match := &MatchBPF{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeBPF,
 		},
 	}
@@ -1131,7 +1131,7 @@ func newMatchBPF(opts ...OptionMatchBPF) (*MatchBPF, error) {
 
 // Non-numeric unsupported
 type MatchBPF struct {
-	baseMatch
+	*baseMatch
 	BPF    []BPFSockFilter
 	BPFRaw string
 	Path   string
@@ -1245,7 +1245,7 @@ func WithMatchCGroupPath(invert bool, path string) OptionMatchCGroup {
 
 func newMatchCGroup(opts ...OptionMatchCGroup) (*MatchCGroup, error) {
 	match := &MatchCGroup{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeCGroup,
 		},
 		ClassID: -1,
@@ -1258,7 +1258,7 @@ func newMatchCGroup(opts ...OptionMatchCGroup) (*MatchCGroup, error) {
 
 // Non-numeric unsupported
 type MatchCGroup struct {
-	baseMatch
+	*baseMatch
 	Path    string
 	ClassID int
 	// invert
@@ -1362,7 +1362,7 @@ func WithMatchClusterHashSeed(seed int64) OptionMatchCluster {
 
 func newMatchCluster(opts ...OptionMatchCluster) (*MatchCluster, error) {
 	match := &MatchCluster{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeCluster,
 		},
 		TotalNodes:    -1,
@@ -1377,7 +1377,7 @@ func newMatchCluster(opts ...OptionMatchCluster) (*MatchCluster, error) {
 
 // Non-numeric unsupported
 type MatchCluster struct {
-	baseMatch
+	*baseMatch
 	TotalNodes    int
 	LocalNodeMask int64
 	HashSeed      int64
@@ -1460,7 +1460,7 @@ func (mCluster *MatchCluster) Parse(main []byte) (int, bool) {
 
 func newMatchComment(comment string) (*MatchComment, error) {
 	match := &MatchComment{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeComment,
 		},
 		Comment: comment,
@@ -1470,7 +1470,7 @@ func newMatchComment(comment string) (*MatchComment, error) {
 
 // Non-numeric unsupported
 type MatchComment struct {
-	baseMatch
+	*baseMatch
 	Comment string
 }
 
@@ -1547,7 +1547,7 @@ func WithMatchConnBytesMode(mode ConnBytesMode) OptionMatchConnBytes {
 
 func newMatchConnBytes(opts ...OptionMatchConnBytes) (*MatchConnBytes, error) {
 	match := &MatchConnBytes{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeConnBytes,
 		},
 		From:      -1,
@@ -1562,7 +1562,7 @@ func newMatchConnBytes(opts ...OptionMatchConnBytes) (*MatchConnBytes, error) {
 
 // Non-numeric unsupported
 type MatchConnBytes struct {
-	baseMatch
+	*baseMatch
 	From      int64
 	To        int64
 	Mode      ConnBytesMode
@@ -1678,7 +1678,7 @@ func WithMatchConnLabelSet() OptionMatchConnLabel {
 
 func newMatchConnLabel(opts ...OptionMatchConnLabel) (*MatchConnLabel, error) {
 	match := &MatchConnLabel{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeConnLabel,
 		},
 		Label: -1,
@@ -1691,7 +1691,7 @@ func newMatchConnLabel(opts ...OptionMatchConnLabel) (*MatchConnLabel, error) {
 
 // Numeric unsupported
 type MatchConnLabel struct {
-	baseMatch
+	*baseMatch
 	Label     int
 	LabelName string
 	Set       bool
@@ -1806,7 +1806,7 @@ func WithMatchConnLimitDstAddr() OptionMatchConnLimit {
 
 func newMatchConnLimit(opts ...OptionMatchConnLimit) (*MatchConnLimit, error) {
 	match := &MatchConnLimit{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeConnLimit,
 		},
 		Upto:  -1,
@@ -1821,7 +1821,7 @@ func newMatchConnLimit(opts ...OptionMatchConnLimit) (*MatchConnLimit, error) {
 
 // Non-numeric unsupported
 type MatchConnLimit struct {
-	baseMatch
+	*baseMatch
 	Upto  int
 	Above int
 	Mask  int
@@ -1905,7 +1905,7 @@ func (mConnLimit *MatchConnLimit) Parse(main []byte) (int, bool) {
 // If a mask is specified, this is logically ANDed with the mark before the comparison.
 func newMatchConnMark(invert bool, value ...int) (*MatchConnMark, error) {
 	mConnMark := &MatchConnMark{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeConnMark,
 		},
 	}
@@ -1923,7 +1923,7 @@ func newMatchConnMark(invert bool, value ...int) (*MatchConnMark, error) {
 
 // Non-numeric unsupported
 type MatchConnMark struct {
-	baseMatch
+	*baseMatch
 	Value int
 	Mask  int
 }
@@ -2248,7 +2248,7 @@ func WithMatchConnTrackExpire(invert bool, time ...int) OptionMatchConnTrack {
 
 func newMatchConnTrack(opts ...OptionMatchConnTrack) (*MatchConnTrack, error) {
 	match := &MatchConnTrack{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeConnTrack,
 		},
 		State:          -1,
@@ -2274,7 +2274,7 @@ func newMatchConnTrack(opts ...OptionMatchConnTrack) (*MatchConnTrack, error) {
 
 // Non-numeric supported
 type MatchConnTrack struct {
-	baseMatch
+	*baseMatch
 	State          ConnTrackState
 	Status         ConnTrackStatus
 	Direction      ConnTrackDir
@@ -2680,7 +2680,7 @@ END:
 // multiqueue NICs to spread network traffic on different queues.
 func newMatchCPU(invert bool, cpu int) (*MatchCPU, error) {
 	mCPU := &MatchCPU{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeCPU,
 			invert:    invert,
 		},
@@ -2691,7 +2691,7 @@ func newMatchCPU(invert bool, cpu int) (*MatchCPU, error) {
 
 // Non-numeric unsupport
 type MatchCPU struct {
-	baseMatch
+	*baseMatch
 	CPU int
 }
 
@@ -2848,7 +2848,7 @@ func WithMatchDCCOption(invert bool, option int) OptionMatchDCCP {
 
 func newMatchDCCP(opts ...OptionMatchDCCP) (*MatchDCCP, error) {
 	match := &MatchDCCP{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeDCCP,
 		},
 		SrcPortMin: -1,
@@ -2866,7 +2866,7 @@ func newMatchDCCP(opts ...OptionMatchDCCP) (*MatchDCCP, error) {
 
 // Non-numeric support
 type MatchDCCP struct {
-	baseMatch
+	*baseMatch
 	SrcPortMin int
 	SrcPortMax int
 	DstPortMin int
@@ -3102,7 +3102,7 @@ func WithMatchDevGroupDst(invert bool, dst int64) OptionMatchDevGroup {
 
 func newMatchDevGroup(opts ...OptionMatchDevGroup) (*MatchDevGroup, error) {
 	match := &MatchDevGroup{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeDevGroup,
 		},
 		SrcGroup: -1,
@@ -3115,7 +3115,7 @@ func newMatchDevGroup(opts ...OptionMatchDevGroup) (*MatchDevGroup, error) {
 }
 
 type MatchDevGroup struct {
-	baseMatch
+	*baseMatch
 	SrcGroup int64
 	DstGroup int64
 	// invert
@@ -3245,7 +3245,7 @@ func WithMatchDSCPClass(invert bool, class DSCPClass) OptionMatchDSCP {
 
 func newMatchDSCP(opts ...OptionMatchDSCP) (*MatchDSCP, error) {
 	match := &MatchDSCP{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeDSCP,
 		},
 		Value: -1,
@@ -3257,7 +3257,7 @@ func newMatchDSCP(opts ...OptionMatchDSCP) (*MatchDSCP, error) {
 }
 
 type MatchDSCP struct {
-	baseMatch
+	*baseMatch
 	Value int
 }
 
@@ -3324,7 +3324,7 @@ func WithMatchDstOpts(opts ...network.IPv6Option) OptionMatchDst {
 
 func newMatchDst(opts ...OptionMatchDst) (*MatchDst, error) {
 	match := &MatchDst{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeDst,
 		},
 		Length: -1,
@@ -3338,7 +3338,7 @@ func newMatchDst(opts ...OptionMatchDst) (*MatchDst, error) {
 // IPv6 specific
 // Non-numeric unsupport
 type MatchDst struct {
-	baseMatch
+	*baseMatch
 	Length  int
 	Options []network.IPv6Option
 }
@@ -3461,7 +3461,7 @@ func WithMatchECNECT(invert bool, ect int) OptionMatchECN {
 
 func newMatchECN(opts ...OptionMatchECN) (*MatchECN, error) {
 	match := &MatchECN{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeECN,
 		},
 		ECT: -1,
@@ -3473,7 +3473,7 @@ func newMatchECN(opts ...OptionMatchECN) (*MatchECN, error) {
 }
 
 type MatchECN struct {
-	baseMatch
+	*baseMatch
 	ECE       bool
 	CWR       bool
 	ECT       int
@@ -3561,7 +3561,7 @@ func (mECN *MatchECN) Parse(main []byte) (int, bool) {
 // Matches SPI
 func newMatchESP(invert bool, spi ...int) (*MatchESP, error) {
 	match := &MatchESP{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeESP,
 		},
 		SPIMin: -1,
@@ -3580,7 +3580,7 @@ func newMatchESP(invert bool, spi ...int) (*MatchESP, error) {
 }
 
 type MatchESP struct {
-	baseMatch
+	*baseMatch
 	SPIMin int
 	SPIMax int
 }
@@ -3666,7 +3666,7 @@ func (mESP *MatchESP) Parse(main []byte) (int, bool) {
 // and is only valid in the PREROUTING, INPUT and FORWARD chains.
 func newMatchEUI64() (*MatchEUI64, error) {
 	return &MatchEUI64{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeEUI64,
 		},
 	}, nil
@@ -3675,7 +3675,7 @@ func newMatchEUI64() (*MatchEUI64, error) {
 // IPv6 specific
 // Non-numeric unsupport
 type MatchEUI64 struct {
-	baseMatch
+	*baseMatch
 }
 
 func (mEUI64 *MatchEUI64) Short() string {
@@ -3761,7 +3761,7 @@ func WithMatchFragMore() OptionMatchFrag {
 
 func newMatchFrag(opts ...OptionMatchFrag) (*MatchFrag, error) {
 	match := &MatchFrag{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeFrag,
 		},
 		IDMin:  -1,
@@ -3777,7 +3777,7 @@ func newMatchFrag(opts ...OptionMatchFrag) (*MatchFrag, error) {
 // IPv6 specific
 // Non-numeric unsupport
 type MatchFrag struct {
-	baseMatch
+	*baseMatch
 	IDMin    int
 	IDMax    int
 	Length   int
@@ -4002,7 +4002,7 @@ func WithMatchHashLimitRateInterval(interval int) OptionMatchHashLimit {
 
 func NewHashLimit(opts ...OptionMatchHashLimit) (*MatchHashLimit, error) {
 	match := &MatchHashLimit{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeHashLimit,
 		},
 		Burst:               -1,
@@ -4051,7 +4051,7 @@ const (
 )
 
 type MatchHashLimit struct {
-	baseMatch
+	*baseMatch
 	Avg                 xtables.Rate // <= avg
 	Burst               int
 	Mode                HashLimitMode
@@ -4282,7 +4282,7 @@ func WithMatchHBHOpts(opts ...network.IPv6Option) OptionMatchHBH {
 
 func newMatchHBH(opts ...OptionMatchHBH) (*MatchHBH, error) {
 	match := &MatchHBH{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeHBH,
 		},
 		Length: -1,
@@ -4296,7 +4296,7 @@ func newMatchHBH(opts ...OptionMatchHBH) (*MatchHBH, error) {
 // IPv6 specific
 // Non-numeric unsupport
 type MatchHBH struct {
-	baseMatch
+	*baseMatch
 	Length  int
 	Options []network.IPv6Option
 }
@@ -4390,7 +4390,7 @@ func (mHBH *MatchHBH) Parse(main []byte) (int, bool) {
 // Matches packets related to the specified conntrack-helper.
 func newMatchHelper(name string) (*MatchHelper, error) {
 	mHelper := &MatchHelper{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeHelper,
 		},
 		Name: name,
@@ -4399,7 +4399,7 @@ func newMatchHelper(name string) (*MatchHelper, error) {
 }
 
 type MatchHelper struct {
-	baseMatch
+	*baseMatch
 	Name string
 }
 
@@ -4447,7 +4447,7 @@ func (mHelper *MatchHelper) Parse(main []byte) (int, bool) {
 // This module matches the Hop Limit field in the IPv6 header.
 func newMatchHL(operator xtables.Operator, value int) (*MatchHL, error) {
 	mHL := &MatchHL{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeHL,
 		},
 		Operator: operator,
@@ -4457,7 +4457,7 @@ func newMatchHL(operator xtables.Operator, value int) (*MatchHL, error) {
 }
 
 type MatchHL struct {
-	baseMatch
+	*baseMatch
 	Operator xtables.Operator
 	Value    int
 }
@@ -4528,7 +4528,7 @@ func WithMatchICMPCode(code network.ICMPCode) OptionMatchICMP {
 func newMatchICMP(invert bool, typ network.ICMPType, opts ...OptionMatchICMP) (*MatchICMP, error) {
 	match := &MatchICMP{
 		ICMPType: typ,
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeICMP,
 			invert:    invert,
 		},
@@ -4545,7 +4545,7 @@ func newMatchICMP(invert bool, typ network.ICMPType, opts ...OptionMatchICMP) (*
 // IPv6 and IPv4 specific
 // Non-numeric support
 type MatchICMP struct {
-	baseMatch
+	*baseMatch
 	ICMPType   network.ICMPType
 	CodeMin    network.ICMPCode
 	CodeMax    network.ICMPCode
@@ -4700,7 +4700,7 @@ func WithMatchIPRangeDst(invert bool, ip ...net.IP) OptionMatchIPRange {
 
 func newMatchIPRange(opts ...OptionMatchIPRange) (*MatchIPRange, error) {
 	match := &MatchIPRange{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeIPRange,
 		},
 	}
@@ -4711,7 +4711,7 @@ func newMatchIPRange(opts ...OptionMatchIPRange) (*MatchIPRange, error) {
 }
 
 type MatchIPRange struct {
-	baseMatch
+	*baseMatch
 	SrcIPMin    net.IP
 	SrcIPMax    net.IP
 	DstIPMin    net.IP
@@ -4840,7 +4840,7 @@ func WithMatchIPv6HeaderSoft() OptionMatchIPv6Header {
 
 func newMatchIPv6Header(opts ...OptionMatchIPv6Header) (*MatchIPv6Header, error) {
 	match := &MatchIPv6Header{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeIPv6Header,
 		},
 	}
@@ -4853,7 +4853,7 @@ func newMatchIPv6Header(opts ...OptionMatchIPv6Header) (*MatchIPv6Header, error)
 // IPv6 specific
 // Non-numeric support
 type MatchIPv6Header struct {
-	baseMatch
+	*baseMatch
 	Soft          bool
 	IPHeaderTypes []network.IPv6HeaderType
 }
@@ -5037,7 +5037,7 @@ func WithMatchVPortCtl(invert bool, portCtl int) OptionMatchIPVS {
 
 func newMatchIPVS(opts ...OptionMatchIPVS) (*MatchIPVS, error) {
 	match := &MatchIPVS{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeIPVS,
 		},
 		VProto:   -1,
@@ -5053,7 +5053,7 @@ func newMatchIPVS(opts ...OptionMatchIPVS) (*MatchIPVS, error) {
 }
 
 type MatchIPVS struct {
-	baseMatch
+	*baseMatch
 	IPVS     bool
 	VProto   network.Protocol
 	VAddr    network.Address
@@ -5221,7 +5221,7 @@ END:
 // This option takes mostly 2 length, (min) or (min, max)
 func newMatchLength(invert bool, length ...int) (*MatchLength, error) {
 	match := &MatchLength{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeLength,
 		},
 		LengthMin: -1,
@@ -5240,7 +5240,7 @@ func newMatchLength(invert bool, length ...int) (*MatchLength, error) {
 }
 
 type MatchLength struct {
-	baseMatch
+	*baseMatch
 	LengthMin int
 	LengthMax int
 }
@@ -5321,7 +5321,7 @@ func WithMatchLimitBurst(burst int) OptionMatchLimit {
 
 func newMatchLimit(opts ...OptionMatchLimit) (*MatchLimit, error) {
 	match := &MatchLimit{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeLimit,
 		},
 		Burst: -1,
@@ -5333,7 +5333,7 @@ func newMatchLimit(opts ...OptionMatchLimit) (*MatchLimit, error) {
 }
 
 type MatchLimit struct {
-	baseMatch
+	*baseMatch
 	Avg   xtables.Rate
 	Burst int
 }
@@ -5402,7 +5402,7 @@ func (mLimit *MatchLimit) Parse(main []byte) (int, bool) {
 // Match source MAC address.
 func newMatchMAC(invert bool, mac net.HardwareAddr) (*MatchMAC, error) {
 	match := &MatchMAC{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeMAC,
 			invert:    invert,
 		},
@@ -5412,7 +5412,7 @@ func newMatchMAC(invert bool, mac net.HardwareAddr) (*MatchMAC, error) {
 }
 
 type MatchMAC struct {
-	baseMatch
+	*baseMatch
 	SrcMac net.HardwareAddr
 }
 
@@ -5462,7 +5462,7 @@ func (mMAC *MatchMAC) Parse(main []byte) (int, bool) {
 // Matches packets with the given unsigned mark value
 func newMatchMark(invert bool, value ...int) (*MatchMark, error) {
 	mMark := &MatchMark{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeMark,
 		},
 		Value: -1,
@@ -5481,7 +5481,7 @@ func newMatchMark(invert bool, value ...int) (*MatchMark, error) {
 }
 
 type MatchMark struct {
-	baseMatch
+	*baseMatch
 	Value int
 	Mask  int
 }
@@ -5617,7 +5617,7 @@ var (
 // This option takes mostly 2 types, (min) or (min, max)
 func newMatchMH(invert bool, typ ...MHType) (*MatchMH, error) {
 	match := &MatchMH{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeMH,
 			invert:    invert,
 		},
@@ -5637,7 +5637,7 @@ func newMatchMH(invert bool, typ ...MHType) (*MatchMH, error) {
 // IPv6 specific
 // Non-numeric support
 type MatchMH struct {
-	baseMatch
+	*baseMatch
 	TypeMin MHType
 	TypeMax MHType
 }
@@ -5750,7 +5750,7 @@ func WithMatchMultiPort(invert bool, ports ...PortRange) OptionMatchMultiPort {
 
 func newMatchMultiPort(opts ...OptionMatchMultiPort) (*MatchMultiPort, error) {
 	match := &MatchMultiPort{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeMultiPort,
 		},
 	}
@@ -5761,7 +5761,7 @@ func newMatchMultiPort(opts ...OptionMatchMultiPort) (*MatchMultiPort, error) {
 }
 
 type MatchMultiPort struct {
-	baseMatch
+	*baseMatch
 	SrcPorts []PortRange
 	DstPorts []PortRange
 	Ports    []PortRange
@@ -5921,7 +5921,7 @@ func (mMultiPort *MatchMultiPort) Parse(main []byte) (int, bool) {
 
 func newMatchNFAcct(name string) (*MatchNFAcct, error) {
 	match := &MatchNFAcct{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeNFAcct,
 		},
 		AccountingName: name,
@@ -5930,7 +5930,7 @@ func newMatchNFAcct(name string) (*MatchNFAcct, error) {
 }
 
 type MatchNFAcct struct {
-	baseMatch
+	*baseMatch
 	AccountingName string
 }
 
@@ -5994,7 +5994,7 @@ func WithMatchOSFLog(log int) OptionMatchOSF {
 
 func newMatchOSF(opts ...OptionMatchOSF) (*MatchOSF, error) {
 	match := &MatchOSF{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeOSF,
 		},
 		TTLLevel: -1,
@@ -6007,7 +6007,7 @@ func newMatchOSF(opts ...OptionMatchOSF) (*MatchOSF, error) {
 }
 
 type MatchOSF struct {
-	baseMatch
+	*baseMatch
 	Genre    string
 	TTLLevel int
 	LogLevel int
@@ -6121,7 +6121,7 @@ func WithMatchOwnerSocketExists(invert bool) OptionMatchOwner {
 
 func newMatchOwner(opts ...OptionMatchOwner) (*MatchOwner, error) {
 	match := &MatchOwner{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeOwner,
 		},
 		UidOwnerMin: -1,
@@ -6136,7 +6136,7 @@ func newMatchOwner(opts ...OptionMatchOwner) (*MatchOwner, error) {
 }
 
 type MatchOwner struct {
-	baseMatch
+	*baseMatch
 	UidOwnerMin     int
 	UidOwnerMax     int
 	User            string
@@ -6336,7 +6336,7 @@ func WithMatchPhysDevIsBridged(invert bool) OptionMatchPhysDev {
 
 func newMatchPhysDev(opts ...OptionMatchPhysDev) (*MatchPhysDev, error) {
 	match := &MatchPhysDev{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypePhysDev,
 		},
 	}
@@ -6347,7 +6347,7 @@ func newMatchPhysDev(opts ...OptionMatchPhysDev) (*MatchPhysDev, error) {
 }
 
 type MatchPhysDev struct {
-	baseMatch
+	*baseMatch
 	PhysDevIn        string
 	PhysDevOut       string
 	PhysDevIsIn      bool
@@ -6489,7 +6489,7 @@ const (
 
 func newMatchPktType(invert bool, pktType PktType) (*MatchPktType, error) {
 	match := &MatchPktType{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypePktType,
 			invert:    invert,
 		},
@@ -6499,7 +6499,7 @@ func newMatchPktType(invert bool, pktType PktType) (*MatchPktType, error) {
 }
 
 type MatchPktType struct {
-	baseMatch
+	*baseMatch
 	PktType PktType
 }
 
@@ -6646,7 +6646,7 @@ func WithMatchPolicyElements(elems ...*MatchPolicyElement) OptionMatchPolicy {
 
 func newMatchPolicy(opts ...OptionMatchPolicy) (*MatchPolicy, error) {
 	match := &MatchPolicy{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypePolicy,
 		},
 		Dir: -1,
@@ -6659,7 +6659,7 @@ func newMatchPolicy(opts ...OptionMatchPolicy) (*MatchPolicy, error) {
 }
 
 type MatchPolicy struct {
-	baseMatch
+	*baseMatch
 	Dir      xtables.Direction
 	Pol      PolicyPol
 	Strict   bool
@@ -6890,7 +6890,7 @@ END:
 
 func newMatchQuota(invert bool, quota int64) (*MatchQuota, error) {
 	match := &MatchQuota{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeQuota,
 			invert:    invert,
 		},
@@ -6900,7 +6900,7 @@ func newMatchQuota(invert bool, quota int64) (*MatchQuota, error) {
 }
 
 type MatchQuota struct {
-	baseMatch
+	*baseMatch
 	Quota int64
 }
 
@@ -7020,7 +7020,7 @@ func WithMatchRatePPS2(value int) OptionMatchRateEst {
 
 func newMatchRateEst(opts ...OptionMatchRateEst) (*MatchRateEst, error) {
 	match := &MatchRateEst{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeRateEst,
 		},
 	}
@@ -7031,7 +7031,7 @@ func newMatchRateEst(opts ...OptionMatchRateEst) (*MatchRateEst, error) {
 }
 
 type MatchRateEst struct {
-	baseMatch
+	*baseMatch
 	RateestDelta bool
 	Operator     xtables.Operator
 	Name         string
@@ -7267,7 +7267,7 @@ func bitsToBytes(bits string) (int, error) {
 // Matches packets with the given unsigned mark value
 func newMatchRealm(invert bool, value ...int) (*MatchRealm, error) {
 	mRealm := &MatchRealm{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeRealm,
 		},
 		Value: -1,
@@ -7289,7 +7289,7 @@ func newMatchRealm(invert bool, value ...int) (*MatchRealm, error) {
 // Non-numeric support
 // see http://linux-ip.net/gl/ip-cref/ip-cref-node172.html
 type MatchRealm struct {
-	baseMatch
+	*baseMatch
 	Value int
 	Mask  int
 }
@@ -7457,7 +7457,7 @@ func WithMatchRecentMask(mask net.IPMask) OptionMatchRecent {
 
 func newMatchRecent(opts ...OptionMatchRecent) (*MatchRecent, error) {
 	match := &MatchRecent{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeRecent,
 		},
 	}
@@ -7468,7 +7468,7 @@ func newMatchRecent(opts ...OptionMatchRecent) (*MatchRecent, error) {
 }
 
 type MatchRecent struct {
-	baseMatch
+	*baseMatch
 	Name   string
 	Set    bool
 	RCheck bool
@@ -7679,7 +7679,7 @@ func WithMatchRPFilterInvert() OptionMatchRPFilter {
 
 func newMatchRPFilter(opts ...OptionMatchRPFilter) (*MatchRPFilter, error) {
 	match := &MatchRPFilter{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeRPFilter,
 		},
 	}
@@ -7690,7 +7690,7 @@ func newMatchRPFilter(opts ...OptionMatchRPFilter) (*MatchRPFilter, error) {
 }
 
 type MatchRPFilter struct {
-	baseMatch
+	*baseMatch
 	Loose       bool
 	ValidMark   bool
 	AcceptLocal bool
@@ -7806,7 +7806,7 @@ func WithMatchRTNoStrict() OptionMatchRT {
 
 func newMatchRT(opts ...OptionMatchRT) (*MatchRT, error) {
 	match := &MatchRT{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeRT,
 		},
 		RTType:      -1,
@@ -7823,7 +7823,7 @@ func newMatchRT(opts ...OptionMatchRT) (*MatchRT, error) {
 // IPv6 specific
 // Non-numeric unsupport
 type MatchRT struct {
-	baseMatch
+	*baseMatch
 	RTType      int
 	SegsLeftMin int
 	SegsLeftMax int
@@ -8191,7 +8191,7 @@ func WithMatchSCTPChunk(invert bool, rg MatchRange, chunks ...Chunk) OptionMatch
 
 func newMatchSCTP(opts ...OptionMatchSCTP) (*MatchSCTP, error) {
 	match := &MatchSCTP{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeSCTP,
 		},
 		SrcPortMin: -1,
@@ -8206,7 +8206,7 @@ func newMatchSCTP(opts ...OptionMatchSCTP) (*MatchSCTP, error) {
 }
 
 type MatchSCTP struct {
-	baseMatch
+	*baseMatch
 	SrcPortMin int
 	SrcPortMax int
 	DstPortMin int
@@ -8541,7 +8541,7 @@ func WithMatchSetBytesGreaterThan(value int) OptionMatchSet {
 
 func newMatchSet(opts ...OptionMatchSet) (*MatchSet, error) {
 	match := &MatchSet{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeSet,
 		},
 		PacketsEQ: -1,
@@ -8558,7 +8558,7 @@ func newMatchSet(opts ...OptionMatchSet) (*MatchSet, error) {
 }
 
 type MatchSet struct {
-	baseMatch
+	*baseMatch
 	SetName              string
 	Flags                []Flag
 	ReturnNoMatch        bool
@@ -8786,7 +8786,7 @@ func WithMatchSocketRestoreSKMark() OptionMatchSocket {
 
 func newMatchSocket(opts ...OptionMatchSocket) (*MatchSocket, error) {
 	match := &MatchSocket{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeSocket,
 		},
 	}
@@ -8797,7 +8797,7 @@ func newMatchSocket(opts ...OptionMatchSocket) (*MatchSocket, error) {
 }
 
 type MatchSocket struct {
-	baseMatch
+	*baseMatch
 	Transparent   bool
 	NoWildcard    bool
 	RestoreSKMark bool
@@ -8855,7 +8855,7 @@ func (mSocket *MatchSocket) Parse(main []byte) (int, bool) {
 
 func newMatchState(state ConnTrackState) (*MatchState, error) {
 	return &MatchState{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeState,
 		},
 		State: state,
@@ -8863,7 +8863,7 @@ func newMatchState(state ConnTrackState) (*MatchState, error) {
 }
 
 type MatchState struct {
-	baseMatch
+	*baseMatch
 	State ConnTrackState
 }
 
@@ -8976,7 +8976,7 @@ func WithMatchStatisticPacket(packet int) OptionMatchStatistic {
 
 func newMatchStatistic(opts ...OptionMatchStatistic) (*MatchStatistic, error) {
 	match := &MatchStatistic{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeStatistic,
 		},
 		Mode:        -1,
@@ -8991,7 +8991,7 @@ func newMatchStatistic(opts ...OptionMatchStatistic) (*MatchStatistic, error) {
 }
 
 type MatchStatistic struct {
-	baseMatch
+	*baseMatch
 	Mode        StatisticMode
 	Probability float64
 	Every       int
@@ -9148,7 +9148,7 @@ func WithMatchStringIgnoreCase() OptionMatchString {
 
 func newMatchString(opts ...OptionMatchString) (*MatchString, error) {
 	match := &MatchString{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeString,
 		},
 		Algo: -1,
@@ -9162,7 +9162,7 @@ func newMatchString(opts ...OptionMatchString) (*MatchString, error) {
 }
 
 type MatchString struct {
-	baseMatch
+	*baseMatch
 	Algo       StringAlgo
 	From       int
 	To         int
@@ -9338,7 +9338,7 @@ func WithMatchTCPOption(invert bool, option int) OptionMatchTCP {
 
 func newMatchTCP(opts ...OptionMatchTCP) (*MatchTCP, error) {
 	match := &MatchTCP{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeTCP,
 		},
 		SrcPortMin: -1,
@@ -9356,7 +9356,7 @@ func newMatchTCP(opts ...OptionMatchTCP) (*MatchTCP, error) {
 }
 
 type MatchTCP struct {
-	baseMatch
+	*baseMatch
 	SrcPortMin int
 	SrcPortMax int
 	DstPortMin int
@@ -9567,7 +9567,7 @@ func (mTCP *MatchTCP) Parse(main []byte) (int, bool) {
 // This option takes mostly 2 mss, (min) or (min, max)
 func newMatchTCPMSS(invert bool, mss ...int) (*MatchTCPMSS, error) {
 	match := &MatchTCPMSS{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeTCPMSS,
 			invert:    invert,
 		},
@@ -9585,7 +9585,7 @@ func newMatchTCPMSS(invert bool, mss ...int) (*MatchTCPMSS, error) {
 }
 
 type MatchTCPMSS struct {
-	baseMatch
+	*baseMatch
 	MSSMin int
 	MSSMax int
 }
@@ -9719,7 +9719,7 @@ func WithMatchTimeContiguous() OptionMatchTime {
 
 func newMatchTime(opts ...OptionMatchTime) (*MatchTime, error) {
 	match := &MatchTime{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeTime,
 		},
 		Weekdays:  -1,
@@ -9732,7 +9732,7 @@ func newMatchTime(opts ...OptionMatchTime) (*MatchTime, error) {
 }
 
 type MatchTime struct {
-	baseMatch
+	*baseMatch
 	DaytimeStart *xtables.Daytime
 	DaytimeStop  *xtables.Daytime
 	DateStart    *xtables.Date
@@ -9855,7 +9855,7 @@ func (mTime *MatchTime) Parse(main []byte) (int, bool) {
 // This option takes mostly 2 tos, (value) or (value/mask)
 func newMatchTOS(invert bool, tos ...network.TOS) (*MatchTOS, error) {
 	match := &MatchTOS{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeTOS,
 		},
 		Value: -1,
@@ -9873,7 +9873,7 @@ func newMatchTOS(invert bool, tos ...network.TOS) (*MatchTOS, error) {
 }
 
 type MatchTOS struct {
-	baseMatch
+	*baseMatch
 	Value network.TOS
 	Mask  network.TOS
 }
@@ -9980,7 +9980,7 @@ func WithMatchTTLLessThan(ttl int) OptionMatchTTL {
 
 func newMatchTTL(opts ...OptionMatchTTL) (*MatchTTL, error) {
 	match := &MatchTTL{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeTTL,
 		},
 	}
@@ -9993,7 +9993,7 @@ func newMatchTTL(opts ...OptionMatchTTL) (*MatchTTL, error) {
 // IPv4 specific
 // Non-numeric unsupport
 type MatchTTL struct {
-	baseMatch
+	*baseMatch
 	Operator xtables.Operator
 	Value    int
 }
@@ -10044,7 +10044,7 @@ func (mTTL *MatchTTL) Parse(main []byte) (int, bool) {
 
 func newMatchU32(invert bool, tests string) (*MatchU32, error) {
 	return &MatchU32{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeU32,
 			invert:    invert,
 		},
@@ -10053,7 +10053,7 @@ func newMatchU32(invert bool, tests string) (*MatchU32, error) {
 }
 
 type MatchU32 struct {
-	baseMatch
+	*baseMatch
 	Tests string
 }
 
@@ -10125,7 +10125,7 @@ func WithMatchUDPDstPort(invert bool, port ...int) OptionMatchUDP {
 
 func newMatchUDP(opts ...OptionMatchUDP) (*MatchUDP, error) {
 	match := &MatchUDP{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeUDP,
 		},
 	}
@@ -10136,7 +10136,7 @@ func newMatchUDP(opts ...OptionMatchUDP) (*MatchUDP, error) {
 }
 
 type MatchUDP struct {
-	baseMatch
+	*baseMatch
 	SrcPortMin int
 	SrcPortMax int
 	DstPortMin int

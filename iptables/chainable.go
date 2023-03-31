@@ -29,7 +29,7 @@ func (iptables *IPTables) MatchIPv4() *IPTables {
 		return iptables
 	}
 	match := &MatchIPv4{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeIPv4,
 		},
 	}
@@ -42,7 +42,7 @@ func (iptables *IPTables) MatchIPv6() *IPTables {
 		return iptables
 	}
 	match := &MatchIPv6{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeIPv6,
 		},
 	}
@@ -55,7 +55,7 @@ func (iptables *IPTables) MatchProtocol(invert bool, protocol network.Protocol) 
 		return iptables
 	}
 	match := &MatchProtocol{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeProtocol,
 			invert:    invert,
 		},
@@ -79,7 +79,7 @@ func (iptables *IPTables) MatchSource(invert bool, address interface{}) *IPTable
 		return iptables
 	}
 	match := &MatchSource{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeSource,
 			invert:    invert,
 		},
@@ -103,7 +103,7 @@ func (iptables *IPTables) MatchDestination(invert bool, address interface{}) *IP
 		return iptables
 	}
 	match := &MatchDestination{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeDestination,
 			invert:    invert,
 		},
@@ -118,7 +118,7 @@ func (iptables *IPTables) MatchInInterface(invert bool, iface string) *IPTables 
 		return iptables
 	}
 	match := &MatchInInterface{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeInInterface,
 			invert:    invert,
 		},
@@ -133,7 +133,7 @@ func (iptables *IPTables) MatchOutInterface(invert bool, iface string) *IPTables
 		return iptables
 	}
 	match := &MatchOutInterface{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeOutInterface,
 			invert:    invert,
 		},

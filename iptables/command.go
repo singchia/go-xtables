@@ -46,22 +46,22 @@ type baseCommand struct {
 	child       Command
 }
 
-func (bc baseCommand) setChild(child Command) {
+func (bc *baseCommand) setChild(child Command) {
 	bc.child = child
 }
 
-func (bc baseCommand) Type() CommandType {
+func (bc *baseCommand) Type() CommandType {
 	return bc.commandType
 }
 
-func (bc baseCommand) Short() string {
+func (bc *baseCommand) Short() string {
 	if bc.child != nil {
 		return bc.child.Short()
 	}
 	return ""
 }
 
-func (bc baseCommand) Long() string {
+func (bc *baseCommand) Long() string {
 	if bc.child != nil {
 		return bc.child.Long()
 	}
@@ -70,7 +70,7 @@ func (bc baseCommand) Long() string {
 
 func newAppend() *Append {
 	command := &Append{
-		baseCommand: baseCommand{
+		baseCommand: &baseCommand{
 			commandType: CommandTypeAppend,
 		},
 	}
@@ -79,7 +79,7 @@ func newAppend() *Append {
 }
 
 type Append struct {
-	baseCommand
+	*baseCommand
 }
 
 func (apd *Append) Short() string {
@@ -92,7 +92,7 @@ func (apd *Append) Long() string {
 
 func newCheck() *Check {
 	command := &Check{
-		baseCommand: baseCommand{
+		baseCommand: &baseCommand{
 			commandType: CommandTypeCheck,
 		},
 	}
@@ -101,7 +101,7 @@ func newCheck() *Check {
 }
 
 type Check struct {
-	baseCommand
+	*baseCommand
 }
 
 func (check *Check) Short() string {
@@ -114,7 +114,7 @@ func (check *Check) Long() string {
 
 func newDelete(rulenum uint32) *Delete {
 	command := &Delete{
-		baseCommand: baseCommand{
+		baseCommand: &baseCommand{
 			commandType: CommandTypeDelete,
 		},
 		rnum: rulenum,
@@ -124,7 +124,7 @@ func newDelete(rulenum uint32) *Delete {
 }
 
 type Delete struct {
-	baseCommand
+	*baseCommand
 	rnum uint32
 }
 
@@ -142,7 +142,7 @@ func (del *Delete) Long() string {
 
 func newInsert(rulenum uint32) *Insert {
 	command := &Insert{
-		baseCommand: baseCommand{
+		baseCommand: &baseCommand{
 			commandType: CommandTypeInsert,
 		},
 		rnum: rulenum,
@@ -152,7 +152,7 @@ func newInsert(rulenum uint32) *Insert {
 }
 
 type Insert struct {
-	baseCommand
+	*baseCommand
 	rnum uint32
 }
 
@@ -170,7 +170,7 @@ func (insert *Insert) Long() string {
 
 func newReplace(rulenum uint32) *Replace {
 	command := &Replace{
-		baseCommand: baseCommand{
+		baseCommand: &baseCommand{
 			commandType: CommandTypeReplace,
 		},
 		rnum: rulenum,
@@ -180,7 +180,7 @@ func newReplace(rulenum uint32) *Replace {
 }
 
 type Replace struct {
-	baseCommand
+	*baseCommand
 	rnum uint32
 }
 
@@ -198,7 +198,7 @@ func (replace *Replace) Long() string {
 
 func newListRules() *ListRules {
 	command := &ListRules{
-		baseCommand: baseCommand{
+		baseCommand: &baseCommand{
 			commandType: CommandTypeListRules,
 		},
 	}
@@ -207,7 +207,7 @@ func newListRules() *ListRules {
 }
 
 type ListRules struct {
-	baseCommand
+	*baseCommand
 }
 
 func (list *ListRules) Short() string {
@@ -221,7 +221,7 @@ func (list *ListRules) Long() string {
 func newListChains() *ListChains {
 	command := &ListChains{
 		ListRules: &ListRules{
-			baseCommand: baseCommand{
+			baseCommand: &baseCommand{
 				commandType: CommandTypeListChains,
 			},
 		},
@@ -237,7 +237,7 @@ type ListChains struct {
 func newFind() *Find {
 	command := &Find{
 		ListRules: &ListRules{
-			baseCommand: baseCommand{
+			baseCommand: &baseCommand{
 				commandType: CommandTypeFind,
 			},
 		},
@@ -252,7 +252,7 @@ type Find struct {
 
 func newDumpRules() *DumpRules {
 	command := &DumpRules{
-		baseCommand: baseCommand{
+		baseCommand: &baseCommand{
 			commandType: CommandTypeDumpRules,
 		},
 	}
@@ -261,7 +261,7 @@ func newDumpRules() *DumpRules {
 }
 
 type DumpRules struct {
-	baseCommand
+	*baseCommand
 }
 
 func (listRules *DumpRules) Short() string {
@@ -274,7 +274,7 @@ func (listRules *DumpRules) Long() string {
 
 func newFlush() *Flush {
 	command := &Flush{
-		baseCommand: baseCommand{
+		baseCommand: &baseCommand{
 			commandType: CommandTypeFlush,
 		},
 	}
@@ -283,7 +283,7 @@ func newFlush() *Flush {
 }
 
 type Flush struct {
-	baseCommand
+	*baseCommand
 }
 
 func (flush *Flush) Short() string {
@@ -296,7 +296,7 @@ func (flush *Flush) Long() string {
 
 func newZero(rulenum uint32) *Zero {
 	command := &Zero{
-		baseCommand: baseCommand{
+		baseCommand: &baseCommand{
 			commandType: CommandTypeZero,
 		},
 		rnum: rulenum,
@@ -306,7 +306,7 @@ func newZero(rulenum uint32) *Zero {
 }
 
 type Zero struct {
-	baseCommand
+	*baseCommand
 	rnum uint32
 }
 
@@ -324,7 +324,7 @@ func (zero *Zero) Long() string {
 
 func newNewChain() *NewChain {
 	command := &NewChain{
-		baseCommand: baseCommand{
+		baseCommand: &baseCommand{
 			commandType: CommandTypeNewChain,
 		},
 	}
@@ -333,7 +333,7 @@ func newNewChain() *NewChain {
 }
 
 type NewChain struct {
-	baseCommand
+	*baseCommand
 }
 
 func (nc *NewChain) Short() string {
@@ -346,7 +346,7 @@ func (nc *NewChain) Long() string {
 
 func newDeleteChain() *DeleteChain {
 	command := &DeleteChain{
-		baseCommand: baseCommand{
+		baseCommand: &baseCommand{
 			commandType: CommandTypeDeleteChain,
 		},
 	}
@@ -355,7 +355,7 @@ func newDeleteChain() *DeleteChain {
 }
 
 type DeleteChain struct {
-	baseCommand
+	*baseCommand
 }
 
 func (dc *DeleteChain) Short() string {
@@ -368,7 +368,7 @@ func (dc *DeleteChain) Long() string {
 
 func newPolicy(target TargetType) *Policy {
 	command := &Policy{
-		baseCommand: baseCommand{
+		baseCommand: &baseCommand{
 			commandType: CommandTypePolicy,
 		},
 		targetType: target,
@@ -378,7 +378,7 @@ func newPolicy(target TargetType) *Policy {
 }
 
 type Policy struct {
-	baseCommand
+	*baseCommand
 	targetType TargetType
 }
 
@@ -392,7 +392,7 @@ func (policy *Policy) Long() string {
 
 func newRenameChain(newChain string) *RenameChain {
 	command := &RenameChain{
-		baseCommand: baseCommand{
+		baseCommand: &baseCommand{
 			commandType: CommandTypeRenameChain,
 		},
 		newChain: newChain,
@@ -402,7 +402,7 @@ func newRenameChain(newChain string) *RenameChain {
 }
 
 type RenameChain struct {
-	baseCommand
+	*baseCommand
 	newChain string // user supplied name.
 }
 

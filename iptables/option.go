@@ -42,39 +42,39 @@ type baseOption struct {
 	invert     bool
 }
 
-func (bo baseOption) setChild(child Option) {
+func (bo *baseOption) setChild(child Option) {
 	bo.child = child
 }
 
-func (bo baseOption) Type() OptionType {
+func (bo *baseOption) Type() OptionType {
 	return bo.optionType
 }
 
-func (bo baseOption) Short() string {
+func (bo *baseOption) Short() string {
 	if bo.child != nil {
 		return bo.child.Short()
 	}
 	return ""
 }
 
-func (bo baseOption) ShortArgs() []string {
+func (bo *baseOption) ShortArgs() []string {
 	if bo.child != nil {
 		return bo.child.ShortArgs()
 	}
 	return nil
 }
 
-func (bo baseOption) Long() string {
+func (bo *baseOption) Long() string {
 	return bo.Short()
 }
 
-func (bo baseOption) LongArgs() []string {
+func (bo *baseOption) LongArgs() []string {
 	return bo.ShortArgs()
 }
 
 func newOptionFragment(invert bool) (*OptionFragment, error) {
 	option := &OptionFragment{
-		baseOption: baseOption{
+		baseOption: &baseOption{
 			optionType: OptionTypeFragment,
 			invert:     invert,
 		},
@@ -84,7 +84,7 @@ func newOptionFragment(invert bool) (*OptionFragment, error) {
 }
 
 type OptionFragment struct {
-	baseOption
+	*baseOption
 }
 
 func (opt *OptionFragment) Short() string {
@@ -117,7 +117,7 @@ func (opt *OptionFragment) LongArgs() []string {
 
 func newOptionSetCounters(packets, bytes uint64) (*OptionSetCounters, error) {
 	option := &OptionSetCounters{
-		baseOption: baseOption{
+		baseOption: &baseOption{
 			optionType: OptionTypeSetCounters,
 		},
 		packets: packets,
@@ -128,7 +128,7 @@ func newOptionSetCounters(packets, bytes uint64) (*OptionSetCounters, error) {
 }
 
 type OptionSetCounters struct {
-	baseOption
+	*baseOption
 	packets uint64
 	bytes   uint64
 }
@@ -157,7 +157,7 @@ func (opt *OptionSetCounters) LongArgs() []string {
 
 func newOptionVerbose() (*OptionVerbose, error) {
 	option := &OptionVerbose{
-		baseOption: baseOption{
+		baseOption: &baseOption{
 			optionType: OptionTypeVerbose,
 		},
 	}
@@ -166,7 +166,7 @@ func newOptionVerbose() (*OptionVerbose, error) {
 }
 
 type OptionVerbose struct {
-	baseOption
+	*baseOption
 }
 
 func (opt *OptionVerbose) Short() string {
@@ -187,7 +187,7 @@ func (opt *OptionVerbose) LongArgs() []string {
 
 func newOptionWait(seconds uint32) (*OptionWait, error) {
 	option := &OptionWait{
-		baseOption: baseOption{
+		baseOption: &baseOption{
 			optionType: OptionTypeWait,
 		},
 		seconds: seconds,
@@ -197,7 +197,7 @@ func newOptionWait(seconds uint32) (*OptionWait, error) {
 }
 
 type OptionWait struct {
-	baseOption
+	*baseOption
 	seconds uint32
 }
 
@@ -235,7 +235,7 @@ func (opt *OptionWait) LongArgs() []string {
 
 func newOptionWaitInterval(microseconds uint64) (*OptionWaitInterval, error) {
 	option := &OptionWaitInterval{
-		baseOption: baseOption{
+		baseOption: &baseOption{
 			optionType: OptionTypeWaitInterval,
 		},
 		microseconds: microseconds,
@@ -245,7 +245,7 @@ func newOptionWaitInterval(microseconds uint64) (*OptionWaitInterval, error) {
 }
 
 type OptionWaitInterval struct {
-	baseOption
+	*baseOption
 	microseconds uint64
 }
 
@@ -267,7 +267,7 @@ func (opt *OptionWaitInterval) LongArgs() []string {
 
 func newOptionNumeric() (*OptionNumeric, error) {
 	option := &OptionNumeric{
-		baseOption: baseOption{
+		baseOption: &baseOption{
 			optionType: OptionTypeNumeric,
 		},
 	}
@@ -276,7 +276,7 @@ func newOptionNumeric() (*OptionNumeric, error) {
 }
 
 type OptionNumeric struct {
-	baseOption
+	*baseOption
 }
 
 func (opt *OptionNumeric) Short() string {
@@ -289,7 +289,7 @@ func (opt *OptionNumeric) ShortArgs() []string {
 
 func newOptionExact() (*OptionExact, error) {
 	option := &OptionExact{
-		baseOption: baseOption{
+		baseOption: &baseOption{
 			optionType: OptionTypeExact,
 		},
 	}
@@ -302,7 +302,7 @@ func newOptionExact() (*OptionExact, error) {
 // of 1000K) or G's(multiples of 1000M). this option if only relevant
 // for the List command.
 type OptionExact struct {
-	baseOption
+	*baseOption
 }
 
 func (opt *OptionExact) Short() string {
@@ -323,7 +323,7 @@ func (opt *OptionExact) LongArgs() []string {
 
 func newOptionLineNumbers() (*OptionLineNumbers, error) {
 	option := &OptionLineNumbers{
-		baseOption: baseOption{
+		baseOption: &baseOption{
 			optionType: OptionTypeLineNumbers,
 		},
 	}
@@ -334,7 +334,7 @@ func newOptionLineNumbers() (*OptionLineNumbers, error) {
 // List with line numbers of each rule, corresponding to that rule's
 // position in the chain.
 type OptionLineNumbers struct {
-	baseOption
+	*baseOption
 }
 
 func (opt *OptionLineNumbers) Short() string {
@@ -347,7 +347,7 @@ func (opt *OptionLineNumbers) ShortArgs() []string {
 
 func newOptionModprobe(command string) (*OptionModprobe, error) {
 	option := &OptionModprobe{
-		baseOption: baseOption{
+		baseOption: &baseOption{
 			optionType: OptionTypeModprobe,
 		},
 		command: command,
@@ -358,7 +358,7 @@ func newOptionModprobe(command string) (*OptionModprobe, error) {
 // When adding or inserting rule into a chain, use command to load any
 // necessary modules(targets, match extensions, etc).
 type OptionModprobe struct {
-	baseOption
+	*baseOption
 	command string
 }
 

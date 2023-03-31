@@ -386,50 +386,50 @@ type baseTarget struct {
 	targetType TargetType
 }
 
-func (bt baseTarget) Type() TargetType {
+func (bt *baseTarget) Type() TargetType {
 	return bt.targetType
 }
 
-func (bt baseTarget) Short() string {
+func (bt *baseTarget) Short() string {
 	return ""
 }
 
-func (bt baseTarget) Long() string {
+func (bt *baseTarget) Long() string {
 	return ""
 }
 
-func (bt baseTarget) ShortArgs() []string {
+func (bt *baseTarget) ShortArgs() []string {
 	return nil
 }
 
-func (bt baseTarget) LongArgs() []string {
+func (bt *baseTarget) LongArgs() []string {
 	return nil
 }
 
-func (bt baseTarget) Parse([]byte) (int, bool) {
+func (bt *baseTarget) Parse([]byte) (int, bool) {
 	return 0, true
 }
 
 type TargetEmpty struct {
-	baseTarget
+	*baseTarget
 }
 
 func newTargetEmpty() (*TargetEmpty, error) {
 	return &TargetEmpty{
-		baseTarget: baseTarget{
+		baseTarget: &baseTarget{
 			targetType: TargetTypeEmpty,
 		},
 	}, nil
 }
 
 type TargetUnknown struct {
-	baseTarget
+	*baseTarget
 	unknown string
 }
 
 func newTargetUnknown(unknown string) *TargetUnknown {
 	return &TargetUnknown{
-		baseTarget: baseTarget{
+		baseTarget: &baseTarget{
 			targetType: TargetTypeNull,
 		},
 		unknown: unknown,
@@ -441,12 +441,12 @@ func (tu *TargetUnknown) Unknown() string {
 }
 
 type TargetAccept struct {
-	baseTarget
+	*baseTarget
 }
 
 func newTargetAccept() *TargetAccept {
 	return &TargetAccept{
-		baseTarget: baseTarget{
+		baseTarget: &baseTarget{
 			targetType: TargetTypeAccept,
 		},
 	}
@@ -469,12 +469,12 @@ func (ta *TargetAccept) LongArgs() []string {
 }
 
 type TargetDrop struct {
-	baseTarget
+	*baseTarget
 }
 
 func newTargetDrop() *TargetDrop {
 	return &TargetDrop{
-		baseTarget: baseTarget{
+		baseTarget: &baseTarget{
 			targetType: TargetTypeDrop,
 		},
 	}
@@ -497,12 +497,12 @@ func (ta *TargetDrop) LongArgs() []string {
 }
 
 type TargetReturn struct {
-	baseTarget
+	*baseTarget
 }
 
 func newTargetReturn() *TargetReturn {
 	return &TargetReturn{
-		baseTarget: baseTarget{
+		baseTarget: &baseTarget{
 			targetType: TargetTypeReturn,
 		},
 	}
@@ -525,13 +525,13 @@ func (ta *TargetReturn) LongArgs() []string {
 }
 
 type TargetJumpChain struct {
-	baseTarget
+	*baseTarget
 	chain string
 }
 
 func newTargetJumpChain(chain string) *TargetJumpChain {
 	return &TargetJumpChain{
-		baseTarget: baseTarget{
+		baseTarget: &baseTarget{
 			targetType: TargetTypeJumpChain,
 		},
 		chain: chain,
@@ -555,13 +555,13 @@ func (ta *TargetJumpChain) LongArgs() []string {
 }
 
 type TargetGotoChain struct {
-	baseTarget
+	*baseTarget
 	chain string
 }
 
 func newTargetGotoChain(chain string) *TargetGotoChain {
 	return &TargetGotoChain{
-		baseTarget: baseTarget{
+		baseTarget: &baseTarget{
 			targetType: TargetTypeGotoChain,
 		},
 		chain: chain,
@@ -609,7 +609,7 @@ const (
 // Set type of audit record.
 func newTargetAudit(typ AuditType) (*TargetAudit, error) {
 	return &TargetAudit{
-		baseTarget: baseTarget{
+		baseTarget: &baseTarget{
 			targetType: TargetTypeAudit,
 		},
 		AuditType: typ,
@@ -617,7 +617,7 @@ func newTargetAudit(typ AuditType) (*TargetAudit, error) {
 }
 
 type TargetAudit struct {
-	baseTarget
+	*baseTarget
 	AuditType AuditType
 }
 
@@ -666,7 +666,7 @@ func (tAudit *TargetAudit) Parse(main []byte) (int, bool) {
 // Compute and fill in the checksum in a packet that lacks a checksum.
 func newTargetCheckSum() (*TargetChecksum, error) {
 	target := &TargetChecksum{
-		baseTarget: baseTarget{
+		baseTarget: &baseTarget{
 			targetType: TargetTypeCheckSum,
 		},
 		Fill: true,
@@ -675,7 +675,7 @@ func newTargetCheckSum() (*TargetChecksum, error) {
 }
 
 type TargetChecksum struct {
-	baseTarget
+	*baseTarget
 	Fill bool
 }
 
@@ -714,7 +714,7 @@ func (tChecksum *TargetChecksum) Parse(main []byte) (int, bool) {
 // This option takes major and minor of class value
 func newTargetClassify(major, minor int) (*TargetClassify, error) {
 	return &TargetClassify{
-		baseTarget: baseTarget{
+		baseTarget: &baseTarget{
 			targetType: TargetTypeClassify,
 		},
 		Major: major,
@@ -723,7 +723,7 @@ func newTargetClassify(major, minor int) (*TargetClassify, error) {
 }
 
 type TargetClassify struct {
-	baseTarget
+	*baseTarget
 	Major int
 	Minor int
 }
@@ -839,7 +839,7 @@ func WithTargetClusterIPHashInit(hashInit int) OptionTargetClusterIP {
 
 func newTargetClusterIP(opts ...OptionTargetClusterIP) (*TargetClusterIP, error) {
 	target := &TargetClusterIP{
-		baseTarget: baseTarget{
+		baseTarget: &baseTarget{
 			targetType: TargetTypeClusterIP,
 		},
 		HashMode:   -1,
@@ -855,7 +855,7 @@ func newTargetClusterIP(opts ...OptionTargetClusterIP) (*TargetClusterIP, error)
 
 // IPv4 specific
 type TargetClusterIP struct {
-	baseTarget
+	*baseTarget
 	New        bool
 	HashMode   ClusterIPHashMode
 	Mac        net.HardwareAddr
@@ -1062,7 +1062,7 @@ func WithTargetConnMarkXor(mark int) OptionTargetConnMark {
 
 func newTargetConnMark(opts ...OptionTargetConnMark) (*TargetConnMark, error) {
 	target := &TargetConnMark{
-		baseTarget: baseTarget{
+		baseTarget: &baseTarget{
 			targetType: TargetTypeConnMark,
 		},
 		Mode:   -1,
@@ -1077,7 +1077,7 @@ func newTargetConnMark(opts ...OptionTargetConnMark) (*TargetConnMark, error) {
 }
 
 type TargetConnMark struct {
-	baseTarget
+	*baseTarget
 	Mode   TargetConnMarkMode
 	CTMark int
 	CTMask int
@@ -1278,7 +1278,7 @@ const (
 
 func newTargetConnSecMark(mode TargetConnSecMarkMode) (*TargetConnSecMark, error) {
 	target := &TargetConnSecMark{
-		baseTarget: baseTarget{
+		baseTarget: &baseTarget{
 			targetType: TargetTypeConnSecMark,
 		},
 		Mode: mode,
@@ -1287,7 +1287,7 @@ func newTargetConnSecMark(mode TargetConnSecMarkMode) (*TargetConnSecMark, error
 }
 
 type TargetConnSecMark struct {
-	baseTarget
+	*baseTarget
 	Mode TargetConnSecMarkMode
 }
 
@@ -1493,7 +1493,7 @@ func WithTargetCTTimeout(timeout string) OptionTargetCT {
 
 func newTargetCT(opts ...OptionTargetCT) (*TargetCT, error) {
 	target := &TargetCT{
-		baseTarget: baseTarget{
+		baseTarget: &baseTarget{
 			targetType: TargetTypeCT,
 		},
 		ZoneID: -1,
@@ -1505,7 +1505,7 @@ func newTargetCT(opts ...OptionTargetCT) (*TargetCT, error) {
 }
 
 type TargetCT struct {
-	baseTarget
+	*baseTarget
 	NoTrack      bool
 	Helper       string
 	Timeout      string
@@ -1704,7 +1704,7 @@ func WithTargetDNATPersistent() OptionTargetDNAT {
 
 func newTargetDNAT(opts ...OptionTargetDNAT) (*TargetDNAT, error) {
 	target := &TargetDNAT{
-		baseTarget: baseTarget{
+		baseTarget: &baseTarget{
 			targetType: TargetTypeDNAT,
 		},
 		PortMin:  -1,
@@ -1718,7 +1718,7 @@ func newTargetDNAT(opts ...OptionTargetDNAT) (*TargetDNAT, error) {
 }
 
 type TargetDNAT struct {
-	baseTarget
+	*baseTarget
 	AddrMin    network.Address
 	AddrMax    network.Address
 	PortMin    int
@@ -1841,7 +1841,7 @@ func WithTargetDNPTDstPrefix(prefix *net.IPNet) OptionTargetDNPT {
 
 func newTargetDNPT(opts ...OptionTargetDNPT) (*TargetDNPT, error) {
 	target := &TargetDNPT{
-		baseTarget: baseTarget{
+		baseTarget: &baseTarget{
 			targetType: TargetTypeDNPT,
 		},
 	}
@@ -1853,7 +1853,7 @@ func newTargetDNPT(opts ...OptionTargetDNPT) (*TargetDNPT, error) {
 
 // IPv6 specific
 type TargetDNPT struct {
-	baseTarget
+	*baseTarget
 	SrcPrefix *net.IPNet
 	DstPrefix *net.IPNet
 }
@@ -1926,7 +1926,7 @@ func WithTargetDSCPClass(class DSCPClass) OptionTargetDSCP {
 
 func newTargetDSCP(opts ...OptionTargetDSCP) (*TargetDSCP, error) {
 	target := &TargetDSCP{
-		baseTarget: baseTarget{
+		baseTarget: &baseTarget{
 			targetType: TargetTypeDSCP,
 		},
 	}
@@ -1937,7 +1937,7 @@ func newTargetDSCP(opts ...OptionTargetDSCP) (*TargetDSCP, error) {
 }
 
 type TargetDSCP struct {
-	baseTarget
+	*baseTarget
 	Value int
 }
 
@@ -1987,7 +1987,7 @@ func WithTargetECNRemove() OptionTargetECN {
 
 func newTargetECN(opts ...OptionTargetECN) (*TargetECN, error) {
 	target := &TargetECN{
-		baseTarget: baseTarget{
+		baseTarget: &baseTarget{
 			targetType: TargetTypeECN,
 		},
 	}
@@ -1999,7 +1999,7 @@ func newTargetECN(opts ...OptionTargetECN) (*TargetECN, error) {
 
 // IPv4 specific
 type TargetECN struct {
-	baseTarget
+	*baseTarget
 	TCPRemove bool
 }
 
@@ -2063,7 +2063,7 @@ func WithTargetHLInc(value int) OptionTargetHL {
 
 func newTargetHL(opts ...OptionTargetHL) (*TargetHL, error) {
 	target := &TargetHL{
-		baseTarget: baseTarget{
+		baseTarget: &baseTarget{
 			targetType: TargetTypeHL,
 		},
 	}
@@ -2075,7 +2075,7 @@ func newTargetHL(opts ...OptionTargetHL) (*TargetHL, error) {
 
 // IPv6 specific
 type TargetHL struct {
-	baseTarget
+	*baseTarget
 	Operator xtables.Operator
 	Value    int
 }
@@ -2237,7 +2237,7 @@ func WithTargetHMarkRandom(rnd int) OptionTargetHMark {
 
 func newTargetHMark(opts ...OptionTargetHMark) (*TargetHMark, error) {
 	target := &TargetHMark{
-		baseTarget: baseTarget{
+		baseTarget: &baseTarget{
 			targetType: TargetTypeHMark,
 		},
 		Modulus:     -1,
@@ -2261,7 +2261,7 @@ func newTargetHMark(opts ...OptionTargetHMark) (*TargetHMark, error) {
 }
 
 type TargetHMark struct {
-	baseTarget
+	*baseTarget
 	Modulus     int
 	Offset      int
 	Tuple       HMarkTuple
@@ -2469,7 +2469,7 @@ func WithTargetIdleTimerLabel(label string) OptionTargetIdleTimer {
 
 func newTargetIdleTimer(opts ...OptionTargetIdleTimer) (*TargetIdleTimer, error) {
 	target := &TargetIdleTimer{
-		baseTarget: baseTarget{
+		baseTarget: &baseTarget{
 			targetType: TargetTypeIdleTimer,
 		},
 		Timeout: -1,
@@ -2481,7 +2481,7 @@ func newTargetIdleTimer(opts ...OptionTargetIdleTimer) (*TargetIdleTimer, error)
 }
 
 type TargetIdleTimer struct {
-	baseTarget
+	*baseTarget
 	Timeout int
 	Label   string
 	Alarm   bool
@@ -2566,7 +2566,7 @@ func WithTargetLEDAlwaysBlink() OptionTargetLED {
 
 func newTargetLED(opts ...OptionTargetLED) (*TargetLED, error) {
 	target := &TargetLED{
-		baseTarget: baseTarget{
+		baseTarget: &baseTarget{
 			targetType: TargetTypeLED,
 		},
 		Delay: -1,
@@ -2578,7 +2578,7 @@ func newTargetLED(opts ...OptionTargetLED) (*TargetLED, error) {
 }
 
 type TargetLED struct {
-	baseTarget
+	*baseTarget
 	TriggerID   string
 	Delay       int // -1 meaning infinite
 	AlwaysBlink bool
@@ -2711,7 +2711,7 @@ func WithTargetLogUID() OptionTargetLog {
 
 func newTargetLog(opts ...OptionTargetLog) (*TargetLog, error) {
 	target := &TargetLog{
-		baseTarget: baseTarget{
+		baseTarget: &baseTarget{
 			targetType: TargetTypeLog,
 		},
 		Level: -1,
@@ -2723,7 +2723,7 @@ func newTargetLog(opts ...OptionTargetLog) (*TargetLog, error) {
 }
 
 type TargetLog struct {
-	baseTarget
+	*baseTarget
 	Level       LOGLevel
 	Prefix      string
 	TCPSequence bool
@@ -2924,7 +2924,7 @@ func WithTargetMarkXor(mark int) OptionTargetMark {
 
 func newTargetMark(opts ...OptionTargetMark) (*TargetMark, error) {
 	target := &TargetMark{
-		baseTarget: baseTarget{
+		baseTarget: &baseTarget{
 			targetType: TargetTypeMark,
 		},
 		Mark: -1,
@@ -2937,7 +2937,7 @@ func newTargetMark(opts ...OptionTargetMark) (*TargetMark, error) {
 }
 
 type TargetMark struct {
-	baseTarget
+	*baseTarget
 	Operator xtables.Operator
 	Mark     int
 	Mask     int
@@ -3053,7 +3053,7 @@ func WithTargetMasqueradeRandomFully() OptionTargetMasquerade {
 
 func newTargetMasquerade(opts ...OptionTargetMasquerade) (*TargetMasquerade, error) {
 	target := &TargetMasquerade{
-		baseTarget: baseTarget{
+		baseTarget: &baseTarget{
 			targetType: TargetTypeMasquerade,
 		},
 		PortMin: -1,
@@ -3066,7 +3066,7 @@ func newTargetMasquerade(opts ...OptionTargetMasquerade) (*TargetMasquerade, err
 }
 
 type TargetMasquerade struct {
-	baseTarget
+	*baseTarget
 	PortMin     int
 	PortMax     int
 	Random      bool
@@ -3162,7 +3162,7 @@ func WithTargetNetmapAddr(addr network.Address) OptionTargetNetmap {
 
 func newTargetNetmap(opts ...OptionTargetNetmap) (*TargetNetmap, error) {
 	target := &TargetNetmap{
-		baseTarget: baseTarget{
+		baseTarget: &baseTarget{
 			targetType: TargetTypeNetmap,
 		},
 	}
@@ -3173,7 +3173,7 @@ func newTargetNetmap(opts ...OptionTargetNetmap) (*TargetNetmap, error) {
 }
 
 type TargetNetmap struct {
-	baseTarget
+	*baseTarget
 	Addr network.Address
 }
 
@@ -3266,7 +3266,7 @@ func WithTargetNFLogThreshold(threshold int) OptionTargetNFLog {
 
 func newTargetNFLog(opts ...OptionTargetNFLog) (*TargetNFLog, error) {
 	target := &TargetNFLog{
-		baseTarget: baseTarget{
+		baseTarget: &baseTarget{
 			targetType: TargetTypeNFLog,
 		},
 		Group:     -1,
@@ -3281,7 +3281,7 @@ func newTargetNFLog(opts ...OptionTargetNFLog) (*TargetNFLog, error) {
 }
 
 type TargetNFLog struct {
-	baseTarget
+	*baseTarget
 	Prefix    string
 	Group     int
 	Range     int
@@ -3411,7 +3411,7 @@ func WithTargetNFQueueCPUFanout() OptionTargetNFQueue {
 
 func newTargetNFQueue(opts ...OptionTargetNFQueue) (*TargetNFQueue, error) {
 	target := &TargetNFQueue{
-		baseTarget: baseTarget{
+		baseTarget: &baseTarget{
 			targetType: TargetTypeNFQueue,
 		},
 		QueueMin: -1,
@@ -3424,7 +3424,7 @@ func newTargetNFQueue(opts ...OptionTargetNFQueue) (*TargetNFQueue, error) {
 }
 
 type TargetNFQueue struct {
-	baseTarget
+	*baseTarget
 	QueueMin  int
 	QueueMax  int
 	Bypass    bool
@@ -3523,7 +3523,7 @@ func WithTargetRateEstEwmalog(ewmalog float64) OptionTargetRateEst {
 
 func newTargetRateEst(opts ...OptionTargetRateEst) (*TargetRateEst, error) {
 	target := &TargetRateEst{
-		baseTarget: baseTarget{
+		baseTarget: &baseTarget{
 			targetType: TargetTypeRateEst,
 		},
 		Ewmalog: -1,
@@ -3535,7 +3535,7 @@ func newTargetRateEst(opts ...OptionTargetRateEst) (*TargetRateEst, error) {
 }
 
 type TargetRateEst struct {
-	baseTarget
+	*baseTarget
 	Name     string
 	Interval xtables.RateFloat
 	Ewmalog  float64
@@ -3634,7 +3634,7 @@ func WithTargetRedirectRandom() OptionTargetRedirect {
 
 func newTargetRedirect(opts ...OptionTargetRedirect) (*TargetRedirect, error) {
 	target := &TargetRedirect{
-		baseTarget: baseTarget{
+		baseTarget: &baseTarget{
 			targetType: TargetTypeRedirect,
 		},
 		PortMin: -1,
@@ -3647,7 +3647,7 @@ func newTargetRedirect(opts ...OptionTargetRedirect) (*TargetRedirect, error) {
 }
 
 type TargetRedirect struct {
-	baseTarget
+	*baseTarget
 	PortMin int
 	PortMax int
 	Random  bool
@@ -3807,7 +3807,7 @@ func WithTargetRejectType(typ RejectType) OptionTargetReject {
 
 func newTargetReject(opts ...OptionTargetReject) (*TargetReject, error) {
 	target := &TargetReject{
-		baseTarget: baseTarget{
+		baseTarget: &baseTarget{
 			targetType: TargetTypeReject,
 		},
 		RejectType: -1,
@@ -3819,7 +3819,7 @@ func newTargetReject(opts ...OptionTargetReject) (*TargetReject, error) {
 }
 
 type TargetReject struct {
-	baseTarget
+	*baseTarget
 	RejectType RejectType
 }
 
@@ -3889,7 +3889,7 @@ func WithTargetSameNoRandom() OptionTargetSame {
 
 func newTargetSame(opts ...OptionTargetSame) (*TargetSame, error) {
 	target := &TargetSame{
-		baseTarget: baseTarget{
+		baseTarget: &baseTarget{
 			targetType: TargetTypeSame,
 		},
 	}
@@ -3902,7 +3902,7 @@ func newTargetSame(opts ...OptionTargetSame) (*TargetSame, error) {
 // TODO untested in the real world
 // IPv4 specific
 type TargetSame struct {
-	baseTarget
+	*baseTarget
 	AddrMin network.Address
 	AddrMax network.Address
 	NoDst   bool
@@ -3988,7 +3988,7 @@ func WithTargetSecMarkSelCtx(selCtx string) OptionTargetSecMark {
 
 func newTargetSecMark(opts ...OptionTargetSecMark) (*TargetSecMark, error) {
 	target := &TargetSecMark{
-		baseTarget: baseTarget{
+		baseTarget: &baseTarget{
 			targetType: TargetTypeSecMark,
 		},
 	}
@@ -4000,7 +4000,7 @@ func newTargetSecMark(opts ...OptionTargetSecMark) (*TargetSecMark, error) {
 
 // TODO untested in the real world
 type TargetSecMark struct {
-	baseTarget
+	*baseTarget
 	SelCtx string
 }
 
@@ -4125,7 +4125,7 @@ func WithTargetSetMapQueue() OptionTargetSet {
 
 func newTargetSet(opts ...OptionTargetSet) (*TargetSet, error) {
 	target := &TargetSet{
-		baseTarget: baseTarget{
+		baseTarget: &baseTarget{
 			targetType: TargetTypeSet,
 		},
 		Timeout: -1,
@@ -4137,7 +4137,7 @@ func newTargetSet(opts ...OptionTargetSet) (*TargetSet, error) {
 }
 
 type TargetSet struct {
-	baseTarget
+	*baseTarget
 	Mode     SetMode
 	Name     string
 	Flags    []SetFlag
@@ -4276,7 +4276,7 @@ func WithTargetSNATPersistent() OptionTargetSNAT {
 
 func newTargetSNAT(opts ...OptionTargetSNAT) (*TargetSNAT, error) {
 	target := &TargetSNAT{
-		baseTarget: baseTarget{
+		baseTarget: &baseTarget{
 			targetType: TargetTypeSNAT,
 		},
 		PortMin:  -1,
@@ -4290,7 +4290,7 @@ func newTargetSNAT(opts ...OptionTargetSNAT) (*TargetSNAT, error) {
 }
 
 type TargetSNAT struct {
-	baseTarget
+	*baseTarget
 	AddrMin    network.Address
 	AddrMax    network.Address
 	PortMin    int
@@ -4412,7 +4412,7 @@ func WithTargetSNPTDstPrefix(prefix *net.IPNet) OptionTargetSNPT {
 
 func newTargetSNPT(opts ...OptionTargetSNPT) (*TargetSNPT, error) {
 	target := &TargetSNPT{
-		baseTarget: baseTarget{
+		baseTarget: &baseTarget{
 			targetType: TargetTypeSNPT,
 		},
 	}
@@ -4424,7 +4424,7 @@ func newTargetSNPT(opts ...OptionTargetSNPT) (*TargetSNPT, error) {
 
 // IPv6 specific
 type TargetSNPT struct {
-	baseTarget
+	*baseTarget
 	SrcPrefix *net.IPNet
 	DstPrefix *net.IPNet
 }
@@ -4519,7 +4519,7 @@ func WithTargetSYNProxyECN() OptionTargetSYNProxy {
 
 func newTargetSYNProxy(opts ...OptionTargetSYNProxy) (*TargetSYNProxy, error) {
 	target := &TargetSYNProxy{
-		baseTarget: baseTarget{
+		baseTarget: &baseTarget{
 			targetType: TargetTypeSYNProxy,
 		},
 		WindowScale: -1,
@@ -4532,7 +4532,7 @@ func newTargetSYNProxy(opts ...OptionTargetSYNProxy) (*TargetSYNProxy, error) {
 }
 
 type TargetSYNProxy struct {
-	baseTarget
+	*baseTarget
 	WindowScale int
 	MSS         int
 	SockPerm    bool
@@ -4631,7 +4631,7 @@ func WithTargetTCPMSSClampMssToPmtu() OptionTargetTCPMSS {
 
 func newTargetTCPMSS(opts ...OptionTargetTCPMSS) (*TargetTCPMSS, error) {
 	target := &TargetTCPMSS{
-		baseTarget: baseTarget{
+		baseTarget: &baseTarget{
 			targetType: TargetTypeTCPMSS,
 		},
 		MSS: -1,
@@ -4643,7 +4643,7 @@ func newTargetTCPMSS(opts ...OptionTargetTCPMSS) (*TargetTCPMSS, error) {
 }
 
 type TargetTCPMSS struct {
-	baseTarget
+	*baseTarget
 	MSS            int
 	ClampMssToPmtu bool
 }
@@ -4706,7 +4706,7 @@ func WithTargetTCPOptStripOpts(opts ...network.TCPOpt) OptionTargetTCPOptStrip {
 
 func newTargetTCPOptStrip(opts ...OptionTargetTCPOptStrip) (*TargetTCPOptStrip, error) {
 	target := &TargetTCPOptStrip{
-		baseTarget: baseTarget{
+		baseTarget: &baseTarget{
 			targetType: TargetTypeTCPOptStrip,
 		},
 	}
@@ -4717,7 +4717,7 @@ func newTargetTCPOptStrip(opts ...OptionTargetTCPOptStrip) (*TargetTCPOptStrip, 
 }
 
 type TargetTCPOptStrip struct {
-	baseTarget
+	*baseTarget
 	Opts []network.TCPOpt
 }
 
@@ -4776,7 +4776,7 @@ func (tTCPOptStrip *TargetTCPOptStrip) Parse(main []byte) (int, bool) {
 
 func newTargetTEE(gateway net.IP) (*TargetTEE, error) {
 	target := &TargetTEE{
-		baseTarget: baseTarget{
+		baseTarget: &baseTarget{
 			targetType: TargetTypeTEE,
 		},
 		Gateway: gateway,
@@ -4785,7 +4785,7 @@ func newTargetTEE(gateway net.IP) (*TargetTEE, error) {
 }
 
 type TargetTEE struct {
-	baseTarget
+	*baseTarget
 	Gateway net.IP
 }
 
@@ -4860,7 +4860,7 @@ func WithTargetTOSXor(tos network.TOS) OptionTargetTOS {
 
 func newTargetTOS(opts ...OptionTargetTOS) (*TargetTOS, error) {
 	target := &TargetTOS{
-		baseTarget: baseTarget{
+		baseTarget: &baseTarget{
 			targetType: TargetTypeTOS,
 		},
 		Value: -1,
@@ -4873,7 +4873,7 @@ func newTargetTOS(opts ...OptionTargetTOS) (*TargetTOS, error) {
 }
 
 type TargetTOS struct {
-	baseTarget
+	*baseTarget
 	Operator xtables.Operator
 	Value    network.TOS
 	Mask     network.TOS
@@ -4988,7 +4988,7 @@ func WithTargetTProxyMark(mark ...int) OptionTargetTProxy {
 
 func newTargetTProxy(opts ...OptionTargetTProxy) (*TargetTProxy, error) {
 	target := &TargetTProxy{
-		baseTarget: baseTarget{
+		baseTarget: &baseTarget{
 			targetType: TargetTypeTProxy,
 		},
 		Port:  -1,
@@ -5002,7 +5002,7 @@ func newTargetTProxy(opts ...OptionTargetTProxy) (*TargetTProxy, error) {
 }
 
 type TargetTProxy struct {
-	baseTarget
+	*baseTarget
 	IP    net.IP
 	Port  int
 	Value int
@@ -5083,14 +5083,14 @@ func (tTProxy *TargetTProxy) Parse(main []byte) (int, bool) {
 
 func newTargetTrace() (*TargetTrace, error) {
 	return &TargetTrace{
-		baseTarget: baseTarget{
+		baseTarget: &baseTarget{
 			targetType: TargetTypeTrace,
 		},
 	}, nil
 }
 
 type TargetTrace struct {
-	baseTarget
+	*baseTarget
 }
 
 func (tTrace *TargetTrace) Short() string {
@@ -5136,7 +5136,7 @@ func WithTargetTTLInc(value int) OptionTargetTTL {
 
 func newTargetTTL(opts ...OptionTargetTTL) (*TargetTTL, error) {
 	target := &TargetTTL{
-		baseTarget: baseTarget{
+		baseTarget: &baseTarget{
 			targetType: TargetTypeTTL,
 		},
 		Value: -1,
@@ -5149,7 +5149,7 @@ func newTargetTTL(opts ...OptionTargetTTL) (*TargetTTL, error) {
 
 // IPv4 specific
 type TargetTTL struct {
-	baseTarget
+	*baseTarget
 	Operator xtables.Operator
 	Value    int
 }
@@ -5244,7 +5244,7 @@ func WithTargetULogQueueThreshold(threshold int) OptionTargetULog {
 
 func newTargetULog(opts ...OptionTargetULog) (*TargetULog, error) {
 	target := &TargetULog{
-		baseTarget: baseTarget{
+		baseTarget: &baseTarget{
 			targetType: TargetTypeULog,
 		},
 		NetlinkGroup:   -1,
@@ -5261,7 +5261,7 @@ func newTargetULog(opts ...OptionTargetULog) (*TargetULog, error) {
 // IPv4 specific
 // Deprecated
 type TargetULog struct {
-	baseTarget
+	*baseTarget
 	NetlinkGroup   int
 	Prefix         string
 	CopyRange      int
