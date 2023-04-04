@@ -916,7 +916,7 @@ func (iptables *IPTables) OptionSetCounters(packets, bytes uint64) *IPTables {
 	if iptables.statement.err != nil {
 		return iptables
 	}
-	option, err := newOptionSetCounters(packets, bytes)
+	option, err := newOptionCounters(packets, bytes)
 	if err != nil {
 		iptables.statement.err = err
 		return iptables

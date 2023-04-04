@@ -232,6 +232,7 @@ type Match interface {
 	LongArgs() []string
 	Parse([]byte) (int, bool)
 	Depends() []MatchType
+	Equal(Match) bool
 }
 
 func matchFactory(matchType MatchType) Match {
@@ -421,11 +422,11 @@ type baseMatch struct {
 	addrType  network.AddressType
 }
 
-func (bm baseMatch) Type() MatchType {
+func (bm *baseMatch) Type() MatchType {
 	return bm.matchType
 }
 
-func (bm baseMatch) Short() string {
+func (bm *baseMatch) Short() string {
 	return ""
 }
 
@@ -451,6 +452,10 @@ func (bm *baseMatch) AddrType() network.AddressType {
 
 func (bm *baseMatch) Depends() []MatchType {
 	return nil
+}
+
+func (bm *baseMatch) Equal(mth Match) bool {
+	return bm.Short() == mth.Short()
 }
 
 type MatchIPv4 struct {

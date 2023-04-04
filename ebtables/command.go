@@ -25,7 +25,7 @@ const (
 	CommandTypeInsert                            // insert
 	CommandTypeFlush                             // flush
 	CommandTypePolicy                            // policy
-	CommandTypeFind                              // find
+	CommandTypeFind                              // go-xtables support
 	CommandTypeListRules                         // list
 	CommandTypeZero                              // zero
 	CommandTypeList                              // list

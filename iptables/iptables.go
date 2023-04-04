@@ -27,3 +27,25 @@ func NewIPTables() *IPTables {
 	}
 	return tables
 }
+
+func (iptables *IPTables) dump() *IPTables {
+	newiptables := &IPTables{
+		statement: &Statement{
+			err:     iptables.statement.err,
+			table:   iptables.statement.table,
+			chain:   iptables.statement.chain,
+			matches: make(map[MatchType]Match),
+			options: make(map[OptionType]Option),
+			target:  iptables.statement.target,
+			command: iptables.statement.command,
+		},
+		cmdName: iptables.cmdName,
+	}
+	for k, v := range iptables.statement.matches {
+		newiptables.statement.matches[k] = v
+	}
+	for k, v := range iptables.statement.options {
+		newiptables.statement.options[k] = v
+	}
+	return newiptables
+}

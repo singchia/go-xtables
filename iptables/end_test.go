@@ -84,7 +84,6 @@ func TestAppend(t *testing.T) {
 func TestDelete(t *testing.T) {
 	set()
 	defer unset()
-	initIPTables(t)
 
 	err := NewIPTables().Table(TableTypeNat).
 		Chain(ChainTypePREROUTING).
@@ -104,7 +103,6 @@ func TestDelete(t *testing.T) {
 func TestInsert(t *testing.T) {
 	set()
 	defer unset()
-	initIPTables(t)
 
 	err := NewIPTables().Table(TableTypeNat).
 		Chain(ChainTypePREROUTING).
@@ -125,7 +123,6 @@ func TestInsert(t *testing.T) {
 func TestReplace(t *testing.T) {
 	set()
 	defer unset()
-	initIPTables(t)
 
 	err := NewIPTables().Table(TableTypeNat).
 		Chain(ChainTypePREROUTING).
@@ -163,7 +160,6 @@ func TestReplace(t *testing.T) {
 func TestListRules(t *testing.T) {
 	set()
 	defer unset()
-	initIPTables(t)
 
 	err := NewIPTables().Table(TableTypeNat).
 		Chain(ChainTypePREROUTING).
@@ -183,7 +179,6 @@ func TestListRules(t *testing.T) {
 func TestDumpRules(t *testing.T) {
 	set()
 	defer unset()
-	initIPTables(t)
 
 	rules := []string{"-P INPUT ACCEPT"}
 	data, err := NewIPTables().Table(TableTypeFilter).Chain(ChainTypeINPUT).ListRules()
@@ -194,4 +189,9 @@ func TestDumpRules(t *testing.T) {
 	data, err = NewIPTables().Table(TableTypeFilter).ListRules()
 	assert.Equal(t, nil, err)
 	assert.Equal(t, rules, data)
+}
+
+func TestFind(t *testing.T) {
+	set()
+	defer unset()
 }

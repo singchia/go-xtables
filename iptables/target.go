@@ -261,6 +261,7 @@ type Target interface {
 	ShortArgs() []string
 	LongArgs() []string
 	Parse([]byte) (int, bool)
+	Equal(Target) bool
 }
 
 func targetFactory(targetType TargetType, args ...interface{}) (Target, error) {
@@ -408,6 +409,10 @@ func (bt *baseTarget) LongArgs() []string {
 
 func (bt *baseTarget) Parse([]byte) (int, bool) {
 	return 0, true
+}
+
+func (bt *baseTarget) Equal(tgt Target) bool {
+	return bt.Short() == tgt.Short()
 }
 
 type TargetEmpty struct {

@@ -34,6 +34,7 @@ type Option interface {
 	ShortArgs() []string
 	Long() string
 	LongArgs() []string
+	Equal(Option) bool
 }
 
 type baseOption struct {
@@ -72,6 +73,14 @@ func (bo *baseOption) LongArgs() []string {
 	return bo.ShortArgs()
 }
 
+func (bo *baseOption) Equal(opt Option) bool {
+	return bo.Short() == opt.Short()
+}
+
+type OptionFragment struct {
+	*baseOption
+}
+
 func newOptionFragment(invert bool) (*OptionFragment, error) {
 	option := &OptionFragment{
 		baseOption: &baseOption{
@@ -81,10 +90,6 @@ func newOptionFragment(invert bool) (*OptionFragment, error) {
 	}
 	option.setChild(option)
 	return option, nil
-}
-
-type OptionFragment struct {
-	*baseOption
 }
 
 func (opt *OptionFragment) Short() string {
@@ -115,8 +120,8 @@ func (opt *OptionFragment) LongArgs() []string {
 	return []string{"--fragment"}
 }
 
-func newOptionSetCounters(packets, bytes uint64) (*OptionSetCounters, error) {
-	option := &OptionSetCounters{
+func newOptionCounters(packets, bytes uint64) (*OptionCounters, error) {
+	option := &OptionCounters{
 		baseOption: &baseOption{
 			optionType: OptionTypeSetCounters,
 		},
@@ -127,28 +132,28 @@ func newOptionSetCounters(packets, bytes uint64) (*OptionSetCounters, error) {
 	return option, nil
 }
 
-type OptionSetCounters struct {
+type OptionCounters struct {
 	*baseOption
 	packets uint64
 	bytes   uint64
 }
 
-func (opt *OptionSetCounters) Short() string {
+func (opt *OptionCounters) Short() string {
 	return fmt.Sprintf("-c %d %d", opt.packets, opt.bytes)
 }
 
-func (opt *OptionSetCounters) ShortArgs() []string {
+func (opt *OptionCounters) ShortArgs() []string {
 	return []string{"-c",
 		strconv.FormatUint(opt.packets, 10),
 		strconv.FormatUint(opt.bytes, 10),
 	}
 }
 
-func (opt *OptionSetCounters) Long() string {
+func (opt *OptionCounters) Long() string {
 	return fmt.Sprintf("--set-counters %d %d", opt.packets, opt.bytes)
 }
 
-func (opt *OptionSetCounters) LongArgs() []string {
+func (opt *OptionCounters) LongArgs() []string {
 	return []string{"--set-counters",
 		strconv.FormatUint(opt.packets, 10),
 		strconv.FormatUint(opt.bytes, 10),

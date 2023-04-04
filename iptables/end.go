@@ -25,9 +25,10 @@ func (iptables *IPTables) Append() error {
 	if iptables.statement.err != nil {
 		return iptables.statement.err
 	}
+	newiptables := iptables.dump()
 	command := newAppend()
-	iptables.statement.command = command
-	data, err := iptables.exec()
+	newiptables.statement.command = command
+	data, err := newiptables.exec()
 	if err != nil {
 		return errors.New(string(data))
 	}
@@ -38,9 +39,10 @@ func (iptables *IPTables) Check() (bool, error) {
 	if iptables.statement.err != nil {
 		return false, iptables.statement.err
 	}
+	newiptables := iptables.dump()
 	command := newCheck()
-	iptables.statement.command = command
-	data, err := iptables.exec()
+	newiptables.statement.command = command
+	data, err := newiptables.exec()
 	if err != nil {
 		return false, errors.New(string(data))
 	}
@@ -52,11 +54,12 @@ func (iptables *IPTables) Delete(rulenum uint32) error {
 	if iptables.statement.err != nil {
 		return iptables.statement.err
 	}
+	newiptables := iptables.dump()
 	command := newDelete(rulenum)
-	iptables.statement.command = command
+	newiptables.statement.command = command
 	// delete doesn't need a target
-	iptables.statement.target = nil
-	data, err := iptables.exec()
+	newiptables.statement.target = nil
+	data, err := newiptables.exec()
 	if err != nil {
 		return errors.New(string(data))
 	}
@@ -68,9 +71,10 @@ func (iptables *IPTables) Insert(rulenum uint32) error {
 	if iptables.statement.err != nil {
 		return iptables.statement.err
 	}
+	newiptables := iptables.dump()
 	command := newInsert(rulenum)
-	iptables.statement.command = command
-	data, err := iptables.exec()
+	newiptables.statement.command = command
+	data, err := newiptables.exec()
 	if err != nil {
 		return errors.New(string(data))
 	}
@@ -85,9 +89,10 @@ func (iptables *IPTables) Replace(rulenum uint32) error {
 	if rulenum == 0 {
 		return xtables.ErrRulenumMustNot0
 	}
+	newiptables := iptables.dump()
 	command := newReplace(rulenum)
-	iptables.statement.command = command
-	data, err := iptables.exec()
+	newiptables.statement.command = command
+	data, err := newiptables.exec()
 	if err != nil {
 		return errors.New(string(data))
 	}
@@ -99,9 +104,10 @@ func (iptables *IPTables) ListRules() ([]*Rule, error) {
 	if iptables.statement.err != nil {
 		return nil, iptables.statement.err
 	}
+	newiptables := iptables.dump()
 	command := newListRules()
-	iptables.statement.command = command
-	data, err := iptables.exec()
+	newiptables.statement.command = command
+	data, err := newiptables.exec()
 	if err != nil {
 		return nil, err
 	}
@@ -114,13 +120,14 @@ func (iptables *IPTables) ListChains() ([]*Chain, error) {
 	if iptables.statement.err != nil {
 		return nil, iptables.statement.err
 	}
+	newiptables := iptables.dump()
 	command := newListChains()
-	iptables.statement.command = command
-	data, err := iptables.exec()
+	newiptables.statement.command = command
+	data, err := newiptables.exec()
 	if err != nil {
 		return nil, err
 	}
-	chains, _, err := parse(data, iptables.statement.table, parseChain, parseRule)
+	chains, _, err := parse(data, iptables.statement.table, parseChain, nil)
 	return chains, err
 }
 
@@ -129,10 +136,11 @@ func (iptables *IPTables) DumpRules() ([]string, error) {
 	if iptables.statement.err != nil {
 		return nil, iptables.statement.err
 	}
+	newiptables := iptables.dump()
 	command := newDumpRules()
-	iptables.statement.command = command
-	iptables.statement.dump = true
-	data, err := iptables.exec()
+	newiptables.statement.command = command
+	newiptables.statement.dump = true
+	data, err := newiptables.exec()
 	if err != nil {
 		return nil, err
 	}
@@ -151,19 +159,20 @@ func (iptables *IPTables) Flush() error {
 	if iptables.statement.err != nil {
 		return iptables.statement.err
 	}
+	newiptables := iptables.dump()
 	var tables []TableType
-	if iptables.statement.table == TableTypeNull {
+	if newiptables.statement.table == TableTypeNull {
 		tables = []TableType{TableTypeFilter, TableTypeNat,
 			TableTypeMangle, TableTypeRaw, TableTypeSecurity}
 	} else {
-		tables = []TableType{iptables.statement.table}
+		tables = []TableType{newiptables.statement.table}
 	}
 
 	for _, table := range tables {
-		iptables.Table(table)
+		newiptables.Table(table)
 		command := newFlush()
-		iptables.statement.command = command
-		data, err := iptables.exec()
+		newiptables.statement.command = command
+		data, err := newiptables.exec()
 		if err != nil {
 			return errors.New(string(data))
 		}
@@ -176,9 +185,10 @@ func (iptables *IPTables) Zero(rulenum uint32) error {
 	if iptables.statement.err != nil {
 		return iptables.statement.err
 	}
+	newiptables := iptables.dump()
 	command := newZero(rulenum)
-	iptables.statement.command = command
-	data, err := iptables.exec()
+	newiptables.statement.command = command
+	data, err := newiptables.exec()
 	if err != nil {
 		return errors.New(string(data))
 	}
@@ -189,9 +199,10 @@ func (iptables *IPTables) NewChain() error {
 	if iptables.statement.err != nil {
 		return iptables.statement.err
 	}
+	newiptables := iptables.dump()
 	command := newNewChain()
-	iptables.statement.command = command
-	data, err := iptables.exec()
+	newiptables.statement.command = command
+	data, err := newiptables.exec()
 	if err != nil {
 		return errors.New(string(data))
 	}
@@ -203,19 +214,20 @@ func (iptables *IPTables) DeleteChain() error {
 	if iptables.statement.err != nil {
 		return iptables.statement.err
 	}
+	newiptables := iptables.dump()
 	var tables []TableType
-	if iptables.statement.table == TableTypeNull {
+	if newiptables.statement.table == TableTypeNull {
 		tables = []TableType{TableTypeFilter, TableTypeNat,
 			TableTypeMangle, TableTypeRaw, TableTypeSecurity}
 	} else {
-		tables = []TableType{iptables.statement.table}
+		tables = []TableType{newiptables.statement.table}
 	}
 
 	for _, table := range tables {
-		iptables.Table(table)
+		newiptables.Table(table)
 		command := newDeleteChain()
-		iptables.statement.command = command
-		data, err := iptables.exec()
+		newiptables.statement.command = command
+		data, err := newiptables.exec()
 		if err != nil {
 			return errors.New(string(data))
 		}
@@ -234,22 +246,23 @@ func (iptables *IPTables) Policy(target TargetType) error {
 		target != TargetTypeReturn {
 		return xtables.ErrIllegalTargetType
 	}
+	newiptables := iptables.dump()
 	var tables []TableType
-	if iptables.statement.table == TableTypeNull {
+	if newiptables.statement.table == TableTypeNull {
 		tables = []TableType{TableTypeFilter, TableTypeNat,
 			TableTypeMangle, TableTypeRaw, TableTypeSecurity}
 	} else {
-		tables = []TableType{iptables.statement.table}
+		tables = []TableType{newiptables.statement.table}
 	}
 
-	if iptables.statement.chain == ChainTypeNull {
+	if newiptables.statement.chain == ChainTypeNull {
 		for _, table := range tables {
 			for _, chain := range TableChains[table] {
-				iptables.Table(table)
-				iptables.Chain(chain)
+				newiptables.Table(table)
+				newiptables.Chain(chain)
 				command := newPolicy(target)
-				iptables.statement.command = command
-				data, err := iptables.exec()
+				newiptables.statement.command = command
+				data, err := newiptables.exec()
 				if err != nil {
 					return errors.New(string(data))
 				}
@@ -258,10 +271,10 @@ func (iptables *IPTables) Policy(target TargetType) error {
 		return nil
 	} else {
 		for _, table := range tables {
-			iptables.Table(table)
+			newiptables.Table(table)
 			command := newPolicy(target)
-			iptables.statement.command = command
-			data, err := iptables.exec()
+			newiptables.statement.command = command
+			data, err := newiptables.exec()
 			if err != nil {
 				return errors.New(string(data))
 			}
@@ -274,11 +287,98 @@ func (iptables *IPTables) RenameChain(newChain string) error {
 	if iptables.statement.err != nil {
 		return iptables.statement.err
 	}
+	newiptables := iptables.dump()
 	command := newRenameChain(newChain)
-	iptables.statement.command = command
-	data, err := iptables.exec()
+	newiptables.statement.command = command
+	data, err := newiptables.exec()
 	if err != nil {
 		return errors.New(string(data))
 	}
 	return nil
+}
+
+func (iptables *IPTables) FindChains() ([]*Chain, error) {
+	if iptables.statement.err != nil {
+		return nil, iptables.statement.err
+	}
+	newiptables := iptables.dump()
+	chainType := newiptables.statement.chain
+	name := newiptables.statement.userDefinedChain
+	newiptables.statement.chain = ChainTypeNull
+
+	command := newListChains()
+	newiptables.statement.command = command
+
+	data, err := newiptables.exec()
+	if err != nil {
+		return nil, xtables.ErrAndStdErr(err, data)
+	}
+
+	chains, _, err := parse(data, newiptables.statement.table, parseChain, nil)
+	if err != nil {
+		return nil, err
+	}
+	foundChains := []*Chain{}
+	for _, chain := range chains {
+		if chain.chainType == ChainTypeUserDefined &&
+			chain.name != name {
+			continue
+		}
+		if chain.chainType == ChainTypeUserDefined &&
+			chain.name == name {
+			foundChains = append(foundChains, chain)
+			continue
+		}
+		if chain.chainType == chainType {
+			foundChains = append(foundChains, chain)
+		}
+	}
+	return foundChains, nil
+}
+
+func (iptables *IPTables) FindRules() ([]*Rule, error) {
+	if iptables.statement.err != nil {
+		return nil, iptables.statement.err
+	}
+	newiptables := iptables.dump()
+	optionsMap := newiptables.statement.options
+	matchesMap := newiptables.statement.matches
+	target := newiptables.statement.target
+
+	newiptables.statement.options = make(map[OptionType]Option)
+	newiptables.statement.matches = make(map[MatchType]Match)
+	newiptables.statement.target = nil
+
+	// search with table or chain
+	command := newFind()
+	newiptables.statement.command = command
+	newiptables.statement.options[OptionTypeLineNumbers], _ = newOptionLineNumbers()
+	newiptables.statement.options[OptionTypeNumeric], _ = newOptionNumeric()
+	newiptables.statement.options[OptionTypeVerbose], _ = newOptionVerbose()
+
+	data, err := newiptables.exec()
+	if err != nil {
+		return nil, xtables.ErrAndStdErr(err, data)
+	}
+	_, rules, err := parse(data, iptables.statement.table, parseChain, parseRule)
+	if err != nil {
+		return nil, err
+	}
+	foundRules := []*Rule{}
+	for _, rule := range rules {
+		yes := rule.HasAllOptions(optionsMap)
+		if !yes {
+			continue
+		}
+		yes = rule.HasAllMatches(matchesMap)
+		if !yes {
+			continue
+		}
+		yes = rule.HasTarget(target)
+		if !yes {
+			continue
+		}
+		foundRules = append(foundRules, rule)
+	}
+	return foundRules, nil
 }

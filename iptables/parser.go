@@ -33,6 +33,9 @@ func parse(data []byte, table TableType, onChainLine onChainLine, onRuleLine onR
 		if index == 0 {
 			if bytes.HasPrefix(line, []byte("Chain")) {
 				// chain
+				if onChainLine == nil {
+					continue
+				}
 				chain, err = onChainLine(line)
 				if err != nil {
 					return nil, nil, err
@@ -47,6 +50,9 @@ func parse(data []byte, table TableType, onChainLine onChainLine, onRuleLine onR
 			// rule or EOC(end of chain)
 			if len(line) == 0 {
 				index = 0
+				continue
+			}
+			if onRuleLine == nil {
 				continue
 			}
 			rule, err := onRuleLine(line, head, chain)
