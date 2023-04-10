@@ -120,6 +120,8 @@ func parseChain(line []byte) (*Chain, error) {
 		chain.chainType = ChainTypeOUTPUT
 	case "PREROUTING":
 		chain.chainType = ChainTypePREROUTING
+	case "BROUTING":
+		chain.chainType = ChainTypeBROUTING
 	case "POSTROUTING":
 		chain.chainType = ChainTypePOSTROUTING
 	default:

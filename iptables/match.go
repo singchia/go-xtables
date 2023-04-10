@@ -420,6 +420,11 @@ type baseMatch struct {
 	matchType MatchType
 	invert    bool
 	addrType  network.AddressType
+	child     Match
+}
+
+func (bm *baseMatch) setChild(child Match) {
+	bm.child = child
 }
 
 func (bm *baseMatch) Type() MatchType {
@@ -427,19 +432,25 @@ func (bm *baseMatch) Type() MatchType {
 }
 
 func (bm *baseMatch) Short() string {
+	if bm.child != nil {
+		return bm.child.Short()
+	}
 	return ""
 }
 
 func (bm *baseMatch) ShortArgs() []string {
+	if bm.child != nil {
+		return bm.child.ShortArgs()
+	}
 	return nil
 }
 
 func (bm *baseMatch) Long() string {
-	return ""
+	return bm.Short()
 }
 
 func (bm *baseMatch) LongArgs() []string {
-	return nil
+	return bm.LongArgs()
 }
 
 func (bm *baseMatch) Parse(params []byte) (int, bool) {
@@ -503,6 +514,18 @@ type MatchProtocol struct {
 	Protocol network.Protocol
 }
 
+func newMatchProtocol(invert bool, prot network.Protocol) *MatchProtocol {
+	match := &MatchProtocol{
+		baseMatch: &baseMatch{
+			matchType: MatchTypeProtocol,
+			invert:    invert,
+		},
+		Protocol: prot,
+	}
+	match.setChild(match)
+	return match
+}
+
 func (mProtocol *MatchProtocol) Short() string {
 	if mProtocol.invert {
 		return fmt.Sprintf("! -p %d", int(mProtocol.Protocol))
@@ -537,12 +560,15 @@ type MatchSource struct {
 }
 
 func newMatchSource(invert bool, address network.Address) (*MatchSource, error) {
-	return &MatchSource{
+	match := &MatchSource{
 		baseMatch: &baseMatch{
 			matchType: MatchTypeSource,
+			invert:    invert,
 		},
 		address: address,
-	}, nil
+	}
+	match.setChild(match)
+	return match, nil
 }
 
 func (mSrc *MatchSource) Short() string {
@@ -579,12 +605,15 @@ type MatchDestination struct {
 }
 
 func newMatchDestination(invert bool, address network.Address) (*MatchDestination, error) {
-	return &MatchDestination{
+	match := &MatchDestination{
 		baseMatch: &baseMatch{
 			matchType: MatchTypeDestination,
+			invert:    invert,
 		},
 		address: address,
-	}, nil
+	}
+	match.setChild(match)
+	return match, nil
 }
 
 func (mDst *MatchDestination) Short() string {
@@ -621,13 +650,15 @@ type MatchInInterface struct {
 }
 
 func newMatchInInterface(invert bool, iface string) (*MatchInInterface, error) {
-	return &MatchInInterface{
+	match := &MatchInInterface{
 		baseMatch: &baseMatch{
 			matchType: MatchTypeInInterface,
 			invert:    invert,
 		},
 		iface: iface,
-	}, nil
+	}
+	match.setChild(match)
+	return match, nil
 }
 
 func (mInIface *MatchInInterface) Short() string {
@@ -664,13 +695,15 @@ type MatchOutInterface struct {
 }
 
 func newMatchOutInterface(invert bool, iface string) (*MatchOutInterface, error) {
-	return &MatchOutInterface{
+	match := &MatchOutInterface{
 		baseMatch: &baseMatch{
 			matchType: MatchTypeOutInterface,
 			invert:    invert,
 		},
 		iface: iface,
-	}, nil
+	}
+	match.setChild(match)
+	return match, nil
 }
 
 func (mOutIface *MatchOutInterface) Short() string {
@@ -812,6 +845,7 @@ func newMatchAddrType(opts ...OptionMatchAddrType) (*MatchAddrType, error) {
 	for _, opt := range opts {
 		opt(match)
 	}
+	match.setChild(match)
 	return match, nil
 }
 
@@ -974,6 +1008,7 @@ func newMatchAH(opts ...OptionMatchAH) (*MatchAH, error) {
 	for _, opt := range opts {
 		opt(match)
 	}
+	match.setChild(match)
 	return match, nil
 }
 
@@ -1131,6 +1166,7 @@ func newMatchBPF(opts ...OptionMatchBPF) (*MatchBPF, error) {
 	for _, opt := range opts {
 		opt(match)
 	}
+	match.setChild(match)
 	return match, nil
 }
 
@@ -1258,6 +1294,7 @@ func newMatchCGroup(opts ...OptionMatchCGroup) (*MatchCGroup, error) {
 	for _, opt := range opts {
 		opt(match)
 	}
+	match.setChild(match)
 	return match, nil
 }
 
@@ -1377,6 +1414,7 @@ func newMatchCluster(opts ...OptionMatchCluster) (*MatchCluster, error) {
 	for _, opt := range opts {
 		opt(match)
 	}
+	match.setChild(match)
 	return match, nil
 }
 
@@ -1470,6 +1508,7 @@ func newMatchComment(comment string) (*MatchComment, error) {
 		},
 		Comment: comment,
 	}
+	match.setChild(match)
 	return match, nil
 }
 
@@ -1562,6 +1601,7 @@ func newMatchConnBytes(opts ...OptionMatchConnBytes) (*MatchConnBytes, error) {
 	for _, opt := range opts {
 		opt(match)
 	}
+	match.setChild(match)
 	return match, nil
 }
 
@@ -1691,6 +1731,7 @@ func newMatchConnLabel(opts ...OptionMatchConnLabel) (*MatchConnLabel, error) {
 	for _, opt := range opts {
 		opt(match)
 	}
+	match.setChild(match)
 	return match, nil
 }
 
@@ -1821,6 +1862,7 @@ func newMatchConnLimit(opts ...OptionMatchConnLimit) (*MatchConnLimit, error) {
 	for _, opt := range opts {
 		opt(match)
 	}
+	match.setChild(match)
 	return match, nil
 }
 
@@ -2274,6 +2316,7 @@ func newMatchConnTrack(opts ...OptionMatchConnTrack) (*MatchConnTrack, error) {
 	for _, opt := range opts {
 		opt(match)
 	}
+	match.setChild(match)
 	return match, nil
 }
 
@@ -2866,6 +2909,7 @@ func newMatchDCCP(opts ...OptionMatchDCCP) (*MatchDCCP, error) {
 	for _, opt := range opts {
 		opt(match)
 	}
+	match.setChild(match)
 	return match, nil
 }
 
@@ -3116,6 +3160,7 @@ func newMatchDevGroup(opts ...OptionMatchDevGroup) (*MatchDevGroup, error) {
 	for _, opt := range opts {
 		opt(match)
 	}
+	match.setChild(match)
 	return match, nil
 }
 
@@ -3258,6 +3303,7 @@ func newMatchDSCP(opts ...OptionMatchDSCP) (*MatchDSCP, error) {
 	for _, opt := range opts {
 		opt(match)
 	}
+	match.setChild(match)
 	return match, nil
 }
 
@@ -3337,6 +3383,7 @@ func newMatchDst(opts ...OptionMatchDst) (*MatchDst, error) {
 	for _, opt := range opts {
 		opt(match)
 	}
+	match.setChild(match)
 	return match, nil
 }
 
@@ -3474,6 +3521,7 @@ func newMatchECN(opts ...OptionMatchECN) (*MatchECN, error) {
 	for _, opt := range opts {
 		opt(match)
 	}
+	match.setChild(match)
 	return match, nil
 }
 
@@ -3581,6 +3629,7 @@ func newMatchESP(invert bool, spi ...int) (*MatchESP, error) {
 		match.SPIMax = spi[1]
 	}
 	match.invert = invert
+	match.setChild(match)
 	return match, nil
 }
 
@@ -3776,6 +3825,7 @@ func newMatchFrag(opts ...OptionMatchFrag) (*MatchFrag, error) {
 	for _, opt := range opts {
 		opt(match)
 	}
+	match.setChild(match)
 	return match, nil
 }
 
@@ -4022,6 +4072,7 @@ func NewHashLimit(opts ...OptionMatchHashLimit) (*MatchHashLimit, error) {
 	for _, opt := range opts {
 		opt(match)
 	}
+	match.setChild(match)
 	return match, nil
 }
 
@@ -4295,6 +4346,7 @@ func newMatchHBH(opts ...OptionMatchHBH) (*MatchHBH, error) {
 	for _, opt := range opts {
 		opt(match)
 	}
+	match.setChild(match)
 	return match, nil
 }
 
@@ -4544,6 +4596,7 @@ func newMatchICMP(invert bool, typ network.ICMPType, opts ...OptionMatchICMP) (*
 	for _, opt := range opts {
 		opt(match)
 	}
+	match.setChild(match)
 	return match, nil
 }
 
@@ -4712,6 +4765,7 @@ func newMatchIPRange(opts ...OptionMatchIPRange) (*MatchIPRange, error) {
 	for _, opt := range opts {
 		opt(match)
 	}
+	match.setChild(match)
 	return match, nil
 }
 
@@ -4852,6 +4906,7 @@ func newMatchIPv6Header(opts ...OptionMatchIPv6Header) (*MatchIPv6Header, error)
 	for _, opt := range opts {
 		opt(match)
 	}
+	match.setChild(match)
 	return match, nil
 }
 
@@ -5054,6 +5109,7 @@ func newMatchIPVS(opts ...OptionMatchIPVS) (*MatchIPVS, error) {
 	for _, opt := range opts {
 		opt(match)
 	}
+	match.setChild(match)
 	return match, nil
 }
 
@@ -5241,6 +5297,7 @@ func newMatchLength(invert bool, length ...int) (*MatchLength, error) {
 		match.LengthMax = length[1]
 	}
 	match.invert = invert
+	match.setChild(match)
 	return match, nil
 }
 
@@ -5334,6 +5391,7 @@ func newMatchLimit(opts ...OptionMatchLimit) (*MatchLimit, error) {
 	for _, opt := range opts {
 		opt(match)
 	}
+	match.setChild(match)
 	return match, nil
 }
 
@@ -5413,6 +5471,7 @@ func newMatchMAC(invert bool, mac net.HardwareAddr) (*MatchMAC, error) {
 		},
 		SrcMac: mac,
 	}
+	match.setChild(match)
 	return match, nil
 }
 
@@ -5636,6 +5695,7 @@ func newMatchMH(invert bool, typ ...MHType) (*MatchMH, error) {
 		match.TypeMin = typ[0]
 		match.TypeMax = typ[1]
 	}
+	match.setChild(match)
 	return match, nil
 }
 
@@ -5762,6 +5822,7 @@ func newMatchMultiPort(opts ...OptionMatchMultiPort) (*MatchMultiPort, error) {
 	for _, opt := range opts {
 		opt(match)
 	}
+	match.setChild(match)
 	return match, nil
 }
 
@@ -5931,6 +5992,7 @@ func newMatchNFAcct(name string) (*MatchNFAcct, error) {
 		},
 		AccountingName: name,
 	}
+	match.setChild(match)
 	return match, nil
 }
 
@@ -6008,6 +6070,7 @@ func newMatchOSF(opts ...OptionMatchOSF) (*MatchOSF, error) {
 	for _, opt := range opts {
 		opt(match)
 	}
+	match.setChild(match)
 	return match, nil
 }
 
@@ -6137,6 +6200,7 @@ func newMatchOwner(opts ...OptionMatchOwner) (*MatchOwner, error) {
 	for _, opt := range opts {
 		opt(match)
 	}
+	match.setChild(match)
 	return match, nil
 }
 
@@ -6348,6 +6412,7 @@ func newMatchPhysDev(opts ...OptionMatchPhysDev) (*MatchPhysDev, error) {
 	for _, opt := range opts {
 		opt(match)
 	}
+	match.setChild(match)
 	return match, nil
 }
 
@@ -6500,6 +6565,7 @@ func newMatchPktType(invert bool, pktType PktType) (*MatchPktType, error) {
 		},
 		PktType: pktType,
 	}
+	match.setChild(match)
 	return match, nil
 }
 
@@ -6660,6 +6726,7 @@ func newMatchPolicy(opts ...OptionMatchPolicy) (*MatchPolicy, error) {
 	for _, opt := range opts {
 		opt(match)
 	}
+	match.setChild(match)
 	return match, nil
 }
 
@@ -6901,6 +6968,7 @@ func newMatchQuota(invert bool, quota int64) (*MatchQuota, error) {
 		},
 		Quota: quota,
 	}
+	match.setChild(match)
 	return match, nil
 }
 
@@ -7032,6 +7100,7 @@ func newMatchRateEst(opts ...OptionMatchRateEst) (*MatchRateEst, error) {
 	for _, opt := range opts {
 		opt(match)
 	}
+	match.setChild(match)
 	return match, nil
 }
 
@@ -7469,6 +7538,7 @@ func newMatchRecent(opts ...OptionMatchRecent) (*MatchRecent, error) {
 	for _, opt := range opts {
 		opt(match)
 	}
+	match.setChild(match)
 	return match, nil
 }
 
@@ -7691,6 +7761,7 @@ func newMatchRPFilter(opts ...OptionMatchRPFilter) (*MatchRPFilter, error) {
 	for _, opt := range opts {
 		opt(match)
 	}
+	match.setChild(match)
 	return match, nil
 }
 
@@ -7822,6 +7893,7 @@ func newMatchRT(opts ...OptionMatchRT) (*MatchRT, error) {
 	for _, opt := range opts {
 		opt(match)
 	}
+	match.setChild(match)
 	return match, nil
 }
 
@@ -8207,6 +8279,7 @@ func newMatchSCTP(opts ...OptionMatchSCTP) (*MatchSCTP, error) {
 	for _, opt := range opts {
 		opt(match)
 	}
+	match.setChild(match)
 	return match, nil
 }
 
@@ -8559,6 +8632,7 @@ func newMatchSet(opts ...OptionMatchSet) (*MatchSet, error) {
 	for _, opt := range opts {
 		opt(match)
 	}
+	match.setChild(match)
 	return match, nil
 }
 
@@ -8798,6 +8872,7 @@ func newMatchSocket(opts ...OptionMatchSocket) (*MatchSocket, error) {
 	for _, opt := range opts {
 		opt(match)
 	}
+	match.setChild(match)
 	return match, nil
 }
 
@@ -8992,6 +9067,7 @@ func newMatchStatistic(opts ...OptionMatchStatistic) (*MatchStatistic, error) {
 	for _, opt := range opts {
 		opt(match)
 	}
+	match.setChild(match)
 	return match, nil
 }
 
@@ -9163,6 +9239,7 @@ func newMatchString(opts ...OptionMatchString) (*MatchString, error) {
 	for _, opt := range opts {
 		opt(match)
 	}
+	match.setChild(match)
 	return match, nil
 }
 
@@ -9357,6 +9434,7 @@ func newMatchTCP(opts ...OptionMatchTCP) (*MatchTCP, error) {
 	for _, opt := range opts {
 		opt(match)
 	}
+	match.setChild(match)
 	return match, nil
 }
 
@@ -9586,6 +9664,7 @@ func newMatchTCPMSS(invert bool, mss ...int) (*MatchTCPMSS, error) {
 		match.MSSMin = mss[0]
 		match.MSSMax = mss[1]
 	}
+	match.setChild(match)
 	return match, nil
 }
 
@@ -9733,6 +9812,7 @@ func newMatchTime(opts ...OptionMatchTime) (*MatchTime, error) {
 	for _, opt := range opts {
 		opt(match)
 	}
+	match.setChild(match)
 	return match, nil
 }
 
@@ -9874,6 +9954,7 @@ func newMatchTOS(invert bool, tos ...network.TOS) (*MatchTOS, error) {
 		match.Mask = tos[1]
 	}
 	match.invert = invert
+	match.setChild(match)
 	return match, nil
 }
 
@@ -9992,6 +10073,7 @@ func newMatchTTL(opts ...OptionMatchTTL) (*MatchTTL, error) {
 	for _, opt := range opts {
 		opt(match)
 	}
+	match.setChild(match)
 	return match, nil
 }
 
@@ -10137,6 +10219,7 @@ func newMatchUDP(opts ...OptionMatchUDP) (*MatchUDP, error) {
 	for _, opt := range opts {
 		opt(match)
 	}
+	match.setChild(match)
 	return match, nil
 }
 
@@ -10410,7 +10493,7 @@ func ParseMatch(params []byte) ([]Match, int, error) {
 		typ := node.Value().(MatchType)
 		// get match by match type
 		match := matchFactory(typ)
-		if match != nil {
+		if match == nil {
 			return matches, index, xtables.ErrMatchParams
 		}
 		// index meaning the end of this match

@@ -8,19 +8,22 @@ import (
 )
 
 func (iptables *IPTables) Table(table TableType) *IPTables {
-	iptables.statement.table = table
-	return iptables
+	newiptables := iptables.dump()
+	newiptables.statement.table = table
+	return newiptables
 }
 
 func (iptables *IPTables) Chain(chain ChainType) *IPTables {
-	iptables.statement.chain = chain
-	return iptables
+	newiptables := iptables.dump()
+	newiptables.statement.chain = chain
+	return newiptables
 }
 
 func (iptables *IPTables) UserDefinedChain(chain string) *IPTables {
-	iptables.statement.chain = ChainTypeUserDefined
-	iptables.statement.userDefinedChain = chain
-	return iptables
+	newiptables := iptables.dump()
+	newiptables.statement.chain = ChainTypeUserDefined
+	newiptables.statement.userDefinedChain = chain
+	return newiptables
 }
 
 // matches
@@ -28,41 +31,38 @@ func (iptables *IPTables) MatchIPv4() *IPTables {
 	if iptables.statement.err != nil {
 		return iptables
 	}
+	newiptables := iptables.dump()
 	match := &MatchIPv4{
 		baseMatch: &baseMatch{
 			matchType: MatchTypeIPv4,
 		},
 	}
-	iptables.statement.addMatch(match)
-	return iptables
+	newiptables.statement.addMatch(match)
+	return newiptables
 }
 
 func (iptables *IPTables) MatchIPv6() *IPTables {
 	if iptables.statement.err != nil {
 		return iptables
 	}
+	newiptables := iptables.dump()
 	match := &MatchIPv6{
 		baseMatch: &baseMatch{
 			matchType: MatchTypeIPv6,
 		},
 	}
-	iptables.statement.addMatch(match)
-	return iptables
+	newiptables.statement.addMatch(match)
+	return newiptables
 }
 
 func (iptables *IPTables) MatchProtocol(invert bool, protocol network.Protocol) *IPTables {
 	if iptables.statement.err != nil {
 		return iptables
 	}
-	match := &MatchProtocol{
-		baseMatch: &baseMatch{
-			matchType: MatchTypeProtocol,
-			invert:    invert,
-		},
-		Protocol: protocol,
-	}
-	iptables.statement.addMatch(match)
-	return iptables
+	newiptables := iptables.dump()
+	match := newMatchProtocol(invert, protocol)
+	newiptables.statement.addMatch(match)
+	return newiptables
 }
 
 // address takes:
@@ -78,6 +78,7 @@ func (iptables *IPTables) MatchSource(invert bool, address interface{}) *IPTable
 		iptables.statement.err = err
 		return iptables
 	}
+	newiptables := iptables.dump()
 	match := &MatchSource{
 		baseMatch: &baseMatch{
 			matchType: MatchTypeSource,
@@ -85,8 +86,8 @@ func (iptables *IPTables) MatchSource(invert bool, address interface{}) *IPTable
 		},
 		address: ads,
 	}
-	iptables.statement.addMatch(match)
-	return iptables
+	newiptables.statement.addMatch(match)
+	return newiptables
 }
 
 // address takes:
@@ -102,6 +103,7 @@ func (iptables *IPTables) MatchDestination(invert bool, address interface{}) *IP
 		iptables.statement.err = err
 		return iptables
 	}
+	newiptables := iptables.dump()
 	match := &MatchDestination{
 		baseMatch: &baseMatch{
 			matchType: MatchTypeDestination,
@@ -109,14 +111,15 @@ func (iptables *IPTables) MatchDestination(invert bool, address interface{}) *IP
 		},
 		address: ads,
 	}
-	iptables.statement.addMatch(match)
-	return iptables
+	newiptables.statement.addMatch(match)
+	return newiptables
 }
 
 func (iptables *IPTables) MatchInInterface(invert bool, iface string) *IPTables {
 	if iptables.statement.err != nil {
 		return iptables
 	}
+	newiptables := iptables.dump()
 	match := &MatchInInterface{
 		baseMatch: &baseMatch{
 			matchType: MatchTypeInInterface,
@@ -124,14 +127,15 @@ func (iptables *IPTables) MatchInInterface(invert bool, iface string) *IPTables 
 		},
 		iface: iface,
 	}
-	iptables.statement.addMatch(match)
-	return iptables
+	newiptables.statement.addMatch(match)
+	return newiptables
 }
 
 func (iptables *IPTables) MatchOutInterface(invert bool, iface string) *IPTables {
 	if iptables.statement.err != nil {
 		return iptables
 	}
+	newiptables := iptables.dump()
 	match := &MatchOutInterface{
 		baseMatch: &baseMatch{
 			matchType: MatchTypeOutInterface,
@@ -139,8 +143,8 @@ func (iptables *IPTables) MatchOutInterface(invert bool, iface string) *IPTables
 		},
 		iface: iface,
 	}
-	iptables.statement.addMatch(match)
-	return iptables
+	newiptables.statement.addMatch(match)
+	return newiptables
 }
 
 func (iptables *IPTables) MatchAddrType(opts ...OptionMatchAddrType) *IPTables {
@@ -152,8 +156,9 @@ func (iptables *IPTables) MatchAddrType(opts ...OptionMatchAddrType) *IPTables {
 		iptables.statement.err = err
 		return iptables
 	}
-	iptables.statement.addMatch(mAddrType)
-	return iptables
+	newiptables := iptables.dump()
+	newiptables.statement.addMatch(mAddrType)
+	return newiptables
 }
 
 func (iptables *IPTables) MatchAH(opts ...OptionMatchAH) *IPTables {
@@ -165,8 +170,9 @@ func (iptables *IPTables) MatchAH(opts ...OptionMatchAH) *IPTables {
 		iptables.statement.err = err
 		return iptables
 	}
-	iptables.statement.addMatch(mAH)
-	return iptables
+	newiptables := iptables.dump()
+	newiptables.statement.addMatch(mAH)
+	return newiptables
 }
 
 func (iptables *IPTables) MatchBPF(opts ...OptionMatchBPF) *IPTables {
@@ -178,8 +184,9 @@ func (iptables *IPTables) MatchBPF(opts ...OptionMatchBPF) *IPTables {
 		iptables.statement.err = err
 		return iptables
 	}
-	iptables.statement.addMatch(mBPF)
-	return iptables
+	newiptables := iptables.dump()
+	newiptables.statement.addMatch(mBPF)
+	return newiptables
 }
 
 func (iptables *IPTables) MatchCGroup(opts ...OptionMatchCGroup) *IPTables {
@@ -191,8 +198,9 @@ func (iptables *IPTables) MatchCGroup(opts ...OptionMatchCGroup) *IPTables {
 		iptables.statement.err = err
 		return iptables
 	}
-	iptables.statement.addMatch(mCGroup)
-	return iptables
+	newiptables := iptables.dump()
+	newiptables.statement.addMatch(mCGroup)
+	return newiptables
 }
 
 func (iptables *IPTables) MatchCluster(opts ...OptionMatchCluster) *IPTables {
@@ -204,8 +212,9 @@ func (iptables *IPTables) MatchCluster(opts ...OptionMatchCluster) *IPTables {
 		iptables.statement.err = err
 		return iptables
 	}
-	iptables.statement.addMatch(mCluster)
-	return iptables
+	newiptables := iptables.dump()
+	newiptables.statement.addMatch(mCluster)
+	return newiptables
 }
 
 func (iptables *IPTables) MatchComment(comment string) *IPTables {
@@ -217,8 +226,9 @@ func (iptables *IPTables) MatchComment(comment string) *IPTables {
 		iptables.statement.err = err
 		return iptables
 	}
-	iptables.statement.addMatch(mComment)
-	return iptables
+	newiptables := iptables.dump()
+	newiptables.statement.addMatch(mComment)
+	return newiptables
 }
 
 func (iptables *IPTables) MatchConnBytes(opts ...OptionMatchConnBytes) *IPTables {
@@ -230,8 +240,9 @@ func (iptables *IPTables) MatchConnBytes(opts ...OptionMatchConnBytes) *IPTables
 		iptables.statement.err = err
 		return iptables
 	}
-	iptables.statement.addMatch(mConnBytes)
-	return iptables
+	newiptables := iptables.dump()
+	newiptables.statement.addMatch(mConnBytes)
+	return newiptables
 }
 
 func (iptables *IPTables) MatchConnLabel(opts ...OptionMatchConnLabel) *IPTables {
@@ -243,8 +254,9 @@ func (iptables *IPTables) MatchConnLabel(opts ...OptionMatchConnLabel) *IPTables
 		iptables.statement.err = err
 		return iptables
 	}
-	iptables.statement.addMatch(mConnLabel)
-	return iptables
+	newiptables := iptables.dump()
+	newiptables.statement.addMatch(mConnLabel)
+	return newiptables
 }
 
 func (iptables *IPTables) MatchConnLimit(opts ...OptionMatchConnLimit) *IPTables {
@@ -256,8 +268,9 @@ func (iptables *IPTables) MatchConnLimit(opts ...OptionMatchConnLimit) *IPTables
 		iptables.statement.err = err
 		return iptables
 	}
-	iptables.statement.addMatch(mConnLimit)
-	return iptables
+	newiptables := iptables.dump()
+	newiptables.statement.addMatch(mConnLimit)
+	return newiptables
 }
 
 func (iptables *IPTables) MatchConnMark(invert bool, value ...int) *IPTables {
@@ -269,8 +282,9 @@ func (iptables *IPTables) MatchConnMark(invert bool, value ...int) *IPTables {
 		iptables.statement.err = err
 		return iptables
 	}
-	iptables.statement.addMatch(mConnMark)
-	return iptables
+	newiptables := iptables.dump()
+	newiptables.statement.addMatch(mConnMark)
+	return newiptables
 }
 
 func (iptables *IPTables) MatchConnTrack(opts ...OptionMatchConnTrack) *IPTables {
@@ -282,8 +296,9 @@ func (iptables *IPTables) MatchConnTrack(opts ...OptionMatchConnTrack) *IPTables
 		iptables.statement.err = err
 		return iptables
 	}
-	iptables.statement.addMatch(mConnTrack)
-	return iptables
+	newiptables := iptables.dump()
+	newiptables.statement.addMatch(mConnTrack)
+	return newiptables
 }
 
 func (iptables *IPTables) MatchCPU(invert bool, cpu int) *IPTables {
@@ -295,8 +310,9 @@ func (iptables *IPTables) MatchCPU(invert bool, cpu int) *IPTables {
 		iptables.statement.err = err
 		return iptables
 	}
-	iptables.statement.addMatch(mCPU)
-	return iptables
+	newiptables := iptables.dump()
+	newiptables.statement.addMatch(mCPU)
+	return newiptables
 }
 
 func (iptables *IPTables) MatchDCCP(opts ...OptionMatchDCCP) *IPTables {
@@ -308,8 +324,9 @@ func (iptables *IPTables) MatchDCCP(opts ...OptionMatchDCCP) *IPTables {
 		iptables.statement.err = err
 		return iptables
 	}
-	iptables.statement.addMatch(mDCCP)
-	return iptables
+	newiptables := iptables.dump()
+	newiptables.statement.addMatch(mDCCP)
+	return newiptables
 }
 
 func (iptables *IPTables) MatchDevGroup(opts ...OptionMatchDevGroup) *IPTables {
@@ -321,8 +338,9 @@ func (iptables *IPTables) MatchDevGroup(opts ...OptionMatchDevGroup) *IPTables {
 		iptables.statement.err = err
 		return iptables
 	}
-	iptables.statement.addMatch(mDevGroup)
-	return iptables
+	newiptables := iptables.dump()
+	newiptables.statement.addMatch(mDevGroup)
+	return newiptables
 }
 
 func (iptables *IPTables) MatchDSCP(opts ...OptionMatchDSCP) *IPTables {
@@ -334,8 +352,9 @@ func (iptables *IPTables) MatchDSCP(opts ...OptionMatchDSCP) *IPTables {
 		iptables.statement.err = err
 		return iptables
 	}
-	iptables.statement.addMatch(mDSCP)
-	return iptables
+	newiptables := iptables.dump()
+	newiptables.statement.addMatch(mDSCP)
+	return newiptables
 }
 
 func (iptables *IPTables) MatchDst(opts ...OptionMatchDst) *IPTables {
@@ -347,8 +366,9 @@ func (iptables *IPTables) MatchDst(opts ...OptionMatchDst) *IPTables {
 		iptables.statement.err = err
 		return iptables
 	}
-	iptables.statement.addMatch(mDst)
-	return iptables
+	newiptables := iptables.dump()
+	newiptables.statement.addMatch(mDst)
+	return newiptables
 }
 
 func (iptables *IPTables) MatchECN(opts ...OptionMatchECN) *IPTables {
@@ -360,8 +380,9 @@ func (iptables *IPTables) MatchECN(opts ...OptionMatchECN) *IPTables {
 		iptables.statement.err = err
 		return iptables
 	}
-	iptables.statement.addMatch(mECN)
-	return iptables
+	newiptables := iptables.dump()
+	newiptables.statement.addMatch(mECN)
+	return newiptables
 }
 
 func (iptables *IPTables) MatchESP(invert bool, spi ...int) *IPTables {
@@ -373,8 +394,9 @@ func (iptables *IPTables) MatchESP(invert bool, spi ...int) *IPTables {
 		iptables.statement.err = err
 		return iptables
 	}
-	iptables.statement.addMatch(mESP)
-	return iptables
+	newiptables := iptables.dump()
+	newiptables.statement.addMatch(mESP)
+	return newiptables
 }
 
 func (iptables *IPTables) MatchEUI64() *IPTables {
@@ -386,8 +408,9 @@ func (iptables *IPTables) MatchEUI64() *IPTables {
 		iptables.statement.err = err
 		return iptables
 	}
-	iptables.statement.addMatch(mEUI64)
-	return iptables
+	newiptables := iptables.dump()
+	newiptables.statement.addMatch(mEUI64)
+	return newiptables
 }
 
 func (iptables *IPTables) MatchFrag(opts ...OptionMatchFrag) *IPTables {
@@ -399,8 +422,9 @@ func (iptables *IPTables) MatchFrag(opts ...OptionMatchFrag) *IPTables {
 		iptables.statement.err = err
 		return iptables
 	}
-	iptables.statement.addMatch(mFrag)
-	return iptables
+	newiptables := iptables.dump()
+	newiptables.statement.addMatch(mFrag)
+	return newiptables
 }
 
 func (iptables *IPTables) MatchHBH(opts ...OptionMatchHBH) *IPTables {
@@ -412,8 +436,9 @@ func (iptables *IPTables) MatchHBH(opts ...OptionMatchHBH) *IPTables {
 		iptables.statement.err = err
 		return iptables
 	}
-	iptables.statement.addMatch(mHBH)
-	return iptables
+	newiptables := iptables.dump()
+	newiptables.statement.addMatch(mHBH)
+	return newiptables
 }
 
 func (iptables *IPTables) MatchHelper(helper string) *IPTables {
@@ -425,8 +450,9 @@ func (iptables *IPTables) MatchHelper(helper string) *IPTables {
 		iptables.statement.err = err
 		return iptables
 	}
-	iptables.statement.addMatch(mHelper)
-	return iptables
+	newiptables := iptables.dump()
+	newiptables.statement.addMatch(mHelper)
+	return newiptables
 }
 
 func (iptables *IPTables) MatchHL(operator xtables.Operator, value int) *IPTables {
@@ -438,8 +464,9 @@ func (iptables *IPTables) MatchHL(operator xtables.Operator, value int) *IPTable
 		iptables.statement.err = err
 		return iptables
 	}
-	iptables.statement.addMatch(mHL)
-	return iptables
+	newiptables := iptables.dump()
+	newiptables.statement.addMatch(mHL)
+	return newiptables
 }
 
 func (iptables *IPTables) MatchICMP(invert bool, typ network.ICMPType,
@@ -452,8 +479,9 @@ func (iptables *IPTables) MatchICMP(invert bool, typ network.ICMPType,
 		iptables.statement.err = err
 		return iptables
 	}
-	iptables.statement.addMatch(mICMP)
-	return iptables
+	newiptables := iptables.dump()
+	newiptables.statement.addMatch(mICMP)
+	return newiptables
 }
 
 func (iptables *IPTables) MatchIPRange(opts ...OptionMatchIPRange) *IPTables {
@@ -465,8 +493,9 @@ func (iptables *IPTables) MatchIPRange(opts ...OptionMatchIPRange) *IPTables {
 		iptables.statement.err = err
 		return iptables
 	}
-	iptables.statement.addMatch(mIPRange)
-	return iptables
+	newiptables := iptables.dump()
+	newiptables.statement.addMatch(mIPRange)
+	return newiptables
 }
 
 func (iptables *IPTables) MatchIPv6Header(opts ...OptionMatchIPv6Header) *IPTables {
@@ -478,8 +507,9 @@ func (iptables *IPTables) MatchIPv6Header(opts ...OptionMatchIPv6Header) *IPTabl
 		iptables.statement.err = err
 		return iptables
 	}
-	iptables.statement.addMatch(mIPv6Header)
-	return iptables
+	newiptables := iptables.dump()
+	newiptables.statement.addMatch(mIPv6Header)
+	return newiptables
 }
 
 func (iptables *IPTables) MatchIPVS(opts ...OptionMatchIPVS) *IPTables {
@@ -491,8 +521,9 @@ func (iptables *IPTables) MatchIPVS(opts ...OptionMatchIPVS) *IPTables {
 		iptables.statement.err = err
 		return iptables
 	}
-	iptables.statement.addMatch(mIPVS)
-	return iptables
+	newiptables := iptables.dump()
+	newiptables.statement.addMatch(mIPVS)
+	return newiptables
 }
 
 func (iptables *IPTables) MatchLength(invert bool, length ...int) *IPTables {
@@ -504,8 +535,9 @@ func (iptables *IPTables) MatchLength(invert bool, length ...int) *IPTables {
 		iptables.statement.err = err
 		return iptables
 	}
-	iptables.statement.addMatch(mLength)
-	return iptables
+	newiptables := iptables.dump()
+	newiptables.statement.addMatch(mLength)
+	return newiptables
 }
 
 func (iptables *IPTables) MatchLimit(opts ...OptionMatchLimit) *IPTables {
@@ -517,8 +549,9 @@ func (iptables *IPTables) MatchLimit(opts ...OptionMatchLimit) *IPTables {
 		iptables.statement.err = err
 		return iptables
 	}
-	iptables.statement.addMatch(mLimit)
-	return iptables
+	newiptables := iptables.dump()
+	newiptables.statement.addMatch(mLimit)
+	return newiptables
 }
 
 func (iptables *IPTables) MatchMAC(invert bool, mac net.HardwareAddr) *IPTables {
@@ -530,8 +563,9 @@ func (iptables *IPTables) MatchMAC(invert bool, mac net.HardwareAddr) *IPTables 
 		iptables.statement.err = err
 		return iptables
 	}
-	iptables.statement.addMatch(mMAC)
-	return iptables
+	newiptables := iptables.dump()
+	newiptables.statement.addMatch(mMAC)
+	return newiptables
 }
 
 func (iptables *IPTables) MatchMark(invert bool, value ...int) *IPTables {
@@ -543,8 +577,9 @@ func (iptables *IPTables) MatchMark(invert bool, value ...int) *IPTables {
 		iptables.statement.err = err
 		return iptables
 	}
-	iptables.statement.addMatch(mMark)
-	return iptables
+	newiptables := iptables.dump()
+	newiptables.statement.addMatch(mMark)
+	return newiptables
 }
 
 func (iptables *IPTables) MatchMH(invert bool, typ ...MHType) *IPTables {
@@ -556,8 +591,9 @@ func (iptables *IPTables) MatchMH(invert bool, typ ...MHType) *IPTables {
 		iptables.statement.err = err
 		return iptables
 	}
-	iptables.statement.addMatch(mMH)
-	return iptables
+	newiptables := iptables.dump()
+	newiptables.statement.addMatch(mMH)
+	return newiptables
 }
 
 func (iptables *IPTables) MatchMultiPort(opts ...OptionMatchMultiPort) *IPTables {
@@ -569,8 +605,9 @@ func (iptables *IPTables) MatchMultiPort(opts ...OptionMatchMultiPort) *IPTables
 		iptables.statement.err = err
 		return iptables
 	}
-	iptables.statement.addMatch(mMultiPort)
-	return iptables
+	newiptables := iptables.dump()
+	newiptables.statement.addMatch(mMultiPort)
+	return newiptables
 }
 
 func (iptables *IPTables) MatchNFAcct(name string) *IPTables {
@@ -582,8 +619,9 @@ func (iptables *IPTables) MatchNFAcct(name string) *IPTables {
 		iptables.statement.err = err
 		return iptables
 	}
-	iptables.statement.addMatch(mNFAcct)
-	return iptables
+	newiptables := iptables.dump()
+	newiptables.statement.addMatch(mNFAcct)
+	return newiptables
 }
 
 func (iptables *IPTables) MatchOSF(opts ...OptionMatchOSF) *IPTables {
@@ -595,8 +633,9 @@ func (iptables *IPTables) MatchOSF(opts ...OptionMatchOSF) *IPTables {
 		iptables.statement.err = err
 		return iptables
 	}
-	iptables.statement.addMatch(mOSF)
-	return iptables
+	newiptables := iptables.dump()
+	newiptables.statement.addMatch(mOSF)
+	return newiptables
 }
 
 func (iptables *IPTables) MatchOwner(opts ...OptionMatchOwner) *IPTables {
@@ -608,8 +647,9 @@ func (iptables *IPTables) MatchOwner(opts ...OptionMatchOwner) *IPTables {
 		iptables.statement.err = err
 		return iptables
 	}
-	iptables.statement.addMatch(mOwner)
-	return iptables
+	newiptables := iptables.dump()
+	newiptables.statement.addMatch(mOwner)
+	return newiptables
 }
 
 func (iptables *IPTables) MatchPhysDev(opts ...OptionMatchPhysDev) *IPTables {
@@ -621,8 +661,9 @@ func (iptables *IPTables) MatchPhysDev(opts ...OptionMatchPhysDev) *IPTables {
 		iptables.statement.err = err
 		return iptables
 	}
-	iptables.statement.addMatch(mPhysDev)
-	return iptables
+	newiptables := iptables.dump()
+	newiptables.statement.addMatch(mPhysDev)
+	return newiptables
 }
 
 func (iptables *IPTables) MatchPktType(invert bool, pktType PktType) *IPTables {
@@ -634,8 +675,9 @@ func (iptables *IPTables) MatchPktType(invert bool, pktType PktType) *IPTables {
 		iptables.statement.err = err
 		return iptables
 	}
-	iptables.statement.addMatch(mPktType)
-	return iptables
+	newiptables := iptables.dump()
+	newiptables.statement.addMatch(mPktType)
+	return newiptables
 }
 
 func (iptables *IPTables) MatchPolicy(opts ...OptionMatchPolicy) *IPTables {
@@ -647,8 +689,9 @@ func (iptables *IPTables) MatchPolicy(opts ...OptionMatchPolicy) *IPTables {
 		iptables.statement.err = err
 		return iptables
 	}
-	iptables.statement.addMatch(mPolicy)
-	return iptables
+	newiptables := iptables.dump()
+	newiptables.statement.addMatch(mPolicy)
+	return newiptables
 }
 
 func (iptables *IPTables) MatchQuota(invert bool, quota int64) *IPTables {
@@ -660,8 +703,9 @@ func (iptables *IPTables) MatchQuota(invert bool, quota int64) *IPTables {
 		iptables.statement.err = err
 		return iptables
 	}
-	iptables.statement.addMatch(mQuota)
-	return iptables
+	newiptables := iptables.dump()
+	newiptables.statement.addMatch(mQuota)
+	return newiptables
 }
 
 func (iptables *IPTables) MatchRateEst(opts ...OptionMatchRateEst) *IPTables {
@@ -673,8 +717,9 @@ func (iptables *IPTables) MatchRateEst(opts ...OptionMatchRateEst) *IPTables {
 		iptables.statement.err = err
 		return iptables
 	}
-	iptables.statement.addMatch(mRateEst)
-	return iptables
+	newiptables := iptables.dump()
+	newiptables.statement.addMatch(mRateEst)
+	return newiptables
 }
 
 func (iptables *IPTables) MatchRealm(invert bool, value ...int) *IPTables {
@@ -686,8 +731,9 @@ func (iptables *IPTables) MatchRealm(invert bool, value ...int) *IPTables {
 		iptables.statement.err = err
 		return iptables
 	}
-	iptables.statement.addMatch(mRealm)
-	return iptables
+	newiptables := iptables.dump()
+	newiptables.statement.addMatch(mRealm)
+	return newiptables
 }
 
 func (iptables *IPTables) MatchRecent(opts ...OptionMatchRecent) *IPTables {
@@ -699,8 +745,9 @@ func (iptables *IPTables) MatchRecent(opts ...OptionMatchRecent) *IPTables {
 		iptables.statement.err = err
 		return iptables
 	}
-	iptables.statement.addMatch(mRecent)
-	return iptables
+	newiptables := iptables.dump()
+	newiptables.statement.addMatch(mRecent)
+	return newiptables
 }
 
 func (iptables *IPTables) MatchRPFilter(opts ...OptionMatchRPFilter) *IPTables {
@@ -712,8 +759,9 @@ func (iptables *IPTables) MatchRPFilter(opts ...OptionMatchRPFilter) *IPTables {
 		iptables.statement.err = err
 		return iptables
 	}
-	iptables.statement.addMatch(mRPFilter)
-	return iptables
+	newiptables := iptables.dump()
+	newiptables.statement.addMatch(mRPFilter)
+	return newiptables
 }
 
 func (iptables *IPTables) MatchRT(opts ...OptionMatchRT) *IPTables {
@@ -725,8 +773,9 @@ func (iptables *IPTables) MatchRT(opts ...OptionMatchRT) *IPTables {
 		iptables.statement.err = err
 		return iptables
 	}
-	iptables.statement.addMatch(mRT)
-	return iptables
+	newiptables := iptables.dump()
+	newiptables.statement.addMatch(mRT)
+	return newiptables
 }
 
 func (iptables *IPTables) MatchSCTP(opts ...OptionMatchSCTP) *IPTables {
@@ -738,8 +787,9 @@ func (iptables *IPTables) MatchSCTP(opts ...OptionMatchSCTP) *IPTables {
 		iptables.statement.err = err
 		return iptables
 	}
-	iptables.statement.addMatch(mSCTP)
-	return iptables
+	newiptables := iptables.dump()
+	newiptables.statement.addMatch(mSCTP)
+	return newiptables
 }
 
 func (iptables *IPTables) MatchSet(opts ...OptionMatchSet) *IPTables {
@@ -751,8 +801,9 @@ func (iptables *IPTables) MatchSet(opts ...OptionMatchSet) *IPTables {
 		iptables.statement.err = err
 		return iptables
 	}
-	iptables.statement.addMatch(mSet)
-	return iptables
+	newiptables := iptables.dump()
+	newiptables.statement.addMatch(mSet)
+	return newiptables
 }
 
 func (iptables *IPTables) MatchSocket(opts ...OptionMatchSocket) *IPTables {
@@ -764,8 +815,9 @@ func (iptables *IPTables) MatchSocket(opts ...OptionMatchSocket) *IPTables {
 		iptables.statement.err = err
 		return iptables
 	}
-	iptables.statement.addMatch(mSocket)
-	return iptables
+	newiptables := iptables.dump()
+	newiptables.statement.addMatch(mSocket)
+	return newiptables
 }
 
 func (iptables *IPTables) MatchState(state ConnTrackState) *IPTables {
@@ -777,8 +829,9 @@ func (iptables *IPTables) MatchState(state ConnTrackState) *IPTables {
 		iptables.statement.err = err
 		return iptables
 	}
-	iptables.statement.addMatch(mState)
-	return iptables
+	newiptables := iptables.dump()
+	newiptables.statement.addMatch(mState)
+	return newiptables
 }
 
 func (iptables *IPTables) MatchStatistic(opts ...OptionMatchStatistic) *IPTables {
@@ -790,8 +843,9 @@ func (iptables *IPTables) MatchStatistic(opts ...OptionMatchStatistic) *IPTables
 		iptables.statement.err = err
 		return iptables
 	}
-	iptables.statement.addMatch(mStatistic)
-	return iptables
+	newiptables := iptables.dump()
+	newiptables.statement.addMatch(mStatistic)
+	return newiptables
 }
 
 func (iptables *IPTables) MatchString(opts ...OptionMatchString) *IPTables {
@@ -803,8 +857,9 @@ func (iptables *IPTables) MatchString(opts ...OptionMatchString) *IPTables {
 		iptables.statement.err = err
 		return iptables
 	}
-	iptables.statement.addMatch(mString)
-	return iptables
+	newiptables := iptables.dump()
+	newiptables.statement.addMatch(mString)
+	return newiptables
 }
 
 func (iptables *IPTables) MatchTCP(opts ...OptionMatchTCP) *IPTables {
@@ -816,8 +871,9 @@ func (iptables *IPTables) MatchTCP(opts ...OptionMatchTCP) *IPTables {
 		iptables.statement.err = err
 		return iptables
 	}
-	iptables.statement.addMatch(mTCP)
-	return iptables
+	newiptables := iptables.dump()
+	newiptables.statement.addMatch(mTCP)
+	return newiptables
 }
 
 func (iptables *IPTables) MatchTCPMSS(invert bool, mss ...int) *IPTables {
@@ -829,8 +885,9 @@ func (iptables *IPTables) MatchTCPMSS(invert bool, mss ...int) *IPTables {
 		iptables.statement.err = err
 		return iptables
 	}
-	iptables.statement.addMatch(mTCPMSS)
-	return iptables
+	newiptables := iptables.dump()
+	newiptables.statement.addMatch(mTCPMSS)
+	return newiptables
 }
 
 func (iptables *IPTables) MatchTime(opts ...OptionMatchTime) *IPTables {
@@ -842,8 +899,9 @@ func (iptables *IPTables) MatchTime(opts ...OptionMatchTime) *IPTables {
 		iptables.statement.err = err
 		return iptables
 	}
-	iptables.statement.addMatch(mTime)
-	return iptables
+	newiptables := iptables.dump()
+	newiptables.statement.addMatch(mTime)
+	return newiptables
 }
 
 func (iptables *IPTables) MatchTOS(invert bool, tos ...network.TOS) *IPTables {
@@ -855,8 +913,9 @@ func (iptables *IPTables) MatchTOS(invert bool, tos ...network.TOS) *IPTables {
 		iptables.statement.err = err
 		return iptables
 	}
-	iptables.statement.addMatch(mTOS)
-	return iptables
+	newiptables := iptables.dump()
+	newiptables.statement.addMatch(mTOS)
+	return newiptables
 }
 
 func (iptables *IPTables) MatchTTL(opts ...OptionMatchTTL) *IPTables {
@@ -868,8 +927,9 @@ func (iptables *IPTables) MatchTTL(opts ...OptionMatchTTL) *IPTables {
 		iptables.statement.err = err
 		return iptables
 	}
-	iptables.statement.addMatch(mTTL)
-	return iptables
+	newiptables := iptables.dump()
+	newiptables.statement.addMatch(mTTL)
+	return newiptables
 }
 
 func (iptables *IPTables) MatchU32(invert bool, tests string) *IPTables {
@@ -881,8 +941,9 @@ func (iptables *IPTables) MatchU32(invert bool, tests string) *IPTables {
 		iptables.statement.err = err
 		return iptables
 	}
-	iptables.statement.addMatch(mU32)
-	return iptables
+	newiptables := iptables.dump()
+	newiptables.statement.addMatch(mU32)
+	return newiptables
 }
 
 func (iptables *IPTables) MatchUDP(opts ...OptionMatchUDP) *IPTables {
@@ -894,8 +955,9 @@ func (iptables *IPTables) MatchUDP(opts ...OptionMatchUDP) *IPTables {
 		iptables.statement.err = err
 		return iptables
 	}
-	iptables.statement.addMatch(mUDP)
-	return iptables
+	newiptables := iptables.dump()
+	newiptables.statement.addMatch(mUDP)
+	return newiptables
 }
 
 // iptables options
@@ -908,8 +970,9 @@ func (iptables *IPTables) OptionFragment(invert bool) *IPTables {
 		iptables.statement.err = err
 		return iptables
 	}
-	iptables.statement.addOption(option)
-	return iptables
+	newiptables := iptables.dump()
+	newiptables.statement.addOption(option)
+	return newiptables
 }
 
 func (iptables *IPTables) OptionSetCounters(packets, bytes uint64) *IPTables {
@@ -921,8 +984,9 @@ func (iptables *IPTables) OptionSetCounters(packets, bytes uint64) *IPTables {
 		iptables.statement.err = err
 		return iptables
 	}
-	iptables.statement.addOption(option)
-	return iptables
+	newiptables := iptables.dump()
+	newiptables.statement.addOption(option)
+	return newiptables
 }
 
 func (iptables *IPTables) OptionVerbose() *IPTables {
@@ -934,8 +998,9 @@ func (iptables *IPTables) OptionVerbose() *IPTables {
 		iptables.statement.err = err
 		return iptables
 	}
-	iptables.statement.addOption(option)
-	return iptables
+	newiptables := iptables.dump()
+	newiptables.statement.addOption(option)
+	return newiptables
 }
 
 // 0 means indefinitely
@@ -948,8 +1013,9 @@ func (iptables *IPTables) OptionWait(seconds uint32) *IPTables {
 		iptables.statement.err = err
 		return iptables
 	}
-	iptables.statement.addOption(option)
-	return iptables
+	newiptables := iptables.dump()
+	newiptables.statement.addOption(option)
+	return newiptables
 }
 
 func (iptables *IPTables) OptionWaitInterval(microseconds uint64) *IPTables {
@@ -961,8 +1027,9 @@ func (iptables *IPTables) OptionWaitInterval(microseconds uint64) *IPTables {
 		iptables.statement.err = err
 		return iptables
 	}
-	iptables.statement.addOption(option)
-	return iptables
+	newiptables := iptables.dump()
+	newiptables.statement.addOption(option)
+	return newiptables
 }
 
 func (iptables *IPTables) OptionExact() *IPTables {
@@ -974,8 +1041,9 @@ func (iptables *IPTables) OptionExact() *IPTables {
 		iptables.statement.err = err
 		return iptables
 	}
-	iptables.statement.addOption(option)
-	return iptables
+	newiptables := iptables.dump()
+	newiptables.statement.addOption(option)
+	return newiptables
 }
 
 func (iptables *IPTables) OptionLineNumbers() *IPTables {
@@ -987,8 +1055,9 @@ func (iptables *IPTables) OptionLineNumbers() *IPTables {
 		iptables.statement.err = err
 		return iptables
 	}
-	iptables.statement.addOption(option)
-	return iptables
+	newiptables := iptables.dump()
+	newiptables.statement.addOption(option)
+	return newiptables
 }
 
 func (iptables *IPTables) OptionModprobe(command string) *IPTables {
@@ -1000,8 +1069,9 @@ func (iptables *IPTables) OptionModprobe(command string) *IPTables {
 		iptables.statement.err = err
 		return iptables
 	}
-	iptables.statement.addOption(option)
-	return iptables
+	newiptables := iptables.dump()
+	newiptables.statement.addOption(option)
+	return newiptables
 }
 
 // targets
@@ -1009,46 +1079,51 @@ func (iptables *IPTables) TargetAccept() *IPTables {
 	if iptables.statement.err != nil {
 		return iptables
 	}
+	newiptables := iptables.dump()
 	target := newTargetAccept()
-	iptables.statement.target = target
-	return iptables
+	newiptables.statement.target = target
+	return newiptables
 }
 
 func (iptables *IPTables) TargetDrop() *IPTables {
 	if iptables.statement.err != nil {
 		return iptables
 	}
+	newiptables := iptables.dump()
 	target := newTargetDrop()
-	iptables.statement.target = target
-	return iptables
+	newiptables.statement.target = target
+	return newiptables
 }
 
 func (iptables *IPTables) TargetReturn() *IPTables {
 	if iptables.statement.err != nil {
 		return iptables
 	}
+	newiptables := iptables.dump()
 	target := newTargetAccept()
-	iptables.statement.target = target
-	return iptables
+	newiptables.statement.target = target
+	return newiptables
 }
 
 func (iptables *IPTables) TargetJumpChain(chain string) *IPTables {
 	if iptables.statement.err != nil {
 		return iptables
 	}
+	newiptables := iptables.dump()
 	target := newTargetJumpChain(chain)
-	iptables.statement.target = target
-	return iptables
+	newiptables.statement.target = target
+	return newiptables
 }
 
 func (iptables *IPTables) TargetGotoChain(chain string) *IPTables {
 	if iptables.statement.err != nil {
 		return iptables
 	}
+	newiptables := iptables.dump()
 	target := newTargetGotoChain(chain)
-	iptables.statement.chain = ChainTypeUserDefined
-	iptables.statement.target = target
-	return iptables
+	newiptables.statement.chain = ChainTypeUserDefined
+	newiptables.statement.target = target
+	return newiptables
 }
 
 func (iptables *IPTables) TargetAudit(typ AuditType) *IPTables {
@@ -1060,8 +1135,9 @@ func (iptables *IPTables) TargetAudit(typ AuditType) *IPTables {
 		iptables.statement.err = err
 		return iptables
 	}
-	iptables.statement.target = target
-	return iptables
+	newiptables := iptables.dump()
+	newiptables.statement.target = target
+	return newiptables
 }
 
 func (iptables *IPTables) TargetCheckSum() *IPTables {
@@ -1073,8 +1149,9 @@ func (iptables *IPTables) TargetCheckSum() *IPTables {
 		iptables.statement.err = err
 		return iptables
 	}
-	iptables.statement.target = target
-	return iptables
+	newiptables := iptables.dump()
+	newiptables.statement.target = target
+	return newiptables
 }
 
 func (iptables *IPTables) TargetClassify(major, minor int) *IPTables {
@@ -1086,8 +1163,9 @@ func (iptables *IPTables) TargetClassify(major, minor int) *IPTables {
 		iptables.statement.err = err
 		return iptables
 	}
-	iptables.statement.target = target
-	return iptables
+	newiptables := iptables.dump()
+	newiptables.statement.target = target
+	return newiptables
 }
 
 func (iptables *IPTables) TargetClusterIP(opts ...OptionTargetClusterIP) *IPTables {
@@ -1099,8 +1177,9 @@ func (iptables *IPTables) TargetClusterIP(opts ...OptionTargetClusterIP) *IPTabl
 		iptables.statement.err = err
 		return iptables
 	}
-	iptables.statement.target = target
-	return iptables
+	newiptables := iptables.dump()
+	newiptables.statement.target = target
+	return newiptables
 }
 
 func (iptables *IPTables) TargetConnMark(opts ...OptionTargetConnMark) *IPTables {
@@ -1112,8 +1191,9 @@ func (iptables *IPTables) TargetConnMark(opts ...OptionTargetConnMark) *IPTables
 		iptables.statement.err = err
 		return iptables
 	}
-	iptables.statement.target = target
-	return iptables
+	newiptables := iptables.dump()
+	newiptables.statement.target = target
+	return newiptables
 }
 
 func (iptables *IPTables) TargetConnSecMark(mode TargetConnSecMarkMode) *IPTables {
@@ -1125,8 +1205,9 @@ func (iptables *IPTables) TargetConnSecMark(mode TargetConnSecMarkMode) *IPTable
 		iptables.statement.err = err
 		return iptables
 	}
-	iptables.statement.target = target
-	return iptables
+	newiptables := iptables.dump()
+	newiptables.statement.target = target
+	return newiptables
 }
 
 func (iptables *IPTables) TargetCT(opts ...OptionTargetCT) *IPTables {
@@ -1138,8 +1219,9 @@ func (iptables *IPTables) TargetCT(opts ...OptionTargetCT) *IPTables {
 		iptables.statement.err = err
 		return iptables
 	}
-	iptables.statement.target = target
-	return iptables
+	newiptables := iptables.dump()
+	newiptables.statement.target = target
+	return newiptables
 }
 
 func (iptables *IPTables) TargetDNAT(opts ...OptionTargetDNAT) *IPTables {
@@ -1151,8 +1233,9 @@ func (iptables *IPTables) TargetDNAT(opts ...OptionTargetDNAT) *IPTables {
 		iptables.statement.err = err
 		return iptables
 	}
-	iptables.statement.target = target
-	return iptables
+	newiptables := iptables.dump()
+	newiptables.statement.target = target
+	return newiptables
 }
 
 func (iptables *IPTables) TargetDNPT(opts ...OptionTargetDNPT) *IPTables {
@@ -1164,8 +1247,9 @@ func (iptables *IPTables) TargetDNPT(opts ...OptionTargetDNPT) *IPTables {
 		iptables.statement.err = err
 		return iptables
 	}
-	iptables.statement.target = target
-	return iptables
+	newiptables := iptables.dump()
+	newiptables.statement.target = target
+	return newiptables
 }
 
 func (iptables *IPTables) TargetDSCP(opts ...OptionTargetDSCP) *IPTables {
@@ -1177,8 +1261,9 @@ func (iptables *IPTables) TargetDSCP(opts ...OptionTargetDSCP) *IPTables {
 		iptables.statement.err = err
 		return iptables
 	}
-	iptables.statement.target = target
-	return iptables
+	newiptables := iptables.dump()
+	newiptables.statement.target = target
+	return newiptables
 }
 
 func (iptables *IPTables) TargetECN(opts ...OptionTargetECN) *IPTables {
@@ -1190,8 +1275,9 @@ func (iptables *IPTables) TargetECN(opts ...OptionTargetECN) *IPTables {
 		iptables.statement.err = err
 		return iptables
 	}
-	iptables.statement.target = target
-	return iptables
+	newiptables := iptables.dump()
+	newiptables.statement.target = target
+	return newiptables
 }
 
 func (iptables *IPTables) TargetHL(opts ...OptionTargetHL) *IPTables {
@@ -1203,8 +1289,9 @@ func (iptables *IPTables) TargetHL(opts ...OptionTargetHL) *IPTables {
 		iptables.statement.err = err
 		return iptables
 	}
-	iptables.statement.target = target
-	return iptables
+	newiptables := iptables.dump()
+	newiptables.statement.target = target
+	return newiptables
 }
 
 func (iptables *IPTables) TargetHMark(opts ...OptionTargetHMark) *IPTables {
@@ -1216,8 +1303,9 @@ func (iptables *IPTables) TargetHMark(opts ...OptionTargetHMark) *IPTables {
 		iptables.statement.err = err
 		return iptables
 	}
-	iptables.statement.target = target
-	return iptables
+	newiptables := iptables.dump()
+	newiptables.statement.target = target
+	return newiptables
 }
 
 func (iptables *IPTables) TargetIdleTimer(opts ...OptionTargetIdleTimer) *IPTables {
@@ -1229,8 +1317,9 @@ func (iptables *IPTables) TargetIdleTimer(opts ...OptionTargetIdleTimer) *IPTabl
 		iptables.statement.err = err
 		return iptables
 	}
-	iptables.statement.target = target
-	return iptables
+	newiptables := iptables.dump()
+	newiptables.statement.target = target
+	return newiptables
 }
 
 func (iptables *IPTables) TargetLED(opts ...OptionTargetLED) *IPTables {
@@ -1242,8 +1331,9 @@ func (iptables *IPTables) TargetLED(opts ...OptionTargetLED) *IPTables {
 		iptables.statement.err = err
 		return iptables
 	}
-	iptables.statement.target = target
-	return iptables
+	newiptables := iptables.dump()
+	newiptables.statement.target = target
+	return newiptables
 }
 
 func (iptables *IPTables) TargetLog(opts ...OptionTargetLog) *IPTables {
@@ -1255,8 +1345,9 @@ func (iptables *IPTables) TargetLog(opts ...OptionTargetLog) *IPTables {
 		iptables.statement.err = err
 		return iptables
 	}
-	iptables.statement.target = target
-	return iptables
+	newiptables := iptables.dump()
+	newiptables.statement.target = target
+	return newiptables
 }
 
 func (iptables *IPTables) TargetMark(opts ...OptionTargetMark) *IPTables {
@@ -1268,8 +1359,9 @@ func (iptables *IPTables) TargetMark(opts ...OptionTargetMark) *IPTables {
 		iptables.statement.err = err
 		return iptables
 	}
-	iptables.statement.target = target
-	return iptables
+	newiptables := iptables.dump()
+	newiptables.statement.target = target
+	return newiptables
 }
 
 func (iptables *IPTables) TargetMasquerade(opts ...OptionTargetMasquerade) *IPTables {
@@ -1281,8 +1373,9 @@ func (iptables *IPTables) TargetMasquerade(opts ...OptionTargetMasquerade) *IPTa
 		iptables.statement.err = err
 		return iptables
 	}
-	iptables.statement.target = target
-	return iptables
+	newiptables := iptables.dump()
+	newiptables.statement.target = target
+	return newiptables
 }
 
 func (iptables *IPTables) TargetNetMap(opts ...OptionTargetNetmap) *IPTables {
@@ -1294,8 +1387,9 @@ func (iptables *IPTables) TargetNetMap(opts ...OptionTargetNetmap) *IPTables {
 		iptables.statement.err = err
 		return iptables
 	}
-	iptables.statement.target = target
-	return iptables
+	newiptables := iptables.dump()
+	newiptables.statement.target = target
+	return newiptables
 }
 
 func (iptables *IPTables) TargetNFLog(opts ...OptionTargetNFLog) *IPTables {
@@ -1307,8 +1401,9 @@ func (iptables *IPTables) TargetNFLog(opts ...OptionTargetNFLog) *IPTables {
 		iptables.statement.err = err
 		return iptables
 	}
-	iptables.statement.target = target
-	return iptables
+	newiptables := iptables.dump()
+	newiptables.statement.target = target
+	return newiptables
 }
 
 func (iptables *IPTables) TargetNFQueue(opts ...OptionTargetNFQueue) *IPTables {
@@ -1320,8 +1415,9 @@ func (iptables *IPTables) TargetNFQueue(opts ...OptionTargetNFQueue) *IPTables {
 		iptables.statement.err = err
 		return iptables
 	}
-	iptables.statement.target = target
-	return iptables
+	newiptables := iptables.dump()
+	newiptables.statement.target = target
+	return newiptables
 }
 
 func (iptables *IPTables) TargetRateEst(opts ...OptionTargetRateEst) *IPTables {
@@ -1333,8 +1429,9 @@ func (iptables *IPTables) TargetRateEst(opts ...OptionTargetRateEst) *IPTables {
 		iptables.statement.err = err
 		return iptables
 	}
-	iptables.statement.target = target
-	return iptables
+	newiptables := iptables.dump()
+	newiptables.statement.target = target
+	return newiptables
 }
 
 func (iptables *IPTables) TargetRedirect(opts ...OptionTargetRedirect) *IPTables {
@@ -1346,8 +1443,9 @@ func (iptables *IPTables) TargetRedirect(opts ...OptionTargetRedirect) *IPTables
 		iptables.statement.err = err
 		return iptables
 	}
-	iptables.statement.target = target
-	return iptables
+	newiptables := iptables.dump()
+	newiptables.statement.target = target
+	return newiptables
 }
 
 func (iptables *IPTables) TargetReject(opts ...OptionTargetReject) *IPTables {
@@ -1359,8 +1457,9 @@ func (iptables *IPTables) TargetReject(opts ...OptionTargetReject) *IPTables {
 		iptables.statement.err = err
 		return iptables
 	}
-	iptables.statement.target = target
-	return iptables
+	newiptables := iptables.dump()
+	newiptables.statement.target = target
+	return newiptables
 }
 
 func (iptables *IPTables) TargetSame(opts ...OptionTargetSame) *IPTables {
@@ -1372,8 +1471,9 @@ func (iptables *IPTables) TargetSame(opts ...OptionTargetSame) *IPTables {
 		iptables.statement.err = err
 		return iptables
 	}
-	iptables.statement.target = target
-	return iptables
+	newiptables := iptables.dump()
+	newiptables.statement.target = target
+	return newiptables
 }
 
 func (iptables *IPTables) TargetSecMark(opts ...OptionTargetSecMark) *IPTables {
@@ -1385,8 +1485,9 @@ func (iptables *IPTables) TargetSecMark(opts ...OptionTargetSecMark) *IPTables {
 		iptables.statement.err = err
 		return iptables
 	}
-	iptables.statement.target = target
-	return iptables
+	newiptables := iptables.dump()
+	newiptables.statement.target = target
+	return newiptables
 }
 
 func (iptables *IPTables) TargetSet(opts ...OptionTargetSet) *IPTables {
@@ -1398,8 +1499,9 @@ func (iptables *IPTables) TargetSet(opts ...OptionTargetSet) *IPTables {
 		iptables.statement.err = err
 		return iptables
 	}
-	iptables.statement.target = target
-	return iptables
+	newiptables := iptables.dump()
+	newiptables.statement.target = target
+	return newiptables
 }
 
 func (iptables *IPTables) TargetSNAT(opts ...OptionTargetSNAT) *IPTables {
@@ -1411,8 +1513,9 @@ func (iptables *IPTables) TargetSNAT(opts ...OptionTargetSNAT) *IPTables {
 		iptables.statement.err = err
 		return iptables
 	}
-	iptables.statement.target = target
-	return iptables
+	newiptables := iptables.dump()
+	newiptables.statement.target = target
+	return newiptables
 }
 
 func (iptables *IPTables) TargetSNPT(opts ...OptionTargetSNPT) *IPTables {
@@ -1424,8 +1527,9 @@ func (iptables *IPTables) TargetSNPT(opts ...OptionTargetSNPT) *IPTables {
 		iptables.statement.err = err
 		return iptables
 	}
-	iptables.statement.target = target
-	return iptables
+	newiptables := iptables.dump()
+	newiptables.statement.target = target
+	return newiptables
 }
 
 func (iptables *IPTables) TargetSynProxy(opts ...OptionTargetSYNProxy) *IPTables {
@@ -1437,8 +1541,9 @@ func (iptables *IPTables) TargetSynProxy(opts ...OptionTargetSYNProxy) *IPTables
 		iptables.statement.err = err
 		return iptables
 	}
-	iptables.statement.target = target
-	return iptables
+	newiptables := iptables.dump()
+	newiptables.statement.target = target
+	return newiptables
 }
 
 func (iptables *IPTables) TargetTCPMSS(opts ...OptionTargetTCPMSS) *IPTables {
@@ -1450,8 +1555,9 @@ func (iptables *IPTables) TargetTCPMSS(opts ...OptionTargetTCPMSS) *IPTables {
 		iptables.statement.err = err
 		return iptables
 	}
-	iptables.statement.target = target
-	return iptables
+	newiptables := iptables.dump()
+	newiptables.statement.target = target
+	return newiptables
 }
 
 func (iptables *IPTables) TargetTCPOptStrip(opts ...OptionTargetTCPOptStrip) *IPTables {
@@ -1463,8 +1569,9 @@ func (iptables *IPTables) TargetTCPOptStrip(opts ...OptionTargetTCPOptStrip) *IP
 		iptables.statement.err = err
 		return iptables
 	}
-	iptables.statement.target = target
-	return iptables
+	newiptables := iptables.dump()
+	newiptables.statement.target = target
+	return newiptables
 }
 
 func (iptables *IPTables) TargetTEE(gateway net.IP) *IPTables {
@@ -1476,8 +1583,9 @@ func (iptables *IPTables) TargetTEE(gateway net.IP) *IPTables {
 		iptables.statement.err = err
 		return iptables
 	}
-	iptables.statement.target = target
-	return iptables
+	newiptables := iptables.dump()
+	newiptables.statement.target = target
+	return newiptables
 }
 
 func (iptables *IPTables) TargetTOS(opts ...OptionTargetTOS) *IPTables {
@@ -1489,8 +1597,9 @@ func (iptables *IPTables) TargetTOS(opts ...OptionTargetTOS) *IPTables {
 		iptables.statement.err = err
 		return iptables
 	}
-	iptables.statement.target = target
-	return iptables
+	newiptables := iptables.dump()
+	newiptables.statement.target = target
+	return newiptables
 }
 
 func (iptables *IPTables) TargetTProxy(opts ...OptionTargetTProxy) *IPTables {
@@ -1502,8 +1611,9 @@ func (iptables *IPTables) TargetTProxy(opts ...OptionTargetTProxy) *IPTables {
 		iptables.statement.err = err
 		return iptables
 	}
-	iptables.statement.target = target
-	return iptables
+	newiptables := iptables.dump()
+	newiptables.statement.target = target
+	return newiptables
 }
 
 func (iptables *IPTables) TargetTrace() *IPTables {
@@ -1515,8 +1625,9 @@ func (iptables *IPTables) TargetTrace() *IPTables {
 		iptables.statement.err = err
 		return iptables
 	}
-	iptables.statement.target = target
-	return iptables
+	newiptables := iptables.dump()
+	newiptables.statement.target = target
+	return newiptables
 }
 
 func (iptables *IPTables) TargetTTL(opts ...OptionTargetTTL) *IPTables {
@@ -1528,8 +1639,9 @@ func (iptables *IPTables) TargetTTL(opts ...OptionTargetTTL) *IPTables {
 		iptables.statement.err = err
 		return iptables
 	}
-	iptables.statement.target = target
-	return iptables
+	newiptables := iptables.dump()
+	newiptables.statement.target = target
+	return newiptables
 }
 
 func (iptables *IPTables) TargetULog(opts ...OptionTargetULog) *IPTables {
@@ -1541,6 +1653,7 @@ func (iptables *IPTables) TargetULog(opts ...OptionTargetULog) *IPTables {
 		iptables.statement.err = err
 		return iptables
 	}
-	iptables.statement.target = target
-	return iptables
+	newiptables := iptables.dump()
+	newiptables.statement.target = target
+	return newiptables
 }

@@ -54,12 +54,12 @@ func TestParseChain(t *testing.T) {
 	for scanner.Scan() {
 		line := scanner.Bytes()
 		if bytes.HasPrefix(line, []byte("Chain")) {
-			chain, err := ParseChain(line)
+			chain, err := parseChain(line)
 			if err != nil {
 				t.Error(err)
 				return
 			}
-			t.Log(chain.chainType, chain.userDefined, chain.name,
+			t.Log(chain.chainType.chainType, chain.chainType.name,
 				chain.references, chain.policy, chain.packets, chain.bytes)
 		}
 	}

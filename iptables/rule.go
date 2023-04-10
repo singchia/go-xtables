@@ -1,6 +1,8 @@
 package iptables
 
-import "github.com/singchia/go-xtables/pkg/network"
+import (
+	"fmt"
+)
 
 type Rule struct {
 	tableType TableType
@@ -23,7 +25,6 @@ type Rule struct {
 
 	packets int64
 	bytes   int64
-	prot    network.Protocol
 	opt     string
 }
 
@@ -31,6 +32,8 @@ func (rule *Rule) HasAllOptions(options map[OptionType]Option) bool {
 OUTER:
 	for _, opt := range options {
 		for _, v := range rule.optionMap {
+			fmt.Println(opt.Short(), v.Short())
+
 			ok := opt.Equal(v)
 			if ok {
 				continue OUTER
@@ -84,8 +87,4 @@ func (rule *Rule) Matches() []Match {
 
 func (rule *Rule) Options() []Option {
 	return rule.options
-}
-
-func (rule *Rule) Protocol() network.Protocol {
-	return rule.prot
 }

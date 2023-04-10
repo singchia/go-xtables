@@ -56,47 +56,102 @@ func initIPTables(t *testing.T) {
 	assert.Equal(t, nil, err)
 }
 
+func TestFlush(t *testing.T) {
+	set()
+	defer unset()
+
+	err := NewIPTables().Flush()
+	assert.Equal(t, nil, err)
+}
+
+func TestNewChain(t *testing.T) {
+	set()
+	defer unset()
+
+	iptables := NewIPTables().Table(TableTypeFilter)
+
+	chainName := "AustinZhai"
+	err := iptables.NewChain(chainName)
+	assert.Equal(t, nil, err)
+
+	userDefined := ChainTypeUserDefined
+	userDefined.name = chainName
+	chains, err := iptables.Chain(userDefined).FindChains()
+	assert.Equal(t, nil, err)
+	assert.Equal(t, 1, len(chains))
+}
+
+func TestDeleteChain(t *testing.T) {
+	set()
+	defer unset()
+
+	iptables := NewIPTables().Table(TableTypeFilter)
+
+	chainName := "AustinZhai2"
+	err := iptables.NewChain(chainName)
+	assert.Equal(t, nil, err)
+
+	userDefined := ChainTypeUserDefined
+	userDefined.name = chainName
+	err = iptables.Chain(userDefined).DeleteChain()
+	assert.Equal(t, nil, err)
+
+	chains, err := iptables.Chain(userDefined).FindChains()
+	assert.Equal(t, nil, err)
+	assert.Equal(t, 0, len(chains))
+}
+
 func TestAppend(t *testing.T) {
 	set()
 	defer unset()
-	initIPTables(t)
 
-	err := NewIPTables().Table(TableTypeNat).
+	iptables := NewIPTables().Table(TableTypeNat).
 		Chain(ChainTypePREROUTING).
 		MatchIPv4().
-		MatchProtocol(true, network.ProtocolTCP).
-		MatchTCP(WithMatchTCPDstPort(true, 2432)).
-		TargetDNAT(WithTargetDNATToAddr(network.ParseIP("192.168.100.230"), 2433)).
-		Append()
+		MatchProtocol(false, network.ProtocolTCP).
+		MatchTCP(WithMatchTCPDstPort(false, 2432)).
+		TargetDNAT(WithTargetDNATToAddr(network.ParseIP("192.168.100.230"), 2433))
+
+	err := iptables.Append()
 	assert.Equal(t, nil, err)
 
-	ok, err := NewIPTables().Table(TableTypeNat).
+	rules, err := iptables.FindRules()
+	assert.Equal(t, nil, err)
+	assert.Greater(t, len(rules), 0)
+}
+
+func TestCheck(t *testing.T) {
+	set()
+	defer unset()
+
+	iptables := NewIPTables().Table(TableTypeNat).
 		Chain(ChainTypePREROUTING).
 		MatchIPv4().
-		MatchProtocol(true, network.ProtocolTCP).
-		MatchTCP(WithMatchTCPDstPort(true, 2432)).
-		TargetDNAT(WithTargetDNATToAddr(network.ParseIP("192.168.100.230"), 2433)).
-		Check()
+		MatchProtocol(false, network.ProtocolTCP).
+		MatchTCP(WithMatchTCPDstPort(false, 2432)).
+		TargetDNAT(WithTargetDNATToAddr(network.ParseIP("192.168.100.230"), 2433))
+
+	err := iptables.Append()
+	assert.Equal(t, nil, err)
+
+	ok, err := iptables.Check()
+	assert.Equal(t, nil, err)
 	assert.Equal(t, true, ok)
-	assert.Equal(t, nil, err)
 }
 
 func TestDelete(t *testing.T) {
 	set()
 	defer unset()
 
-	err := NewIPTables().Table(TableTypeNat).
+	iptables := NewIPTables().Table(TableTypeNat).
 		Chain(ChainTypePREROUTING).
 		MatchIPv4().
-		TargetAccept().
-		Insert(1)
+		TargetAccept()
+
+	err := iptables.Insert(1)
 	assert.Equal(t, nil, err)
 
-	err = NewIPTables().Table(TableTypeNat).
-		Chain(ChainTypePREROUTING).
-		MatchIPv4().
-		TargetAccept().
-		Delete(1)
+	err = iptables.Delete(1)
 	assert.Equal(t, nil, err)
 }
 
@@ -134,7 +189,7 @@ func TestReplace(t *testing.T) {
 	err = NewIPTables().Table(TableTypeNat).
 		Chain(ChainTypePREROUTING).
 		MatchIPv4().
-		MatchProtocol(true, network.ProtocolTCP).
+		MatchProtocol(false, network.ProtocolTCP).
 		TargetAccept().
 		Replace(1)
 	assert.Equal(t, nil, err)
@@ -150,7 +205,7 @@ func TestReplace(t *testing.T) {
 	ok, err = NewIPTables().Table(TableTypeNat).
 		Chain(ChainTypePREROUTING).
 		MatchIPv4().
-		MatchProtocol(true, network.ProtocolTCP).
+		MatchProtocol(false, network.ProtocolTCP).
 		TargetAccept().
 		Check()
 	assert.Equal(t, true, ok)

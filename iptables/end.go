@@ -26,7 +26,7 @@ func (iptables *IPTables) Append() error {
 		return iptables.statement.err
 	}
 	newiptables := iptables.dump()
-	command := newAppend()
+	command := newAppend(ChainTypeNull)
 	newiptables.statement.command = command
 	data, err := newiptables.exec()
 	if err != nil {
@@ -40,7 +40,7 @@ func (iptables *IPTables) Check() (bool, error) {
 		return false, iptables.statement.err
 	}
 	newiptables := iptables.dump()
-	command := newCheck()
+	command := newCheck(ChainTypeNull)
 	newiptables.statement.command = command
 	data, err := newiptables.exec()
 	if err != nil {
@@ -50,12 +50,12 @@ func (iptables *IPTables) Check() (bool, error) {
 }
 
 // 0 means ignoring
-func (iptables *IPTables) Delete(rulenum uint32) error {
+func (iptables *IPTables) Delete(rulenum int) error {
 	if iptables.statement.err != nil {
 		return iptables.statement.err
 	}
 	newiptables := iptables.dump()
-	command := newDelete(rulenum)
+	command := newDelete(ChainTypeNull, WithCommandDeleteRuleNumber(rulenum))
 	newiptables.statement.command = command
 	// delete doesn't need a target
 	newiptables.statement.target = nil
@@ -67,12 +67,12 @@ func (iptables *IPTables) Delete(rulenum uint32) error {
 }
 
 // 0 means ignoring
-func (iptables *IPTables) Insert(rulenum uint32) error {
+func (iptables *IPTables) Insert(rulenum int) error {
 	if iptables.statement.err != nil {
 		return iptables.statement.err
 	}
 	newiptables := iptables.dump()
-	command := newInsert(rulenum)
+	command := newInsert(ChainTypeNull, WithCommandInsertRuleNumber(rulenum))
 	newiptables.statement.command = command
 	data, err := newiptables.exec()
 	if err != nil {
@@ -82,7 +82,7 @@ func (iptables *IPTables) Insert(rulenum uint32) error {
 }
 
 // rulenum mustn't be 0
-func (iptables *IPTables) Replace(rulenum uint32) error {
+func (iptables *IPTables) Replace(rulenum int) error {
 	if iptables.statement.err != nil {
 		return iptables.statement.err
 	}
@@ -90,7 +90,7 @@ func (iptables *IPTables) Replace(rulenum uint32) error {
 		return xtables.ErrRulenumMustNot0
 	}
 	newiptables := iptables.dump()
-	command := newReplace(rulenum)
+	command := newReplace(ChainTypeNull, rulenum)
 	newiptables.statement.command = command
 	data, err := newiptables.exec()
 	if err != nil {
@@ -105,7 +105,7 @@ func (iptables *IPTables) ListRules() ([]*Rule, error) {
 		return nil, iptables.statement.err
 	}
 	newiptables := iptables.dump()
-	command := newListRules()
+	command := newListRules(ChainTypeNull)
 	newiptables.statement.command = command
 	data, err := newiptables.exec()
 	if err != nil {
@@ -121,7 +121,7 @@ func (iptables *IPTables) ListChains() ([]*Chain, error) {
 		return nil, iptables.statement.err
 	}
 	newiptables := iptables.dump()
-	command := newListChains()
+	command := newListChains(ChainTypeNull)
 	newiptables.statement.command = command
 	data, err := newiptables.exec()
 	if err != nil {
@@ -137,7 +137,7 @@ func (iptables *IPTables) DumpRules() ([]string, error) {
 		return nil, iptables.statement.err
 	}
 	newiptables := iptables.dump()
-	command := newDumpRules()
+	command := newDumpRules(ChainTypeNull)
 	newiptables.statement.command = command
 	newiptables.statement.dump = true
 	data, err := newiptables.exec()
@@ -169,10 +169,10 @@ func (iptables *IPTables) Flush() error {
 	}
 
 	for _, table := range tables {
-		newiptables.Table(table)
+		tmp := newiptables.Table(table)
 		command := newFlush()
-		newiptables.statement.command = command
-		data, err := newiptables.exec()
+		tmp.statement.command = command
+		data, err := tmp.exec()
 		if err != nil {
 			return errors.New(string(data))
 		}
@@ -181,12 +181,12 @@ func (iptables *IPTables) Flush() error {
 }
 
 // 0 means ignoring
-func (iptables *IPTables) Zero(rulenum uint32) error {
+func (iptables *IPTables) Zero(rulenum int) error {
 	if iptables.statement.err != nil {
 		return iptables.statement.err
 	}
 	newiptables := iptables.dump()
-	command := newZero(rulenum)
+	command := newZero(ChainTypeNull, WithCommandZeroRuleNumber(rulenum))
 	newiptables.statement.command = command
 	data, err := newiptables.exec()
 	if err != nil {
@@ -195,12 +195,12 @@ func (iptables *IPTables) Zero(rulenum uint32) error {
 	return nil
 }
 
-func (iptables *IPTables) NewChain() error {
+func (iptables *IPTables) NewChain(newName string) error {
 	if iptables.statement.err != nil {
 		return iptables.statement.err
 	}
 	newiptables := iptables.dump()
-	command := newNewChain()
+	command := newNewChain(newName)
 	newiptables.statement.command = command
 	data, err := newiptables.exec()
 	if err != nil {
@@ -224,10 +224,10 @@ func (iptables *IPTables) DeleteChain() error {
 	}
 
 	for _, table := range tables {
-		newiptables.Table(table)
-		command := newDeleteChain()
-		newiptables.statement.command = command
-		data, err := newiptables.exec()
+		tmp := newiptables.Table(table)
+		command := newDeleteChain(ChainTypeNull)
+		tmp.statement.command = command
+		data, err := tmp.exec()
 		if err != nil {
 			return errors.New(string(data))
 		}
@@ -258,9 +258,8 @@ func (iptables *IPTables) Policy(target TargetType) error {
 	if newiptables.statement.chain == ChainTypeNull {
 		for _, table := range tables {
 			for _, chain := range TableChains[table] {
-				newiptables.Table(table)
-				newiptables.Chain(chain)
-				command := newPolicy(target)
+				newiptables := newiptables.Table(table).Chain(chain)
+				command := newPolicy(ChainTypeNull, target)
 				newiptables.statement.command = command
 				data, err := newiptables.exec()
 				if err != nil {
@@ -271,10 +270,10 @@ func (iptables *IPTables) Policy(target TargetType) error {
 		return nil
 	} else {
 		for _, table := range tables {
-			newiptables.Table(table)
-			command := newPolicy(target)
-			newiptables.statement.command = command
-			data, err := newiptables.exec()
+			tmp := newiptables.Table(table)
+			command := newPolicy(ChainTypeNull, target)
+			tmp.statement.command = command
+			data, err := tmp.exec()
 			if err != nil {
 				return errors.New(string(data))
 			}
@@ -288,7 +287,7 @@ func (iptables *IPTables) RenameChain(newChain string) error {
 		return iptables.statement.err
 	}
 	newiptables := iptables.dump()
-	command := newRenameChain(newChain)
+	command := newRenameChain(ChainTypeNull, newChain)
 	newiptables.statement.command = command
 	data, err := newiptables.exec()
 	if err != nil {
@@ -303,10 +302,9 @@ func (iptables *IPTables) FindChains() ([]*Chain, error) {
 	}
 	newiptables := iptables.dump()
 	chainType := newiptables.statement.chain
-	name := newiptables.statement.userDefinedChain
 	newiptables.statement.chain = ChainTypeNull
 
-	command := newListChains()
+	command := newListChains(ChainTypeNull)
 	newiptables.statement.command = command
 
 	data, err := newiptables.exec()
@@ -320,12 +318,12 @@ func (iptables *IPTables) FindChains() ([]*Chain, error) {
 	}
 	foundChains := []*Chain{}
 	for _, chain := range chains {
-		if chain.chainType == ChainTypeUserDefined &&
-			chain.name != name {
+		if chain.chainType.chainType == chainTypeUserDefined &&
+			chain.chainType.name != chainType.name {
 			continue
 		}
-		if chain.chainType == ChainTypeUserDefined &&
-			chain.name == name {
+		if chain.chainType.chainType == chainTypeUserDefined &&
+			chain.chainType.name == chainType.name {
 			foundChains = append(foundChains, chain)
 			continue
 		}
@@ -347,10 +345,23 @@ func (iptables *IPTables) FindRules() ([]*Rule, error) {
 
 	newiptables.statement.options = make(map[OptionType]Option)
 	newiptables.statement.matches = make(map[MatchType]Match)
+	{
+		// special case for ipv4 or ipv6
+		mth, ok := matchesMap[MatchTypeIPv4]
+		if ok {
+			newiptables.statement.matches[MatchTypeIPv4] = mth
+		}
+		mth, ok = matchesMap[MatchTypeIPv6]
+		if ok {
+			newiptables.statement.matches[MatchTypeIPv6] = mth
+		}
+		delete(matchesMap, MatchTypeIPv4)
+		delete(matchesMap, MatchTypeIPv6)
+	}
 	newiptables.statement.target = nil
 
 	// search with table or chain
-	command := newFind()
+	command := newFind(ChainTypeNull)
 	newiptables.statement.command = command
 	newiptables.statement.options[OptionTypeLineNumbers], _ = newOptionLineNumbers()
 	newiptables.statement.options[OptionTypeNumeric], _ = newOptionNumeric()

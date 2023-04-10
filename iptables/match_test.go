@@ -20,7 +20,7 @@ func TestMatchAddrType(t *testing.T) {
 }
 
 func TestMatchAddrTypeShort(t *testing.T) {
-	mAddrType, err := NewMatchAddrType(
+	mAddrType, err := newMatchAddrType(
 		WithMatchAddrTypeSrcType(true, BLACKHOLE),
 		WithMatchAddrTypeDstType(false, LOCAL),
 		WithMatchAddrLimitIfaceIn(),

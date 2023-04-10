@@ -385,26 +385,36 @@ Err:
 
 type baseTarget struct {
 	targetType TargetType
+	child      Target
 }
 
+func (bt *baseTarget) setChild(child Target) {
+	bt.child = child
+}
 func (bt *baseTarget) Type() TargetType {
 	return bt.targetType
 }
 
 func (bt *baseTarget) Short() string {
-	return ""
-}
-
-func (bt *baseTarget) Long() string {
+	if bt.child != nil {
+		return bt.child.Short()
+	}
 	return ""
 }
 
 func (bt *baseTarget) ShortArgs() []string {
+	if bt.child != nil {
+		return bt.child.ShortArgs()
+	}
 	return nil
 }
 
+func (bt *baseTarget) Long() string {
+	return bt.Short()
+}
+
 func (bt *baseTarget) LongArgs() []string {
-	return nil
+	return bt.ShortArgs()
 }
 
 func (bt *baseTarget) Parse([]byte) (int, bool) {
@@ -450,11 +460,13 @@ type TargetAccept struct {
 }
 
 func newTargetAccept() *TargetAccept {
-	return &TargetAccept{
+	target := &TargetAccept{
 		baseTarget: &baseTarget{
 			targetType: TargetTypeAccept,
 		},
 	}
+	target.setChild(target)
+	return target
 }
 
 func (ta *TargetAccept) Short() string {
@@ -478,11 +490,13 @@ type TargetDrop struct {
 }
 
 func newTargetDrop() *TargetDrop {
-	return &TargetDrop{
+	target := &TargetDrop{
 		baseTarget: &baseTarget{
 			targetType: TargetTypeDrop,
 		},
 	}
+	target.setChild(target)
+	return target
 }
 
 func (ta *TargetDrop) Short() string {
@@ -506,11 +520,13 @@ type TargetReturn struct {
 }
 
 func newTargetReturn() *TargetReturn {
-	return &TargetReturn{
+	target := &TargetReturn{
 		baseTarget: &baseTarget{
 			targetType: TargetTypeReturn,
 		},
 	}
+	target.setChild(target)
+	return target
 }
 
 func (ta *TargetReturn) Short() string {
@@ -535,12 +551,14 @@ type TargetJumpChain struct {
 }
 
 func newTargetJumpChain(chain string) *TargetJumpChain {
-	return &TargetJumpChain{
+	target := &TargetJumpChain{
 		baseTarget: &baseTarget{
 			targetType: TargetTypeJumpChain,
 		},
 		chain: chain,
 	}
+	target.setChild(target)
+	return target
 }
 
 func (ta *TargetJumpChain) Short() string {
@@ -565,12 +583,14 @@ type TargetGotoChain struct {
 }
 
 func newTargetGotoChain(chain string) *TargetGotoChain {
-	return &TargetGotoChain{
+	target := &TargetGotoChain{
 		baseTarget: &baseTarget{
 			targetType: TargetTypeGotoChain,
 		},
 		chain: chain,
 	}
+	target.setChild(target)
+	return target
 }
 
 func (ta *TargetGotoChain) Short() string {
@@ -613,12 +633,14 @@ const (
 
 // Set type of audit record.
 func newTargetAudit(typ AuditType) (*TargetAudit, error) {
-	return &TargetAudit{
+	target := &TargetAudit{
 		baseTarget: &baseTarget{
 			targetType: TargetTypeAudit,
 		},
 		AuditType: typ,
-	}, nil
+	}
+	target.setChild(target)
+	return target, nil
 }
 
 type TargetAudit struct {
@@ -676,6 +698,7 @@ func newTargetCheckSum() (*TargetChecksum, error) {
 		},
 		Fill: true,
 	}
+	target.setChild(target)
 	return target, nil
 }
 
@@ -718,13 +741,15 @@ func (tChecksum *TargetChecksum) Parse(main []byte) (int, bool) {
 
 // This option takes major and minor of class value
 func newTargetClassify(major, minor int) (*TargetClassify, error) {
-	return &TargetClassify{
+	target := &TargetClassify{
 		baseTarget: &baseTarget{
 			targetType: TargetTypeClassify,
 		},
 		Major: major,
 		Minor: minor,
-	}, nil
+	}
+	target.setChild(target)
+	return target, nil
 }
 
 type TargetClassify struct {
@@ -855,6 +880,7 @@ func newTargetClusterIP(opts ...OptionTargetClusterIP) (*TargetClusterIP, error)
 	for _, opt := range opts {
 		opt(target)
 	}
+	target.setChild(target)
 	return target, nil
 }
 
@@ -1078,6 +1104,7 @@ func newTargetConnMark(opts ...OptionTargetConnMark) (*TargetConnMark, error) {
 	for _, opt := range opts {
 		opt(target)
 	}
+	target.setChild(target)
 	return target, nil
 }
 
@@ -1288,6 +1315,7 @@ func newTargetConnSecMark(mode TargetConnSecMarkMode) (*TargetConnSecMark, error
 		},
 		Mode: mode,
 	}
+	target.setChild(target)
 	return target, nil
 }
 
@@ -1506,6 +1534,7 @@ func newTargetCT(opts ...OptionTargetCT) (*TargetCT, error) {
 	for _, opt := range opts {
 		opt(target)
 	}
+	target.setChild(target)
 	return target, nil
 }
 
@@ -1719,6 +1748,7 @@ func newTargetDNAT(opts ...OptionTargetDNAT) (*TargetDNAT, error) {
 	for _, opt := range opts {
 		opt(target)
 	}
+	target.setChild(target)
 	return target, nil
 }
 
@@ -1853,6 +1883,7 @@ func newTargetDNPT(opts ...OptionTargetDNPT) (*TargetDNPT, error) {
 	for _, opt := range opts {
 		opt(target)
 	}
+	target.setChild(target)
 	return target, nil
 }
 
@@ -1938,6 +1969,7 @@ func newTargetDSCP(opts ...OptionTargetDSCP) (*TargetDSCP, error) {
 	for _, opt := range opts {
 		opt(target)
 	}
+	target.setChild(target)
 	return target, nil
 }
 
@@ -1999,6 +2031,7 @@ func newTargetECN(opts ...OptionTargetECN) (*TargetECN, error) {
 	for _, opt := range opts {
 		opt(target)
 	}
+	target.setChild(target)
 	return target, nil
 }
 
@@ -2075,6 +2108,7 @@ func newTargetHL(opts ...OptionTargetHL) (*TargetHL, error) {
 	for _, opt := range opts {
 		opt(target)
 	}
+	target.setChild(target)
 	return target, nil
 }
 
@@ -2262,6 +2296,7 @@ func newTargetHMark(opts ...OptionTargetHMark) (*TargetHMark, error) {
 	for _, opt := range opts {
 		opt(target)
 	}
+	target.setChild(target)
 	return target, nil
 }
 
@@ -2482,6 +2517,7 @@ func newTargetIdleTimer(opts ...OptionTargetIdleTimer) (*TargetIdleTimer, error)
 	for _, opt := range opts {
 		opt(target)
 	}
+	target.setChild(target)
 	return target, nil
 }
 
@@ -2579,6 +2615,7 @@ func newTargetLED(opts ...OptionTargetLED) (*TargetLED, error) {
 	for _, opt := range opts {
 		opt(target)
 	}
+	target.setChild(target)
 	return target, nil
 }
 
@@ -2724,6 +2761,7 @@ func newTargetLog(opts ...OptionTargetLog) (*TargetLog, error) {
 	for _, opt := range opts {
 		opt(target)
 	}
+	target.setChild(target)
 	return target, nil
 }
 
@@ -2938,6 +2976,7 @@ func newTargetMark(opts ...OptionTargetMark) (*TargetMark, error) {
 	for _, opt := range opts {
 		opt(target)
 	}
+	target.setChild(target)
 	return target, nil
 }
 
@@ -3067,6 +3106,7 @@ func newTargetMasquerade(opts ...OptionTargetMasquerade) (*TargetMasquerade, err
 	for _, opt := range opts {
 		opt(target)
 	}
+	target.setChild(target)
 	return target, nil
 }
 
@@ -3174,6 +3214,7 @@ func newTargetNetmap(opts ...OptionTargetNetmap) (*TargetNetmap, error) {
 	for _, opt := range opts {
 		opt(target)
 	}
+	target.setChild(target)
 	return target, nil
 }
 
@@ -3282,6 +3323,7 @@ func newTargetNFLog(opts ...OptionTargetNFLog) (*TargetNFLog, error) {
 	for _, opt := range opts {
 		opt(target)
 	}
+	target.setChild(target)
 	return target, nil
 }
 
@@ -3425,6 +3467,7 @@ func newTargetNFQueue(opts ...OptionTargetNFQueue) (*TargetNFQueue, error) {
 	for _, opt := range opts {
 		opt(target)
 	}
+	target.setChild(target)
 	return target, nil
 }
 
@@ -3536,6 +3579,7 @@ func newTargetRateEst(opts ...OptionTargetRateEst) (*TargetRateEst, error) {
 	for _, opt := range opts {
 		opt(target)
 	}
+	target.setChild(target)
 	return target, nil
 }
 
@@ -3648,6 +3692,7 @@ func newTargetRedirect(opts ...OptionTargetRedirect) (*TargetRedirect, error) {
 	for _, opt := range opts {
 		opt(target)
 	}
+	target.setChild(target)
 	return target, nil
 }
 
@@ -3820,6 +3865,7 @@ func newTargetReject(opts ...OptionTargetReject) (*TargetReject, error) {
 	for _, opt := range opts {
 		opt(target)
 	}
+	target.setChild(target)
 	return target, nil
 }
 
@@ -3901,6 +3947,7 @@ func newTargetSame(opts ...OptionTargetSame) (*TargetSame, error) {
 	for _, opt := range opts {
 		opt(target)
 	}
+	target.setChild(target)
 	return target, nil
 }
 
@@ -4000,6 +4047,7 @@ func newTargetSecMark(opts ...OptionTargetSecMark) (*TargetSecMark, error) {
 	for _, opt := range opts {
 		opt(target)
 	}
+	target.setChild(target)
 	return target, nil
 }
 
@@ -4138,6 +4186,7 @@ func newTargetSet(opts ...OptionTargetSet) (*TargetSet, error) {
 	for _, opt := range opts {
 		opt(target)
 	}
+	target.setChild(target)
 	return target, nil
 }
 
@@ -4291,6 +4340,7 @@ func newTargetSNAT(opts ...OptionTargetSNAT) (*TargetSNAT, error) {
 	for _, opt := range opts {
 		opt(target)
 	}
+	target.setChild(target)
 	return target, nil
 }
 
@@ -4424,6 +4474,7 @@ func newTargetSNPT(opts ...OptionTargetSNPT) (*TargetSNPT, error) {
 	for _, opt := range opts {
 		opt(target)
 	}
+	target.setChild(target)
 	return target, nil
 }
 
@@ -4533,6 +4584,7 @@ func newTargetSYNProxy(opts ...OptionTargetSYNProxy) (*TargetSYNProxy, error) {
 	for _, opt := range opts {
 		opt(target)
 	}
+	target.setChild(target)
 	return target, nil
 }
 
@@ -4644,6 +4696,7 @@ func newTargetTCPMSS(opts ...OptionTargetTCPMSS) (*TargetTCPMSS, error) {
 	for _, opt := range opts {
 		opt(target)
 	}
+	target.setChild(target)
 	return target, nil
 }
 
@@ -4718,6 +4771,7 @@ func newTargetTCPOptStrip(opts ...OptionTargetTCPOptStrip) (*TargetTCPOptStrip, 
 	for _, opt := range opts {
 		opt(target)
 	}
+	target.setChild(target)
 	return target, nil
 }
 
@@ -4786,6 +4840,7 @@ func newTargetTEE(gateway net.IP) (*TargetTEE, error) {
 		},
 		Gateway: gateway,
 	}
+	target.setChild(target)
 	return target, nil
 }
 
@@ -4874,6 +4929,7 @@ func newTargetTOS(opts ...OptionTargetTOS) (*TargetTOS, error) {
 	for _, opt := range opts {
 		opt(target)
 	}
+	target.setChild(target)
 	return target, nil
 }
 
@@ -5003,6 +5059,7 @@ func newTargetTProxy(opts ...OptionTargetTProxy) (*TargetTProxy, error) {
 	for _, opt := range opts {
 		opt(target)
 	}
+	target.setChild(target)
 	return target, nil
 }
 
@@ -5087,11 +5144,13 @@ func (tTProxy *TargetTProxy) Parse(main []byte) (int, bool) {
 }
 
 func newTargetTrace() (*TargetTrace, error) {
-	return &TargetTrace{
+	target := &TargetTrace{
 		baseTarget: &baseTarget{
 			targetType: TargetTypeTrace,
 		},
-	}, nil
+	}
+	target.setChild(target)
+	return target, nil
 }
 
 type TargetTrace struct {
@@ -5149,6 +5208,7 @@ func newTargetTTL(opts ...OptionTargetTTL) (*TargetTTL, error) {
 	for _, opt := range opts {
 		opt(target)
 	}
+	target.setChild(target)
 	return target, nil
 }
 
@@ -5259,6 +5319,7 @@ func newTargetULog(opts ...OptionTargetULog) (*TargetULog, error) {
 	for _, opt := range opts {
 		opt(target)
 	}
+	target.setChild(target)
 	return target, nil
 }
 

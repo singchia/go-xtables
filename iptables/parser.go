@@ -118,22 +118,32 @@ func parseRule(line []byte, head []string, chain *Chain) (*Rule, error) {
 				rule.target = target
 			}
 		case "prot":
+			field = strings.ToUpper(field)
+			invert := false
+			if len(field) > 1 && field[0] == '!' {
+				invert = true
+				field = field[1:]
+			}
 			prot := network.GetProtocolByName(strings.ToUpper(field))
 			if prot != network.ProtocolUnknown {
-				rule.prot = prot
+				match := newMatchProtocol(invert, prot)
+				rule.matches = append(rule.matches, match)
+				rule.matchMap[MatchTypeProtocol] = match
 			} else {
 				id, err := strconv.Atoi(field)
 				if err != nil {
 					return nil, err
 				}
-				rule.prot = network.Protocol(id)
+				match := newMatchProtocol(invert, network.Protocol(id))
+				rule.matches = append(rule.matches, match)
+				rule.matchMap[MatchTypeProtocol] = match
 			}
 		case "opt":
 			rule.opt = field
 		case "in":
 			invert := false
 			iface := field
-			if field[0] == '!' {
+			if len(field) > 1 && field[0] == '!' {
 				invert = true
 				iface = field[1:]
 			}
@@ -146,7 +156,7 @@ func parseRule(line []byte, head []string, chain *Chain) (*Rule, error) {
 		case "out":
 			invert := false
 			iface := field
-			if field[0] == '!' {
+			if len(field) > 1 && field[0] == '!' {
 				invert = false
 				iface = field[1:]
 			}
@@ -159,7 +169,7 @@ func parseRule(line []byte, head []string, chain *Chain) (*Rule, error) {
 		case "source":
 			invert := false
 			source := field
-			if field[0] == '!' {
+			if len(field) > 1 && field[0] == '!' {
 				invert = true
 				source = field[1:]
 			}
@@ -177,7 +187,7 @@ func parseRule(line []byte, head []string, chain *Chain) (*Rule, error) {
 		case "destination":
 			invert := false
 			destination := field
-			if field[0] == '!' {
+			if len(field) > 1 && field[0] == '!' {
 				invert = true
 				destination = field[1:]
 			}
@@ -237,7 +247,7 @@ func parseRule(line []byte, head []string, chain *Chain) (*Rule, error) {
 	params = params[index:]
 
 	// then target
-	_, ok := rule.target.Parse(params)
+	_, ok := rule.target.Parse(bytes.TrimSpace(params))
 	if !ok {
 		return nil, xtables.ErrTargetParseFailed
 	}
@@ -254,30 +264,27 @@ func parseChain(line []byte) (*Chain, error) {
 		return nil, err
 	}
 
-	chain.name, err = buf.ReadString(' ')
+	chain.chainType.name, err = buf.ReadString(' ')
 	if err != nil {
 		return nil, err
 	}
-	chain.name = chain.name[:len(chain.name)-1]
-	switch chain.name {
+
+	chain.chainType.name = strings.TrimSpace(chain.chainType.name[:len(chain.chainType.name)-1])
+	switch chain.chainType.name {
 	case "INPUT":
-		chain.userDefined = false
 		chain.chainType = ChainTypeINPUT
 	case "FORWARD":
-		chain.userDefined = false
 		chain.chainType = ChainTypeFORWARD
 	case "OUTPUT":
-		chain.userDefined = false
 		chain.chainType = ChainTypeOUTPUT
 	case "PREROUTING":
-		chain.userDefined = false
 		chain.chainType = ChainTypePREROUTING
 	case "POSTROUTING":
-		chain.userDefined = false
 		chain.chainType = ChainTypePOSTROUTING
 	default:
-		chain.userDefined = true
-		chain.chainType = ChainTypeUserDefined
+		userDefined := ChainTypeUserDefined
+		userDefined.name = chain.chainType.name
+		chain.chainType = userDefined
 	}
 
 	rest := buf.Bytes()

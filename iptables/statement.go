@@ -2,7 +2,6 @@ package iptables
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
 
 	"github.com/singchia/go-xtables"
@@ -31,12 +30,6 @@ func NewStatement() *Statement {
 		options:     make(map[OptionType]Option),
 		constraints: constraint.NewConstraints(),
 	}
-	option, err := newOptionNumeric()
-	if err != nil {
-		state.err = err
-	} else {
-		state.addOption(option)
-	}
 	return state
 }
 
@@ -52,7 +45,7 @@ func (statement *Statement) Elems() ([]string, error) {
 	// table
 	elems := []string{}
 	elems = append(elems, "-t")
-	tableName, chainName := "", ""
+	tableName := ""
 	switch statement.table {
 	case TableTypeFilter:
 		tableName = "filter"
@@ -71,39 +64,41 @@ func (statement *Statement) Elems() ([]string, error) {
 	if statement.command == nil {
 		return nil, xtables.ErrCommandRequired
 	}
-	elems = append(elems, statement.command.Short())
 
 	// chain
-	switch statement.chain {
-	case ChainTypePREROUTING:
-		chainName = "PREROUTING"
-	case ChainTypeINPUT:
-		chainName = "INPUT"
-	case ChainTypeFORWARD:
-		chainName = "FORWARD"
-	case ChainTypeOUTPUT:
-		chainName = "OUTPUT"
-	case ChainTypePOSTROUTING:
-		chainName = "POSTROUTING"
-	case ChainTypeUserDefined:
-		chainName = statement.userDefinedChain
-	}
-	if chainName != "" {
-		elems = append(elems, chainName)
-	}
+	statement.command.SetChainType(statement.chain)
+	elems = append(elems, statement.command.ShortArgs()...)
 
-	// command policy and rename specific
+	// coammnd tails
 	switch statement.command.Type() {
-	case CommandTypePolicy:
-		elems = append(elems, statement.command.(*Policy).targetType.String())
-	case CommandTypeRenameChain:
-		elems = append(elems, statement.command.(*RenameChain).newChain)
-	}
-
-	// rulenum
-	hasRulenum, ok := statement.command.(HasRulenum)
-	if ok && hasRulenum.Rulenum() != 0 {
-		elems = append(elems, strconv.Itoa(int(hasRulenum.Rulenum())))
+	case CommandTypeList, CommandTypeListChains, CommandTypeListRules, CommandTypeFind:
+		// default with -n --line-numbers -x -v
+		numeric, ok := statement.options[OptionTypeNumeric]
+		if ok {
+			elems = append(elems, numeric.ShortArgs()...)
+			delete(statement.options, OptionTypeNumeric)
+		}
+		ln, ok := statement.options[OptionTypeLineNumbers]
+		if ok {
+			elems = append(elems, ln.ShortArgs()...)
+			delete(statement.options, OptionTypeLineNumbers)
+		}
+		exact, ok := statement.options[OptionTypeExact]
+		if ok {
+			elems = append(elems, exact.ShortArgs()...)
+			delete(statement.options, OptionTypeExact)
+		}
+		verbose, ok := statement.options[OptionTypeVerbose]
+		if ok {
+			elems = append(elems, verbose.ShortArgs()...)
+			delete(statement.options, OptionTypeVerbose)
+		}
+	case CommandTypeDumpRules:
+		verbose, ok := statement.options[OptionTypeVerbose]
+		if ok {
+			elems = append(elems, verbose.ShortArgs()...)
+			delete(statement.options, OptionTypeVerbose)
+		}
 	}
 
 	// options
