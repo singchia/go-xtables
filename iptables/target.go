@@ -5365,11 +5365,11 @@ func (tULog *TargetULog) LongArgs() []string {
 }
 
 func (tULog *TargetULog) Parse(main []byte) (int, bool) {
-	// 1. "^ULog"
+	// 1. "^ULOG"
 	// 2. " copy_range ([0-9]+) nlgroup ([0-9]+)"
 	// 3. "( prefix "([!-~]+)")?"
 	// 4. " queue_threshold ([0-9]+)"
-	pattern := `^ULog` +
+	pattern := `^ULOG` +
 		` copy_range ([0-9]+) nlgroup ([0-9]+)` +
 		`( prefix "([!-~]+)")?` +
 		` queue_threshold ([0-9]+) *`

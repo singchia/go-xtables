@@ -62,6 +62,13 @@ func (iptables *IPTables) Delete(opts ...OptionCommandDelete) error {
 	newiptables.statement.command = command
 	data, err := newiptables.exec()
 	if err != nil {
+		if strings.Contains(string(data), "Illegal option `-j' with this command") {
+			newiptables.statement.target = nil
+			data, err = newiptables.exec()
+			if err == nil {
+				return nil
+			}
+		}
 		return xtables.ErrAndStdErr(err, data)
 	}
 	return nil

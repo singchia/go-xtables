@@ -4055,7 +4055,7 @@ func WithMatchHashLimitRateInterval(interval int) OptionMatchHashLimit {
 	}
 }
 
-func NewHashLimit(opts ...OptionMatchHashLimit) (*MatchHashLimit, error) {
+func newMatchHashLimit(opts ...OptionMatchHashLimit) (*MatchHashLimit, error) {
 	match := &MatchHashLimit{
 		baseMatch: &baseMatch{
 			matchType: MatchTypeHashLimit,

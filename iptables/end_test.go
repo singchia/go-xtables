@@ -317,6 +317,24 @@ func TestRenameChain(t *testing.T) {
 	assert.Equal(t, nil, err)
 	assert.Equal(t, 1, len(chains))
 
-	err = iptables.Chain(userDefined).Delete()
+	err = iptables.Chain(userDefined).DeleteChain()
+	assert.Equal(t, nil, err)
+}
+
+func TestPolicy(t *testing.T) {
+	set()
+	defer unset()
+
+	iptables := NewIPTables().Table(TableTypeFilter).Chain(ChainTypeFORWARD)
+
+	err := iptables.Policy(TargetTypeDrop)
+	assert.Equal(t, nil, err)
+
+	chains, err := iptables.FindChains()
+	assert.Equal(t, nil, err)
+	assert.Equal(t, 1, len(chains))
+	assert.Equal(t, TargetTypeDrop, chains[0].policy.Type())
+
+	err = iptables.Policy(TargetTypeAccept)
 	assert.Equal(t, nil, err)
 }
