@@ -9534,6 +9534,7 @@ func (mTCP *MatchTCP) LongArgs() []string {
 	return args
 }
 
+// TODO support service name
 func (mTCP *MatchTCP) Parse(main []byte) (int, bool) {
 	// 1. "^tcp"
 	// 2. "( spt(:(!)?([0-9]+))?(s:(!)?([0-9]+):([0-9]+))?)?" #1 #2 #3 #4 #5 #6 #7 #8

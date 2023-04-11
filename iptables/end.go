@@ -3,7 +3,7 @@ package iptables
 import (
 	"bufio"
 	"bytes"
-	"errors"
+	"strings"
 
 	"github.com/singchia/go-xtables"
 	"github.com/singchia/go-xtables/pkg/cmd"
@@ -30,7 +30,7 @@ func (iptables *IPTables) Append() error {
 	newiptables.statement.command = command
 	data, err := newiptables.exec()
 	if err != nil {
-		return errors.New(string(data))
+		return xtables.ErrAndStdErr(err, data)
 	}
 	return nil
 }
@@ -44,44 +44,45 @@ func (iptables *IPTables) Check() (bool, error) {
 	newiptables.statement.command = command
 	data, err := newiptables.exec()
 	if err != nil {
-		return false, errors.New(string(data))
+		if strings.Contains(string(data), "does a matching rule exist in that chain?") {
+			return false, nil
+		}
+		return false, xtables.ErrAndStdErr(err, data)
 	}
 	return true, nil
 }
 
 // 0 means ignoring
-func (iptables *IPTables) Delete(rulenum int) error {
+func (iptables *IPTables) Delete(opts ...OptionCommandDelete) error {
 	if iptables.statement.err != nil {
 		return iptables.statement.err
 	}
 	newiptables := iptables.dump()
-	command := newDelete(ChainTypeNull, WithCommandDeleteRuleNumber(rulenum))
+	command := newDelete(ChainTypeNull, opts...)
 	newiptables.statement.command = command
-	// delete doesn't need a target
-	newiptables.statement.target = nil
 	data, err := newiptables.exec()
 	if err != nil {
-		return errors.New(string(data))
+		return xtables.ErrAndStdErr(err, data)
 	}
 	return nil
 }
 
 // 0 means ignoring
-func (iptables *IPTables) Insert(rulenum int) error {
+func (iptables *IPTables) Insert(opts ...OptionCommandInsert) error {
 	if iptables.statement.err != nil {
 		return iptables.statement.err
 	}
 	newiptables := iptables.dump()
-	command := newInsert(ChainTypeNull, WithCommandInsertRuleNumber(rulenum))
+	command := newInsert(ChainTypeNull, opts...)
 	newiptables.statement.command = command
 	data, err := newiptables.exec()
 	if err != nil {
-		return errors.New(string(data))
+		return xtables.ErrAndStdErr(err, data)
 	}
 	return nil
 }
 
-// rulenum mustn't be 0
+// rulenum is required
 func (iptables *IPTables) Replace(rulenum int) error {
 	if iptables.statement.err != nil {
 		return iptables.statement.err
@@ -94,7 +95,7 @@ func (iptables *IPTables) Replace(rulenum int) error {
 	newiptables.statement.command = command
 	data, err := newiptables.exec()
 	if err != nil {
-		return errors.New(string(data))
+		return xtables.ErrAndStdErr(err, data)
 	}
 	return nil
 }
@@ -105,11 +106,15 @@ func (iptables *IPTables) ListRules() ([]*Rule, error) {
 		return nil, iptables.statement.err
 	}
 	newiptables := iptables.dump()
+	_, ok := newiptables.statement.options[OptionTypeNumeric]
+	if !ok {
+		newiptables.statement.options[OptionTypeNumeric], _ = newOptionNumeric()
+	}
 	command := newListRules(ChainTypeNull)
 	newiptables.statement.command = command
 	data, err := newiptables.exec()
 	if err != nil {
-		return nil, err
+		return nil, xtables.ErrAndStdErr(err, data)
 	}
 	_, rules, err := parse(data, iptables.statement.table, parseChain, parseRule)
 	return rules, err
@@ -125,7 +130,7 @@ func (iptables *IPTables) ListChains() ([]*Chain, error) {
 	newiptables.statement.command = command
 	data, err := newiptables.exec()
 	if err != nil {
-		return nil, err
+		return nil, xtables.ErrAndStdErr(err, data)
 	}
 	chains, _, err := parse(data, iptables.statement.table, parseChain, nil)
 	return chains, err
@@ -142,7 +147,7 @@ func (iptables *IPTables) DumpRules() ([]string, error) {
 	newiptables.statement.dump = true
 	data, err := newiptables.exec()
 	if err != nil {
-		return nil, err
+		return nil, xtables.ErrAndStdErr(err, data)
 	}
 	lines := []string{}
 	buf := bytes.NewBuffer(data)
@@ -154,7 +159,8 @@ func (iptables *IPTables) DumpRules() ([]string, error) {
 	return lines, err
 }
 
-// if no table specified, the flush will be applied to all tables
+// if no table specified, the flush will be applied to all tables.
+// if no chain specified, the flush will be applied to all chains.
 func (iptables *IPTables) Flush() error {
 	if iptables.statement.err != nil {
 		return iptables.statement.err
@@ -174,23 +180,23 @@ func (iptables *IPTables) Flush() error {
 		tmp.statement.command = command
 		data, err := tmp.exec()
 		if err != nil {
-			return errors.New(string(data))
+			return xtables.ErrAndStdErr(err, data)
 		}
 	}
 	return nil
 }
 
 // 0 means ignoring
-func (iptables *IPTables) Zero(rulenum int) error {
+func (iptables *IPTables) Zero(opts ...OptionCommandZero) error {
 	if iptables.statement.err != nil {
 		return iptables.statement.err
 	}
 	newiptables := iptables.dump()
-	command := newZero(ChainTypeNull, WithCommandZeroRuleNumber(rulenum))
+	command := newZero(ChainTypeNull, opts...)
 	newiptables.statement.command = command
 	data, err := newiptables.exec()
 	if err != nil {
-		return errors.New(string(data))
+		return xtables.ErrAndStdErr(err, data)
 	}
 	return nil
 }
@@ -204,7 +210,7 @@ func (iptables *IPTables) NewChain(newName string) error {
 	newiptables.statement.command = command
 	data, err := newiptables.exec()
 	if err != nil {
-		return errors.New(string(data))
+		return xtables.ErrAndStdErr(err, data)
 	}
 	return nil
 }
@@ -229,7 +235,7 @@ func (iptables *IPTables) DeleteChain() error {
 		tmp.statement.command = command
 		data, err := tmp.exec()
 		if err != nil {
-			return errors.New(string(data))
+			return xtables.ErrAndStdErr(err, data)
 		}
 	}
 	return nil
@@ -263,7 +269,7 @@ func (iptables *IPTables) Policy(target TargetType) error {
 				newiptables.statement.command = command
 				data, err := newiptables.exec()
 				if err != nil {
-					return errors.New(string(data))
+					return xtables.ErrAndStdErr(err, data)
 				}
 			}
 		}
@@ -275,7 +281,7 @@ func (iptables *IPTables) Policy(target TargetType) error {
 			tmp.statement.command = command
 			data, err := tmp.exec()
 			if err != nil {
-				return errors.New(string(data))
+				return xtables.ErrAndStdErr(err, data)
 			}
 		}
 		return nil
@@ -291,7 +297,7 @@ func (iptables *IPTables) RenameChain(newChain string) error {
 	newiptables.statement.command = command
 	data, err := newiptables.exec()
 	if err != nil {
-		return errors.New(string(data))
+		return xtables.ErrAndStdErr(err, data)
 	}
 	return nil
 }

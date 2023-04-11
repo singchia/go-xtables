@@ -23,28 +23,28 @@ const (
 
 var (
 	TableChains = map[TableType][]ChainType{
-		TableTypeFilter: []ChainType{
+		TableTypeFilter: {
 			ChainTypeINPUT,
 			ChainTypeOUTPUT,
 			ChainTypeFORWARD,
 		},
-		TableTypeNat: []ChainType{
+		TableTypeNat: {
 			ChainTypeOUTPUT,
 			ChainTypePREROUTING,
 			ChainTypePOSTROUTING,
 		},
-		TableTypeMangle: []ChainType{
+		TableTypeMangle: {
 			ChainTypeINPUT,
 			ChainTypeOUTPUT,
 			ChainTypeFORWARD,
 			ChainTypePREROUTING,
 			ChainTypePOSTROUTING,
 		},
-		TableTypeRaw: []ChainType{
+		TableTypeRaw: {
 			ChainTypeOUTPUT,
 			ChainTypePREROUTING,
 		},
-		TableTypeSecurity: []ChainType{
+		TableTypeSecurity: {
 			ChainTypeINPUT,
 			ChainTypeOUTPUT,
 			ChainTypeFORWARD,

@@ -3,6 +3,7 @@ package iptables
 import (
 	"bufio"
 	"bytes"
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -204,6 +205,9 @@ func parseRule(line []byte, head []string, chain *Chain) (*Rule, error) {
 			rule.matchMap[MatchTypeDestination] = match
 		}
 	}
+	if rule.bytes != -1 || rule.packets != -1 {
+		rule.optionMap[OptionTypeCounters], _ = newOptionCounters(uint64(rule.packets), uint64(rule.bytes))
+	}
 	jump := true
 	// matches or target params
 	params := line[index:]
@@ -249,6 +253,7 @@ func parseRule(line []byte, head []string, chain *Chain) (*Rule, error) {
 	// then target
 	_, ok := rule.target.Parse(bytes.TrimSpace(params))
 	if !ok {
+		fmt.Println("singchia watching", string(params))
 		return nil, xtables.ErrTargetParseFailed
 	}
 	return rule, nil

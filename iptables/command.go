@@ -522,9 +522,9 @@ type Zero struct {
 
 func (cmd *Zero) ShortArgs() []string {
 	args := make([]string, 0, 3)
-	args = append(args, "-Z", cmd.chain.String())
+	args = append(args, "-Z")
 	if cmd.chain != ChainTypeNull {
-		args = append(args, "-Z")
+		args = append(args, cmd.chain.String())
 	}
 	if cmd.hasRuleNum {
 		args = append(args, strconv.Itoa(cmd.ruleNum))
@@ -538,9 +538,9 @@ func (cmd *Zero) Short() string {
 
 func (cmd *Zero) LongArgs() []string {
 	args := make([]string, 0, 3)
-	args = append(args, "--zero", cmd.chain.String())
+	args = append(args, "--zero")
 	if cmd.chain != ChainTypeNull {
-		args = append(args, "--zero")
+		args = append(args, cmd.chain.String())
 	}
 	if cmd.hasRuleNum {
 		args = append(args, strconv.Itoa(cmd.ruleNum))

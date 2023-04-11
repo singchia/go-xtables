@@ -17,7 +17,7 @@ func (ot OptionType) Value() string {
 
 const (
 	OptionTypeFragment OptionType = iota
-	OptionTypeSetCounters
+	OptionTypeCounters
 	OptionTypeVerbose
 	OptionTypeWait
 	OptionTypeWaitInterval
@@ -123,7 +123,7 @@ func (opt *OptionFragment) LongArgs() []string {
 func newOptionCounters(packets, bytes uint64) (*OptionCounters, error) {
 	option := &OptionCounters{
 		baseOption: &baseOption{
-			optionType: OptionTypeSetCounters,
+			optionType: OptionTypeCounters,
 		},
 		packets: packets,
 		bytes:   bytes,

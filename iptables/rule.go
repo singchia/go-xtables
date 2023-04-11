@@ -1,9 +1,5 @@
 package iptables
 
-import (
-	"fmt"
-)
-
 type Rule struct {
 	tableType TableType
 	// chain info
@@ -32,8 +28,6 @@ func (rule *Rule) HasAllOptions(options map[OptionType]Option) bool {
 OUTER:
 	for _, opt := range options {
 		for _, v := range rule.optionMap {
-			fmt.Println(opt.Short(), v.Short())
-
 			ok := opt.Equal(v)
 			if ok {
 				continue OUTER
