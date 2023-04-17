@@ -50,11 +50,12 @@ func TestParseChain(t *testing.T) {
 	}
 	buf := bytes.NewBuffer(data)
 	scanner := bufio.NewScanner(buf)
+	iptables := NewIPTables()
 
 	for scanner.Scan() {
 		line := scanner.Bytes()
 		if bytes.HasPrefix(line, []byte("Chain")) {
-			chain, err := parseChain(line)
+			chain, err := iptables.parseChain(line)
 			if err != nil {
 				t.Error(err)
 				return

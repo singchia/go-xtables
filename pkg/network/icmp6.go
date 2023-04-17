@@ -108,54 +108,18 @@ var (
 		Code ICMPv6Code
 		Type ICMPv6Type
 	}{
-		"no-route": struct {
-			Code ICMPv6Code
-			Type ICMPv6Type
-		}{ICMPv6CodeNoRouteToDst, ICMPv6TypeDestinationUnreachable},
-		"communication-prohibited": struct {
-			Code ICMPv6Code
-			Type ICMPv6Type
-		}{ICMPv6CodeCommunicationProhibited, ICMPv6TypeDestinationUnreachable},
-		"beyond-scope": struct {
-			Code ICMPv6Code
-			Type ICMPv6Type
-		}{ICMPv6CodeBeyondScopeOfSrc, ICMPv6TypeDestinationUnreachable},
-		"address-unreachable": struct {
-			Code ICMPv6Code
-			Type ICMPv6Type
-		}{ICMPv6CodeAddressUnreachable, ICMPv6TypeDestinationUnreachable},
-		"port-unreachable": struct {
-			Code ICMPv6Code
-			Type ICMPv6Type
-		}{ICMPv6CodePortUnreachable, ICMPv6TypeDestinationUnreachable},
-		"failed-policy": struct {
-			Code ICMPv6Code
-			Type ICMPv6Type
-		}{ICMPv6CodeSrcAddressFailedPolicy, ICMPv6TypeDestinationUnreachable},
-		"reject-route": struct {
-			Code ICMPv6Code
-			Type ICMPv6Type
-		}{ICMPv6CodeRejectRouteToDst, ICMPv6TypeDestinationUnreachable},
-		"ttl-zero-during-transit": struct {
-			Code ICMPv6Code
-			Type ICMPv6Type
-		}{ICMPv6CodeHopLimitExceeded, ICMPv6TypeTimeExceeded},
-		"ttl-zero-during-reassembly": struct {
-			Code ICMPv6Code
-			Type ICMPv6Type
-		}{ICMPv6CodeFragmentReassemblyTimeExceeded, ICMPv6TypeTimeExceeded},
-		"bad-header": struct {
-			Code ICMPv6Code
-			Type ICMPv6Type
-		}{ICMPv6CodeErroneousHeaderField, ICMPv6TypeParameterProblem},
-		"unknown-header-type": struct {
-			Code ICMPv6Code
-			Type ICMPv6Type
-		}{ICMPv6CodeUnrecognizedNextHeader, ICMPv6TypeParameterProblem},
-		"unknown-option": struct {
-			Code ICMPv6Code
-			Type ICMPv6Type
-		}{ICMPv6CodeUnrecognizedIPv6Option, ICMPv6TypeParameterProblem},
+		"no-route":                   {ICMPv6CodeNoRouteToDst, ICMPv6TypeDestinationUnreachable},
+		"communication-prohibited":   {ICMPv6CodeCommunicationProhibited, ICMPv6TypeDestinationUnreachable},
+		"beyond-scope":               {ICMPv6CodeBeyondScopeOfSrc, ICMPv6TypeDestinationUnreachable},
+		"address-unreachable":        {ICMPv6CodeAddressUnreachable, ICMPv6TypeDestinationUnreachable},
+		"port-unreachable":           {ICMPv6CodePortUnreachable, ICMPv6TypeDestinationUnreachable},
+		"failed-policy":              {ICMPv6CodeSrcAddressFailedPolicy, ICMPv6TypeDestinationUnreachable},
+		"reject-route":               {ICMPv6CodeRejectRouteToDst, ICMPv6TypeDestinationUnreachable},
+		"ttl-zero-during-transit":    {ICMPv6CodeHopLimitExceeded, ICMPv6TypeTimeExceeded},
+		"ttl-zero-during-reassembly": {ICMPv6CodeFragmentReassemblyTimeExceeded, ICMPv6TypeTimeExceeded},
+		"bad-header":                 {ICMPv6CodeErroneousHeaderField, ICMPv6TypeParameterProblem},
+		"unknown-header-type":        {ICMPv6CodeUnrecognizedNextHeader, ICMPv6TypeParameterProblem},
+		"unknown-option":             {ICMPv6CodeUnrecognizedIPv6Option, ICMPv6TypeParameterProblem},
 	}
 )
 

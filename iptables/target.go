@@ -3645,7 +3645,8 @@ func (tRateEst *TargetRateEst) Parse(main []byte) (int, bool) {
 		unit = xtables.Second
 	}
 	tRateEst.Interval = xtables.RateFloat{
-		interval, unit,
+		Rate: interval,
+		Unit: unit,
 	}
 	ewmalog, err := strconv.ParseFloat(string(matches[4]), 64)
 	switch string(matches[5]) {

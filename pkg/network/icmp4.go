@@ -95,97 +95,28 @@ var (
 		Code ICMP4Code
 		Type ICMP4Type
 	}{
-		"network-unreachable": struct {
-			Code ICMP4Code
-			Type ICMP4Type
-		}{NetworkUnreachable, DestinationUnreachable},
-		"host-unreachable": struct {
-			Code ICMP4Code
-			Type ICMP4Type
-		}{HostUnreachable, DestinationUnreachable},
-		"protocol-unreachable": struct {
-			Code ICMP4Code
-			Type ICMP4Type
-		}{ProtocolUnreachable, DestinationUnreachable},
-		"port-unreachable": struct {
-			Code ICMP4Code
-			Type ICMP4Type
-		}{PortUnreachable, DestinationUnreachable},
-		"fragmentation-needed": struct {
-			Code ICMP4Code
-			Type ICMP4Type
-		}{FragmentationUnreachable, DestinationUnreachable},
-		"source-route-failed": struct {
-			Code ICMP4Code
-			Type ICMP4Type
-		}{SourceRouteFailed, DestinationUnreachable},
-		"network-unknown": struct {
-			Code ICMP4Code
-			Type ICMP4Type
-		}{NetworkUnknown, DestinationUnreachable},
-		"host-unknown": struct {
-			Code ICMP4Code
-			Type ICMP4Type
-		}{HostUnknown, DestinationUnreachable},
-		"network-prohibited": struct {
-			Code ICMP4Code
-			Type ICMP4Type
-		}{NetworkProhibited, DestinationUnreachable},
-		"host-prohibited": struct {
-			Code ICMP4Code
-			Type ICMP4Type
-		}{HostProhibited, DestinationUnreachable},
-		"TOS-network-unreachable": struct {
-			Code ICMP4Code
-			Type ICMP4Type
-		}{TOSNetworkUnreachable, DestinationUnreachable},
-		"TOS-host-unreachable": struct {
-			Code ICMP4Code
-			Type ICMP4Type
-		}{TOSHostUnreachable, DestinationUnreachable},
-		"communication-prohibited": struct {
-			Code ICMP4Code
-			Type ICMP4Type
-		}{CommunicationProhibited, DestinationUnreachable},
-		"host-precedence-violation": struct {
-			Code ICMP4Code
-			Type ICMP4Type
-		}{HostPrecedenceViolation, DestinationUnreachable},
-		"precedence-cutoff": struct {
-			Code ICMP4Code
-			Type ICMP4Type
-		}{PrecedenceCutoff, DestinationUnreachable},
-		"network-redirect": struct {
-			Code ICMP4Code
-			Type ICMP4Type
-		}{NetworkRedirect, Redirect},
-		"host-redirect": struct {
-			Code ICMP4Code
-			Type ICMP4Type
-		}{HostRedirect, Redirect},
-		"TOS-network-redirect": struct {
-			Code ICMP4Code
-			Type ICMP4Type
-		}{TOSNetworkRedirect, Redirect},
-		"TOS-host-redirect": struct {
-			Code ICMP4Code
-			Type ICMP4Type
-		}{TOSHostRedirect, Redirect},
-		"ttl-zero-during-transit": struct {
-			Code ICMP4Code
-			Type ICMP4Type
-		}{TTLZeroDuringTransit, TimeExceeded},
-		"ttl-zero-during-reassembly": struct {
-			Code ICMP4Code
-			Type ICMP4Type
-		}{TTLZeroDuringReassembly, TimeExceeded},
-		"ip-header-bad": struct {
-			Code ICMP4Code
-			Type ICMP4Type
-		}{IPHeaderBad, ParameterProblem},
-		"required-option-missing": struct {
-			Code ICMP4Code
-			Type ICMP4Type
-		}{RequiredOptionMissing, ParameterProblem},
+		"network-unreachable":        {NetworkUnreachable, DestinationUnreachable},
+		"host-unreachable":           {HostUnreachable, DestinationUnreachable},
+		"protocol-unreachable":       {ProtocolUnreachable, DestinationUnreachable},
+		"port-unreachable":           {PortUnreachable, DestinationUnreachable},
+		"fragmentation-needed":       {FragmentationUnreachable, DestinationUnreachable},
+		"source-route-failed":        {SourceRouteFailed, DestinationUnreachable},
+		"network-unknown":            {NetworkUnknown, DestinationUnreachable},
+		"host-unknown":               {HostUnknown, DestinationUnreachable},
+		"network-prohibited":         {NetworkProhibited, DestinationUnreachable},
+		"host-prohibited":            {HostProhibited, DestinationUnreachable},
+		"TOS-network-unreachable":    {TOSNetworkUnreachable, DestinationUnreachable},
+		"TOS-host-unreachable":       {TOSHostUnreachable, DestinationUnreachable},
+		"communication-prohibited":   {CommunicationProhibited, DestinationUnreachable},
+		"host-precedence-violation":  {HostPrecedenceViolation, DestinationUnreachable},
+		"precedence-cutoff":          {PrecedenceCutoff, DestinationUnreachable},
+		"network-redirect":           {NetworkRedirect, Redirect},
+		"host-redirect":              {HostRedirect, Redirect},
+		"TOS-network-redirect":       {TOSNetworkRedirect, Redirect},
+		"TOS-host-redirect":          {TOSHostRedirect, Redirect},
+		"ttl-zero-during-transit":    {TTLZeroDuringTransit, TimeExceeded},
+		"ttl-zero-during-reassembly": {TTLZeroDuringReassembly, TimeExceeded},
+		"ip-header-bad":              {IPHeaderBad, ParameterProblem},
+		"required-option-missing":    {RequiredOptionMissing, ParameterProblem},
 	}
 )

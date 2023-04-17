@@ -4241,7 +4241,10 @@ func (mHashLimit *MatchHashLimit) Parse(main []byte) (int, bool) {
 	case "mb/s":
 		unit = xtables.MBPS
 	}
-	mHashLimit.Avg = xtables.Rate{avg, unit}
+	mHashLimit.Avg = xtables.Rate{
+		Rate: avg,
+		Unit: unit,
+	}
 	if len(matches[5]) != 0 {
 		burst, err := strconv.Atoi(string(matches[5]))
 		if err != nil {
@@ -5456,7 +5459,8 @@ func (mLimit *MatchLimit) Parse(main []byte) (int, bool) {
 		return 0, false
 	}
 	mLimit.Avg = xtables.Rate{
-		avg, unit,
+		Rate: avg,
+		Unit: unit,
 	}
 	mLimit.Burst = burst
 	return len(matches[0]), true

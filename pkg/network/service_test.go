@@ -3,7 +3,7 @@ package network
 import "testing"
 
 func TestServiceName(t *testing.T) {
-	for key, _ := range ServicePortProtoMaps {
+	for key := range ServicePortProtoMaps {
 		name := key.Value()
 		for _, char := range name {
 			if (char < '0' || char > 'z') &&

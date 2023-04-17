@@ -44,6 +44,7 @@ const (
 	EthernetTypePPP                         EthernetType = 0x880b
 	EthernetTypeMPLS                        EthernetType = 0x8847
 	EthernetTypeMPLS_UNICAST                EthernetType = 0x8847
+	EthernetTypeMPLSUnicast                 EthernetType = 0x8847
 	EthernetTypeMPLSMulticast               EthernetType = 0x8848
 	EthernetTypeMPLS_MULTI                  EthernetType = 0x8848
 	EthernetTypeATMMPOA                     EthernetType = 0x884c
