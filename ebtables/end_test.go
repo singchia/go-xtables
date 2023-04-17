@@ -182,29 +182,23 @@ func TestDeleteAll(t *testing.T) {
 	var err error
 	sip := net.ParseIP("192.168.0.2")
 
+	iptables := NewEBTables().Table(TableTypeNat).
+		Chain(ChainTypePREROUTING).
+		MatchProtocol(false, network.EthernetTypeIPv4).
+		MatchIP(WithMatchIPSource(false, network.NewIP(sip))).
+		TargetAccept()
+
 	for i := 0; i < 10; i++ {
-		err = NewEBTables().Table(TableTypeNat).
-			Chain(ChainTypePREROUTING).
-			MatchProtocol(false, network.EthernetTypeIPv4).
-			MatchIP(WithMatchIPSource(false, network.NewIP(sip))).
-			TargetAccept().
+		err = iptables.
 			Insert()
 		assert.Equal(t, nil, err)
 	}
 
-	err = NewEBTables().Table(TableTypeNat).
-		Chain(ChainTypePREROUTING).
-		MatchProtocol(false, network.EthernetTypeIPv4).
-		MatchIP(WithMatchIPSource(false, network.NewIP(sip))).
-		TargetAccept().
+	err = iptables.
 		DeleteAll()
 	assert.Equal(t, nil, err)
 
-	rules, err := NewEBTables().Table(TableTypeNat).
-		Chain(ChainTypePREROUTING).
-		MatchProtocol(false, network.EthernetTypeIPv4).
-		MatchIP(WithMatchIPSource(false, network.NewIP(sip))).
-		TargetAccept().
+	rules, err := iptables.
 		FindRules()
 	assert.Equal(t, nil, err)
 	assert.Equal(t, 0, len(rules))

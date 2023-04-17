@@ -10483,7 +10483,7 @@ func init() {
 }
 
 // see https://git.netfilter.org/iptables/tree/extensions
-func ParseMatch(params []byte) ([]Match, int, error) {
+func (iptables *IPTables) parseMatch(params []byte) ([]Match, int, error) {
 	index := 0
 	matches := []Match{}
 	for len(params) > 0 {

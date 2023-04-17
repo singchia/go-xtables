@@ -3,7 +3,6 @@ package iptables
 import (
 	"bufio"
 	"bytes"
-	"fmt"
 	"strconv"
 	"strings"
 
@@ -15,7 +14,7 @@ import (
 type onChainLine func(line []byte) (*Chain, error)
 type onRuleLine func(rule []byte, head []string, chain *Chain) (*Rule, error)
 
-func parse(data []byte, table TableType, onChainLine onChainLine, onRuleLine onRuleLine) (
+func (iptables *IPTables) parse(data []byte, table TableType, onChainLine onChainLine, onRuleLine onRuleLine) (
 	[]*Chain, []*Rule, error) {
 
 	chains := []*Chain{}
@@ -39,6 +38,7 @@ func parse(data []byte, table TableType, onChainLine onChainLine, onRuleLine onR
 				}
 				chain, err = onChainLine(line)
 				if err != nil {
+					iptables.log.Errorf("parse chain line err: %s", err)
 					return nil, nil, err
 				}
 				chain.tableType = table
@@ -58,6 +58,7 @@ func parse(data []byte, table TableType, onChainLine onChainLine, onRuleLine onR
 			}
 			rule, err := onRuleLine(line, head, chain)
 			if err != nil {
+				iptables.log.Errorf("parse rule line err: %s", err)
 				return nil, nil, err
 			}
 			rule.tableType = table
@@ -68,7 +69,7 @@ func parse(data []byte, table TableType, onChainLine onChainLine, onRuleLine onR
 	return chains, rules, nil
 }
 
-func parseRule(line []byte, head []string, chain *Chain) (*Rule, error) {
+func (iptables *IPTables) parseRule(line []byte, head []string, chain *Chain) (*Rule, error) {
 	rule := &Rule{
 		chain:      chain,
 		lineNumber: -1,
@@ -84,8 +85,10 @@ func parseRule(line []byte, head []string, chain *Chain) (*Rule, error) {
 		field := string(fields[i])
 		switch name {
 		case "num":
-			num, err := strconv.Atoi(strings.TrimSpace(field))
+			field = strings.TrimSpace(field)
+			num, err := strconv.Atoi(field)
 			if err != nil {
+				iptables.log.Errorf("num field convert: %s to int err: %s", field, err)
 				return nil, err
 			}
 			rule.lineNumber = num
@@ -93,12 +96,14 @@ func parseRule(line []byte, head []string, chain *Chain) (*Rule, error) {
 		case "pkts":
 			num, err := xutil.UnfoldDecimal(field)
 			if err != nil {
+				iptables.log.Errorf("pkts unfold decimal: %s err: %s", field, err)
 				return nil, err
 			}
 			rule.packets = num
 		case "bytes":
 			num, err := xutil.UnfoldDecimal(field)
 			if err != nil {
+				iptables.log.Errorf("bytes unfold decimal: %s err: %s", field, err)
 				return nil, err
 			}
 			rule.bytes = num
@@ -133,6 +138,7 @@ func parseRule(line []byte, head []string, chain *Chain) (*Rule, error) {
 			} else {
 				id, err := strconv.Atoi(field)
 				if err != nil {
+					iptables.log.Errorf("proto field convert: %s to int err: %s", field, err)
 					return nil, err
 				}
 				match := newMatchProtocol(invert, network.Protocol(id))
@@ -177,6 +183,7 @@ func parseRule(line []byte, head []string, chain *Chain) (*Rule, error) {
 
 			ads, err := network.ParseAddress(source)
 			if err != nil {
+				iptables.log.Errorf("parse source: %s address err: %s", source, err)
 				return nil, err
 			}
 			match, err := newMatchSource(invert, ads)
@@ -195,6 +202,7 @@ func parseRule(line []byte, head []string, chain *Chain) (*Rule, error) {
 
 			ads, err := network.ParseAddress(destination)
 			if err != nil {
+				iptables.log.Errorf("parse destination: %s address err: %s", destination, err)
 				return nil, err
 			}
 			match, err := newMatchDestination(invert, ads)
@@ -240,8 +248,9 @@ func parseRule(line []byte, head []string, chain *Chain) (*Rule, error) {
 	}
 
 	// then matches
-	matches, index, err := ParseMatch(params)
+	matches, index, err := iptables.parseMatch(params)
 	if err != nil {
+		iptables.log.Errorf("parse match: %s err: %s", string(params), err)
 		return nil, err
 	}
 	rule.matches = append(rule.matches, matches...)
@@ -251,26 +260,29 @@ func parseRule(line []byte, head []string, chain *Chain) (*Rule, error) {
 	params = params[index:]
 
 	// then target
-	_, ok := rule.target.Parse(bytes.TrimSpace(params))
+	params = bytes.TrimSpace(params)
+	_, ok := rule.target.Parse(params)
 	if !ok {
-		fmt.Println("singchia watching", string(params))
+		iptables.log.Errorf("parse target: %s err: %s", string(params), err)
 		return nil, xtables.ErrTargetParseFailed
 	}
 	return rule, nil
 }
 
-func parseChain(line []byte) (*Chain, error) {
+func (iptables *IPTables) parseChain(line []byte) (*Chain, error) {
 	chain := &Chain{
 		references: -1,
 	}
 	buf := bytes.NewBuffer(line)
 	_, err := buf.ReadString(' ')
 	if err != nil {
+		iptables.log.Errorf("parse chain read to first space err: %s", err)
 		return nil, err
 	}
 
 	chain.chainType.name, err = buf.ReadString(' ')
 	if err != nil {
+		iptables.log.Errorf("parse chain read to second space err: %s", err)
 		return nil, err
 	}
 
@@ -324,6 +336,7 @@ func parseChain(line []byte) (*Chain, error) {
 		if bytes.HasPrefix(second, []byte("packets")) {
 			num, err := xutil.UnfoldDecimal(string(first))
 			if err != nil {
+				iptables.log.Errorf("packets unfold decimal: %s in chain err: %s", string(first), err)
 				return nil, err
 			}
 			chain.packets = num
@@ -333,6 +346,7 @@ func parseChain(line []byte) (*Chain, error) {
 		if bytes.HasPrefix(second, []byte("bytes")) {
 			num, err := xutil.UnfoldDecimal(string(first))
 			if err != nil {
+				iptables.log.Errorf("bytes unfold decimal: %s in chain err: %s", string(first), err)
 				return nil, err
 			}
 			chain.bytes = num
@@ -342,6 +356,7 @@ func parseChain(line []byte) (*Chain, error) {
 		if bytes.HasPrefix(second, []byte("references")) {
 			num, err := xutil.UnfoldDecimal(string(first))
 			if err != nil {
+				iptables.log.Errorf("references unfold decimal: %s in chain err: %s", string(first), err)
 				return nil, err
 			}
 			chain.references = int(num)

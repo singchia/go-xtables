@@ -15,15 +15,32 @@ limitations under the License.
 */
 package iptables
 
+import "github.com/singchia/go-xtables/pkg/log"
+
+type IPTablesOption func(*IPTables)
+
+func OptionIPTablesLogger(logger log.Logger) IPTablesOption {
+	return func(iptables *IPTables) {
+		iptables.log = logger
+	}
+}
+
 type IPTables struct {
 	statement *Statement
 	cmdName   string
+	log       log.Logger
 }
 
-func NewIPTables() *IPTables {
+func NewIPTables(opts ...IPTablesOption) *IPTables {
 	tables := &IPTables{
 		statement: NewStatement(),
 		cmdName:   "iptables",
+	}
+	for _, opt := range opts {
+		opt(tables)
+	}
+	if tables.log == nil {
+		tables.log = log.DefaultLog
 	}
 	return tables
 }

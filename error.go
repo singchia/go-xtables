@@ -34,7 +34,8 @@ func (ce *CommandError) Error() string {
 }
 
 func (ce *CommandError) IsRuleNotExistError() bool {
-	return strings.Contains(ce.Message, "rule does not exist")
+	return strings.Contains(ce.Message, "rule does not exist") ||
+		strings.Contains(ce.Message, "does a matching rule exist in that chain?")
 }
 
 func ErrAndStdErr(err error, stderr []byte) error {

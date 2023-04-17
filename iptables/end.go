@@ -74,6 +74,34 @@ func (iptables *IPTables) Delete(opts ...OptionCommandDelete) error {
 	return nil
 }
 
+func (iptables *IPTables) DeleteAll(opts ...OptionCommandDelete) error {
+	if iptables.statement.err != nil {
+		return iptables.statement.err
+	}
+	newiptables := iptables.dump()
+	command := newDelete(ChainTypeNull, opts...)
+	newiptables.statement.command = command
+	for {
+		data, err := newiptables.exec()
+		if err == nil {
+			continue
+		}
+		if strings.Contains(string(data), "Illegal option `-j' with this command") {
+			newiptables.statement.target = nil
+			data, err = newiptables.exec()
+			if err == nil {
+				continue
+			}
+		}
+		ce := xtables.ErrAndStdErr(err, data)
+		if ce.(*xtables.CommandError).IsRuleNotExistError() {
+			break
+		}
+		return err
+	}
+	return nil
+}
+
 // 0 means ignoring
 func (iptables *IPTables) Insert(opts ...OptionCommandInsert) error {
 	if iptables.statement.err != nil {
@@ -123,7 +151,8 @@ func (iptables *IPTables) ListRules() ([]*Rule, error) {
 	if err != nil {
 		return nil, xtables.ErrAndStdErr(err, data)
 	}
-	_, rules, err := parse(data, iptables.statement.table, parseChain, parseRule)
+	_, rules, err := iptables.parse(data,
+		iptables.statement.table, iptables.parseChain, iptables.parseRule)
 	return rules, err
 }
 
@@ -139,7 +168,8 @@ func (iptables *IPTables) ListChains() ([]*Chain, error) {
 	if err != nil {
 		return nil, xtables.ErrAndStdErr(err, data)
 	}
-	chains, _, err := parse(data, iptables.statement.table, parseChain, nil)
+	chains, _, err := iptables.parse(data, iptables.statement.table,
+		iptables.parseChain, nil)
 	return chains, err
 }
 
@@ -325,7 +355,8 @@ func (iptables *IPTables) FindChains() ([]*Chain, error) {
 		return nil, xtables.ErrAndStdErr(err, data)
 	}
 
-	chains, _, err := parse(data, newiptables.statement.table, parseChain, nil)
+	chains, _, err := iptables.parse(data, newiptables.statement.table,
+		iptables.parseChain, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -384,7 +415,8 @@ func (iptables *IPTables) FindRules() ([]*Rule, error) {
 	if err != nil {
 		return nil, xtables.ErrAndStdErr(err, data)
 	}
-	_, rules, err := parse(data, iptables.statement.table, parseChain, parseRule)
+	_, rules, err := iptables.parse(data, iptables.statement.table,
+		iptables.parseChain, iptables.parseRule)
 	if err != nil {
 		return nil, err
 	}
