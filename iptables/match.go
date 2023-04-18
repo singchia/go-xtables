@@ -99,6 +99,20 @@ func (mt MatchType) Value() string {
 
 func (mt MatchType) String() string {
 	switch mt {
+	case MatchTypeIPv4:
+		return "ipv4"
+	case MatchTypeIPv6:
+		return "ipv6"
+	case MatchTypeSource:
+		return "source"
+	case MatchTypeDestination:
+		return "destination"
+	case MatchTypeProtocol:
+		return "protocol"
+	case MatchTypeInInterface:
+		return "in-interface"
+	case MatchTypeOutInterface:
+		return "out-interface"
 	case MatchTypeAddrType:
 		return "addrtype"
 	case MatchTypeAH:
@@ -473,6 +487,16 @@ type MatchIPv4 struct {
 	*baseMatch
 }
 
+func newMatchIPv4() *MatchIPv4 {
+	match := &MatchIPv4{
+		baseMatch: &baseMatch{
+			matchType: MatchTypeIPv4,
+		},
+	}
+	match.setChild(match)
+	return match
+}
+
 func (mIPv4 *MatchIPv4) Short() string {
 	return "-4"
 }
@@ -491,6 +515,16 @@ func (mIPv4 *MatchIPv4) LongArgs() []string {
 
 type MatchIPv6 struct {
 	*baseMatch
+}
+
+func newMatchIPv6() *MatchIPv6 {
+	match := &MatchIPv6{
+		baseMatch: &baseMatch{
+			matchType: MatchTypeIPv6,
+		},
+	}
+	match.setChild(match)
+	return match
 }
 
 func (mIPv6 *MatchIPv6) Short() string {
@@ -802,7 +836,6 @@ var (
 type OptionMatchAddrType func(*MatchAddrType)
 
 // Matches if the source address is of given type.
-//
 func WithMatchAddrTypeSrcType(invert bool, srcType AddrType) OptionMatchAddrType {
 	return func(mAddrType *MatchAddrType) {
 		mAddrType.SrcTypeInvert = invert
@@ -5067,7 +5100,7 @@ func WithMatchVAddr(invert bool, addr network.Address) OptionMatchIPVS {
 	}
 }
 
-//  VIP port to match.
+// VIP port to match.
 func WithMatchVPort(invert bool, port int) OptionMatchIPVS {
 	return func(mIPVS *MatchIPVS) {
 		mIPVS.VPort = port
@@ -5801,7 +5834,7 @@ func WithMatchMultiPortSrc(invert bool, ports ...PortRange) OptionMatchMultiPort
 	}
 }
 
-//  Match if the destination port is one of the given ports.
+// Match if the destination port is one of the given ports.
 func WithMatchMultiPortDst(invert bool, ports ...PortRange) OptionMatchMultiPort {
 	return func(mMultiPort *MatchMultiPort) {
 		mMultiPort.DstPorts = ports
@@ -6690,7 +6723,8 @@ type MatchPolicyElement struct {
 
 type OptionMatchPolicy func(*MatchPolicy)
 
-//  Used to select whether to match the policy used for decapsulation or
+//	Used to select whether to match the policy used for decapsulation or
+//
 // the policy that will be used for encapsulation.
 func WithMatchPolicyDir(dir xtables.Direction) OptionMatchPolicy {
 	return func(mPolicy *MatchPolicy) {
@@ -7739,7 +7773,8 @@ func WithMatchRPFilterValidMark() OptionMatchRPFilter {
 	}
 }
 
-//  This will permit packets arriving from the network with a source address
+//	This will permit packets arriving from the network with a source address
+//
 // that is also assigned to the local machine.
 func WithMatchRPFilterAcceptLocal() OptionMatchRPFilter {
 	return func(mRPFilter *MatchRPFilter) {
@@ -9882,7 +9917,6 @@ func (mTime *MatchTime) Parse(main []byte) (int, bool) {
 		`( contiguous)?`
 	reg := regexp.MustCompile(pattern)
 	matches := reg.FindSubmatch(main)
-	fmt.Println(len(matches))
 	if len(matches) != 16 {
 		return 0, false
 	}
@@ -10493,17 +10527,20 @@ func (iptables *IPTables) parseMatch(params []byte) ([]Match, int, error) {
 	for len(params) > 0 {
 		node, ok := matchTrie.LPM(string(params))
 		if !ok {
+			iptables.log.Tracef("longest path mismatched: %s", string(params))
 			break
 		}
 		typ := node.Value().(MatchType)
 		// get match by match type
 		match := matchFactory(typ)
 		if match == nil {
+			iptables.log.Errorf("match: %s unrecognized", typ)
 			return matches, index, xtables.ErrMatchParams
 		}
 		// index meaning the end of this match
 		offset, ok := match.Parse(params)
 		if !ok {
+			iptables.log.Errorf("match: %s parse: %s failed", match.Type(), string(params))
 			return matches, index, xtables.ErrMatchParams
 		}
 		index += offset

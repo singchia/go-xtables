@@ -581,7 +581,7 @@ func init() {
 	}
 }
 
-func parseWatcher(params []byte) ([]Watcher, int, error) {
+func (ebtables *EBTables) parseWatcher(params []byte) ([]Watcher, int, error) {
 	index := 0
 	watchers := []Watcher{}
 	for len(params) > 0 {

@@ -383,3 +383,11 @@ func TestAtomicCommit(t *testing.T) {
 	assert.Equal(t, nil, err)
 	assert.Equal(t, 1, len(rules))
 }
+
+func TestDryrun(t *testing.T) {
+	set()
+	defer unset()
+
+	err := NewEBTables().Dryrun(os.Stdout).Policy(TargetTypeAccept)
+	assert.Equal(t, nil, err)
+}

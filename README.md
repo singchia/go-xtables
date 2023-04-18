@@ -3,7 +3,6 @@ GO-XTABLES
 * go doc
 * go reference
 * go passing
-* other badger
 * linux
 * license
 
@@ -21,29 +20,97 @@ Netfilter允许数据包在多个表和链进行过滤、转换和修改，其�
 
 Go-xtables就是对iptables, ebtables和arptables工具进行了封装，相比较其他库，额外提供ebtables和arptables的能力，全特性支持（对所有在man手册提及的扩展能力进行了封装），对外提供了链式调用和option模式，完整继承了几个tables里对用户的抽象，非常可口。
 
-### 架构
+### 设计
 
 ![](/Users/zhaizenghui/Documents/默安/go-xtables/未命名.jpg)
 
 ### 特性
 
+* 简单易用
 * 多tables支持（iptables, ebtables, arptables）
-* 全量matches, options, watchers和其他extensions特性
-* 链式调用（任意排序）
+* 全特性支持（全量matches, options, watchers和其他extensions）
+* 链式调用（任意排序，可复用对象）
 * Dryrun
-* 可控日志
-* 文件锁，避免多应用干扰
+* 可控日志（默认日志或logrus等）
 
 ## 使用
 
 ### 简单使用
 
-#### 删除所有表数据
+#### 拒绝特定端口的所有进入流量
 
-```golang
+``` 
+iptables.NewIPTables().
+	Table(iptables.TableTypeFilter).
+	Chain(iptables.ChainTypeINPUT).
+	MatchProtocol(false, network.ProtocolTCP).
+	MatchTCP(iptables.WithMatchTCPDstPort(false, 2432)).
+	TargetDrop().
+	Append()
+```
 
+#### 允许特定源IP地址的所有进入流量
 
+```
+iptables.NewIPTables().
+	Table(iptables.TableTypeFilter).
+	Chain(iptables.ChainTypeINPUT).
+	MatchSource(false, "192.168.1.100").
+	TargetAccept().
+	Append()
 
-golang```
+```
 
-### 案例
+#### 查找相关的规则
+
+```
+rules, err := iptables.NewIPTables().
+	Table(iptables.TableTypeFilter).
+	Chain(iptables.ChainTypeINPUT).
+	MatchSource(false, "192.168.1.100").
+	TargetAccept().
+	FindRules()
+```
+
+#### 删除所有表的所有规则
+
+```
+iptables.NewIPTables().Flush()
+
+```
+
+#### 允许每分钟10个连接进入80端口
+
+```
+iptables.NewIPTables().
+	Table(iptables.TableTypeFilter).
+	Chain(iptables.ChainTypeINPUT).
+	MatchProtocol(false, network.ProtocolTCP).
+	MatchTCP(iptables.WithMatchTCPDstPort(false, 80)).
+	MatchLimit(iptables.WithMatchLimit(xtables.Rate{10, xtables.Minute})).
+	TargetAccept().
+	Append()
+```
+
+#### 流量镜像到网关
+
+```
+iptables.NewIPTables().
+	Table(iptables.TableTypeMangle).
+	Chain(iptables.ChainTypePREROUTING).
+	MatchProtocol(false, network.ProtocolTCP).
+	MatchTCP(iptables.WithMatchTCPDstPort(false, 2432)).
+	TargetTEE(net.ParseIP("192.168.1.1")).
+	Insert()
+
+```
+
+### 场景示例
+
+## 注意
+
+### 兼容性
+
+## 参与开发
+
+## 贡献

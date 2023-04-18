@@ -12,7 +12,9 @@ func TestParseChain(t *testing.T) {
 		t.Error(err)
 		return
 	}
-	chains, rules, err := parse(data, parseTable, parseChain, parseRule)
+	ebtables := NewEBTables()
+	chains, rules, err := ebtables.parse(data,
+		ebtables.parseTable, ebtables.parseChain, ebtables.parseRule)
 	if err != nil {
 		t.Error(err)
 		return

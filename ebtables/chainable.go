@@ -1,6 +1,10 @@
 package ebtables
 
-import "github.com/singchia/go-xtables/pkg/network"
+import (
+	"io"
+
+	"github.com/singchia/go-xtables/pkg/network"
+)
 
 func (ebtables *EBTables) Table(table TableType) *EBTables {
 	newebtables := ebtables.dump()
@@ -19,6 +23,13 @@ func (ebtables *EBTables) UserDefinedChain(chain string) *EBTables {
 	newebtables.statement.chain = ChainTypeUserDefined
 	newebtables.statement.chain.name = chain
 	newebtables.statement.chain.userDefined = true
+	return newebtables
+}
+
+func (ebtables *EBTables) Dryrun(w io.Writer) *EBTables {
+	newebtables := ebtables.dump()
+	newebtables.dr = true
+	newebtables.drWriter = w
 	return newebtables
 }
 

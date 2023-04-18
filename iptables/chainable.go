@@ -1,6 +1,7 @@
 package iptables
 
 import (
+	"io"
 	"net"
 
 	"github.com/singchia/go-xtables"
@@ -26,17 +27,20 @@ func (iptables *IPTables) UserDefinedChain(chain string) *IPTables {
 	return newiptables
 }
 
+func (iptables *IPTables) Dryrun(w io.Writer) *IPTables {
+	newiptables := iptables.dump()
+	newiptables.dr = true
+	newiptables.drWriter = w
+	return newiptables
+}
+
 // matches
 func (iptables *IPTables) MatchIPv4() *IPTables {
 	if iptables.statement.err != nil {
 		return iptables
 	}
 	newiptables := iptables.dump()
-	match := &MatchIPv4{
-		baseMatch: &baseMatch{
-			matchType: MatchTypeIPv4,
-		},
-	}
+	match := newMatchIPv4()
 	newiptables.statement.addMatch(match)
 	return newiptables
 }
@@ -46,11 +50,7 @@ func (iptables *IPTables) MatchIPv6() *IPTables {
 		return iptables
 	}
 	newiptables := iptables.dump()
-	match := &MatchIPv6{
-		baseMatch: &baseMatch{
-			matchType: MatchTypeIPv6,
-		},
-	}
+	match := newMatchIPv6()
 	newiptables.statement.addMatch(match)
 	return newiptables
 }
@@ -79,13 +79,7 @@ func (iptables *IPTables) MatchSource(invert bool, address interface{}) *IPTable
 		return iptables
 	}
 	newiptables := iptables.dump()
-	match := &MatchSource{
-		baseMatch: &baseMatch{
-			matchType: MatchTypeSource,
-			invert:    invert,
-		},
-		address: ads,
-	}
+	match, _ := newMatchSource(invert, ads)
 	newiptables.statement.addMatch(match)
 	return newiptables
 }
@@ -104,13 +98,7 @@ func (iptables *IPTables) MatchDestination(invert bool, address interface{}) *IP
 		return iptables
 	}
 	newiptables := iptables.dump()
-	match := &MatchDestination{
-		baseMatch: &baseMatch{
-			matchType: MatchTypeDestination,
-			invert:    invert,
-		},
-		address: ads,
-	}
+	match, _ := newMatchDestination(invert, ads)
 	newiptables.statement.addMatch(match)
 	return newiptables
 }
@@ -120,13 +108,7 @@ func (iptables *IPTables) MatchInInterface(invert bool, iface string) *IPTables 
 		return iptables
 	}
 	newiptables := iptables.dump()
-	match := &MatchInInterface{
-		baseMatch: &baseMatch{
-			matchType: MatchTypeInInterface,
-			invert:    invert,
-		},
-		iface: iface,
-	}
+	match, _ := newMatchInInterface(invert, iface)
 	newiptables.statement.addMatch(match)
 	return newiptables
 }
@@ -136,13 +118,7 @@ func (iptables *IPTables) MatchOutInterface(invert bool, iface string) *IPTables
 		return iptables
 	}
 	newiptables := iptables.dump()
-	match := &MatchOutInterface{
-		baseMatch: &baseMatch{
-			matchType: MatchTypeOutInterface,
-			invert:    invert,
-		},
-		iface: iface,
-	}
+	match, _ := newMatchOutInterface(invert, iface)
 	newiptables.statement.addMatch(match)
 	return newiptables
 }

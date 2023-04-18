@@ -338,3 +338,12 @@ func TestPolicy(t *testing.T) {
 	err = iptables.Policy(TargetTypeAccept)
 	assert.Equal(t, nil, err)
 }
+
+func TestDryrun(t *testing.T) {
+	set()
+	defer unset()
+
+	err := NewIPTables().Table(TableTypeFilter).Chain(ChainTypeFORWARD).
+		Dryrun(os.Stdout).Policy(TargetTypeAccept)
+	assert.Equal(t, nil, err)
+}

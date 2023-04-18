@@ -3,6 +3,7 @@ package iptables
 import (
 	"bufio"
 	"bytes"
+	"errors"
 	"strings"
 
 	"github.com/singchia/go-xtables"
@@ -21,6 +22,31 @@ func (iptables *IPTables) exec() ([]byte, error) {
 	return infoO, nil
 }
 
+func (iptables *IPTables) dryrun() error {
+	if iptables.drWriter == nil {
+		return errors.New("nil dryrun writer")
+	}
+	elems, err := iptables.statement.Elems()
+	if err != nil {
+		return err
+	}
+	str := iptables.cmdName + " " + strings.Join(elems, " ") + "\n"
+	data := []byte(str)
+	length := len(data)
+	pos := 0
+	for {
+		m, err := iptables.drWriter.Write(data[pos:length])
+		if err != nil {
+			return err
+		}
+		pos += m
+		if pos == length {
+			break
+		}
+	}
+	return nil
+}
+
 func (iptables *IPTables) Append() error {
 	if iptables.statement.err != nil {
 		return iptables.statement.err
@@ -28,6 +54,9 @@ func (iptables *IPTables) Append() error {
 	newiptables := iptables.dump()
 	command := newAppend(ChainTypeNull)
 	newiptables.statement.command = command
+	if newiptables.dr {
+		return newiptables.dryrun()
+	}
 	data, err := newiptables.exec()
 	if err != nil {
 		return xtables.ErrAndStdErr(err, data)
@@ -42,6 +71,9 @@ func (iptables *IPTables) Check() (bool, error) {
 	newiptables := iptables.dump()
 	command := newCheck(ChainTypeNull)
 	newiptables.statement.command = command
+	if newiptables.dr {
+		return false, newiptables.dryrun()
+	}
 	data, err := newiptables.exec()
 	if err != nil {
 		if strings.Contains(string(data), "does a matching rule exist in that chain?") {
@@ -60,6 +92,9 @@ func (iptables *IPTables) Delete(opts ...OptionCommandDelete) error {
 	newiptables := iptables.dump()
 	command := newDelete(ChainTypeNull, opts...)
 	newiptables.statement.command = command
+	if newiptables.dr {
+		return newiptables.dryrun()
+	}
 	data, err := newiptables.exec()
 	if err != nil {
 		if strings.Contains(string(data), "Illegal option `-j' with this command") {
@@ -81,6 +116,9 @@ func (iptables *IPTables) DeleteAll(opts ...OptionCommandDelete) error {
 	newiptables := iptables.dump()
 	command := newDelete(ChainTypeNull, opts...)
 	newiptables.statement.command = command
+	if newiptables.dr {
+		return newiptables.dryrun()
+	}
 	for {
 		data, err := newiptables.exec()
 		if err == nil {
@@ -110,6 +148,9 @@ func (iptables *IPTables) Insert(opts ...OptionCommandInsert) error {
 	newiptables := iptables.dump()
 	command := newInsert(ChainTypeNull, opts...)
 	newiptables.statement.command = command
+	if newiptables.dr {
+		return newiptables.dryrun()
+	}
 	data, err := newiptables.exec()
 	if err != nil {
 		return xtables.ErrAndStdErr(err, data)
@@ -128,6 +169,9 @@ func (iptables *IPTables) Replace(rulenum int) error {
 	newiptables := iptables.dump()
 	command := newReplace(ChainTypeNull, rulenum)
 	newiptables.statement.command = command
+	if newiptables.dr {
+		return newiptables.dryrun()
+	}
 	data, err := newiptables.exec()
 	if err != nil {
 		return xtables.ErrAndStdErr(err, data)
@@ -147,6 +191,9 @@ func (iptables *IPTables) ListRules() ([]*Rule, error) {
 	}
 	command := newListRules(ChainTypeNull)
 	newiptables.statement.command = command
+	if newiptables.dr {
+		return nil, newiptables.dryrun()
+	}
 	data, err := newiptables.exec()
 	if err != nil {
 		return nil, xtables.ErrAndStdErr(err, data)
@@ -164,6 +211,9 @@ func (iptables *IPTables) ListChains() ([]*Chain, error) {
 	newiptables := iptables.dump()
 	command := newListChains(ChainTypeNull)
 	newiptables.statement.command = command
+	if newiptables.dr {
+		return nil, newiptables.dryrun()
+	}
 	data, err := newiptables.exec()
 	if err != nil {
 		return nil, xtables.ErrAndStdErr(err, data)
@@ -182,6 +232,9 @@ func (iptables *IPTables) DumpRules() ([]string, error) {
 	command := newDumpRules(ChainTypeNull)
 	newiptables.statement.command = command
 	newiptables.statement.dump = true
+	if newiptables.dr {
+		return nil, newiptables.dryrun()
+	}
 	data, err := newiptables.exec()
 	if err != nil {
 		return nil, xtables.ErrAndStdErr(err, data)
@@ -215,6 +268,10 @@ func (iptables *IPTables) Flush() error {
 		tmp := newiptables.Table(table)
 		command := newFlush()
 		tmp.statement.command = command
+		if tmp.dr {
+			tmp.dryrun()
+			continue
+		}
 		data, err := tmp.exec()
 		if err != nil {
 			return xtables.ErrAndStdErr(err, data)
@@ -231,6 +288,9 @@ func (iptables *IPTables) Zero(opts ...OptionCommandZero) error {
 	newiptables := iptables.dump()
 	command := newZero(ChainTypeNull, opts...)
 	newiptables.statement.command = command
+	if newiptables.dr {
+		return newiptables.dryrun()
+	}
 	data, err := newiptables.exec()
 	if err != nil {
 		return xtables.ErrAndStdErr(err, data)
@@ -245,6 +305,9 @@ func (iptables *IPTables) NewChain(newName string) error {
 	newiptables := iptables.dump()
 	command := newNewChain(newName)
 	newiptables.statement.command = command
+	if newiptables.dr {
+		return newiptables.dryrun()
+	}
 	data, err := newiptables.exec()
 	if err != nil {
 		return xtables.ErrAndStdErr(err, data)
@@ -270,6 +333,10 @@ func (iptables *IPTables) DeleteChain() error {
 		tmp := newiptables.Table(table)
 		command := newDeleteChain(ChainTypeNull)
 		tmp.statement.command = command
+		if tmp.dr {
+			tmp.dryrun()
+			continue
+		}
 		data, err := tmp.exec()
 		if err != nil {
 			return xtables.ErrAndStdErr(err, data)
@@ -304,6 +371,10 @@ func (iptables *IPTables) Policy(target TargetType) error {
 				newiptables := newiptables.Table(table).Chain(chain)
 				command := newPolicy(ChainTypeNull, target)
 				newiptables.statement.command = command
+				if newiptables.dr {
+					newiptables.dryrun()
+					continue
+				}
 				data, err := newiptables.exec()
 				if err != nil {
 					return xtables.ErrAndStdErr(err, data)
@@ -316,6 +387,10 @@ func (iptables *IPTables) Policy(target TargetType) error {
 			tmp := newiptables.Table(table)
 			command := newPolicy(ChainTypeNull, target)
 			tmp.statement.command = command
+			if tmp.dr {
+				tmp.dryrun()
+				continue
+			}
 			data, err := tmp.exec()
 			if err != nil {
 				return xtables.ErrAndStdErr(err, data)
@@ -332,6 +407,9 @@ func (iptables *IPTables) RenameChain(newChain string) error {
 	newiptables := iptables.dump()
 	command := newRenameChain(ChainTypeNull, newChain)
 	newiptables.statement.command = command
+	if newiptables.dr {
+		return newiptables.dryrun()
+	}
 	data, err := newiptables.exec()
 	if err != nil {
 		return xtables.ErrAndStdErr(err, data)
@@ -349,7 +427,9 @@ func (iptables *IPTables) FindChains() ([]*Chain, error) {
 
 	command := newListChains(ChainTypeNull)
 	newiptables.statement.command = command
-
+	if newiptables.dr {
+		return nil, newiptables.dryrun()
+	}
 	data, err := newiptables.exec()
 	if err != nil {
 		return nil, xtables.ErrAndStdErr(err, data)
@@ -410,7 +490,9 @@ func (iptables *IPTables) FindRules() ([]*Rule, error) {
 	newiptables.statement.options[OptionTypeLineNumbers], _ = newOptionLineNumbers()
 	newiptables.statement.options[OptionTypeNumeric], _ = newOptionNumeric()
 	newiptables.statement.options[OptionTypeVerbose], _ = newOptionVerbose()
-
+	if newiptables.dr {
+		return nil, newiptables.dryrun()
+	}
 	data, err := newiptables.exec()
 	if err != nil {
 		return nil, xtables.ErrAndStdErr(err, data)

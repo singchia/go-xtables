@@ -1,6 +1,6 @@
 module github.com/singchia/go-xtables
 
-go 1.20
+go 1.18
 
 require (
 	bou.ke/monkey v1.0.2

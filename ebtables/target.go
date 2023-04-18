@@ -951,7 +951,7 @@ func init() {
 	}
 }
 
-func parseTarget(params []byte) (Target, int, error) {
+func (ebtables *EBTables) parseTarget(params []byte) (Target, int, error) {
 	node, ok := targetTrie.LPM(string(params))
 	if !ok {
 		return nil, 0, xtables.ErrTargetNotFound

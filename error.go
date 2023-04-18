@@ -30,7 +30,7 @@ type CommandError struct {
 }
 
 func (ce *CommandError) Error() string {
-	return ce.Error() + ";" + ce.Message
+	return ce.Err.Error() + ";" + ce.Message
 }
 
 func (ce *CommandError) IsRuleNotExistError() bool {

@@ -2889,23 +2889,26 @@ func init() {
 	}
 }
 
-func parseMatch(params []byte) ([]Match, int, error) {
+func (ebtables *EBTables) parseMatch(params []byte) ([]Match, int, error) {
 	index := 0
 	matches := []Match{}
 	for len(params) > 0 {
 		node, ok := matchTrie.LPM(string(params))
 		if !ok {
+			ebtables.log.Tracef("longest path mismatched: %s", string(params))
 			break
 		}
 		typ := node.Value().(MatchType)
 		// get match by match type
 		match := matchFactory(typ)
 		if match == nil {
+			ebtables.log.Errorf("match: %s unrecognized", typ)
 			return matches, index, xtables.ErrMatchParams
 		}
 		// index meaning the end of this match
 		offset, ok := match.Parse(params)
 		if !ok {
+			ebtables.log.Errorf("match: %s parse: %s failed", match.Type(), string(params))
 			return matches, index, xtables.ErrMatchParams
 		}
 		index += offset

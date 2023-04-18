@@ -15,7 +15,7 @@ type onTableLine func(line []byte) (TableType, error)
 type onChainLine func(line []byte) (*Chain, error)
 type onRuleLine func(rule []byte, chain *Chain) (*Rule, error)
 
-func parse(data []byte, onTableLine onTableLine,
+func (ebtables *EBTables) parse(data []byte, onTableLine onTableLine,
 	onChainLine onChainLine, onRuleLine onRuleLine) (
 	[]*Chain, []*Rule, error) {
 
@@ -39,6 +39,7 @@ func parse(data []byte, onTableLine onTableLine,
 				}
 				tableType, err = onTableLine(line)
 				if err != nil {
+					ebtables.log.Errorf("parse table line err: %s", err)
 					return nil, nil, err
 				}
 			} else if bytes.HasPrefix(line, []byte("Bridge chain")) {
@@ -47,6 +48,7 @@ func parse(data []byte, onTableLine onTableLine,
 				}
 				chain, err = onChainLine(line)
 				if err != nil {
+					ebtables.log.Errorf("parse chain line err: %s", err)
 					return nil, nil, err
 				}
 				chain.tableType = tableType
@@ -63,6 +65,7 @@ func parse(data []byte, onTableLine onTableLine,
 			}
 			rule, err := onRuleLine(line, chain)
 			if err != nil {
+				ebtables.log.Errorf("parse rule line err: %s", err)
 				return nil, nil, err
 			}
 			rule.tableType = tableType
@@ -73,7 +76,7 @@ func parse(data []byte, onTableLine onTableLine,
 	return chains, rules, nil
 }
 
-func parseTable(line []byte) (TableType, error) {
+func (ebtables *EBTables) parseTable(line []byte) (TableType, error) {
 	buf := bytes.NewBuffer(line)
 	_, err := buf.ReadString(':')
 	if err != nil {
@@ -98,16 +101,18 @@ func parseTable(line []byte) (TableType, error) {
 	return TableTypeNull, nil
 }
 
-func parseChain(line []byte) (*Chain, error) {
+func (ebtables *EBTables) parseChain(line []byte) (*Chain, error) {
 	chain := &Chain{}
 	buf := bytes.NewBuffer(line)
 	_, err := buf.ReadString(':')
 	if err != nil {
+		ebtables.log.Errorf("parse chain read to first space err: %s", err)
 		return nil, err
 	}
 
 	chain.chainType.name, err = buf.ReadString(',')
 	if err != nil {
+		ebtables.log.Errorf("parse chain read to second space err: %s", err)
 		return nil, err
 	}
 	chain.chainType.name = strings.TrimSpace(chain.chainType.name[:len(chain.chainType.name)-1])
@@ -172,7 +177,7 @@ func parseChain(line []byte) (*Chain, error) {
 	return chain, nil
 }
 
-func parseRule(line []byte, chain *Chain) (*Rule, error) {
+func (ebtables *EBTables) parseRule(line []byte, chain *Chain) (*Rule, error) {
 	rule := &Rule{
 		chain:      chain,
 		matchMap:   map[MatchType]Match{},
@@ -190,8 +195,9 @@ func parseRule(line []byte, chain *Chain) (*Rule, error) {
 		}
 	}
 	// then matches
-	matches, index, err := parseMatch(line)
+	matches, index, err := ebtables.parseMatch(line)
 	if err != nil {
+		ebtables.log.Errorf("parse match: %s err: %s", string(line), err)
 		return nil, err
 	}
 	for _, match := range matches {
@@ -200,8 +206,9 @@ func parseRule(line []byte, chain *Chain) (*Rule, error) {
 	line = line[index:]
 
 	// watcher
-	watchers, index, err := parseWatcher(line)
+	watchers, index, err := ebtables.parseWatcher(line)
 	if err != nil {
+		ebtables.log.Errorf("parse watcher: %s err: %s", string(line), err)
 		return nil, err
 	}
 	for _, watcher := range watchers {
@@ -210,9 +217,10 @@ func parseRule(line []byte, chain *Chain) (*Rule, error) {
 	line = line[index:]
 
 	// then target
-	target, index, err := parseTarget(line)
+	target, index, err := ebtables.parseTarget(line)
 	if err != nil {
 		if err != xtables.ErrTargetNotFound {
+			ebtables.log.Errorf("parse target: %s err: %s", string(line), err)
 			return nil, err
 		}
 		rule.target = nil
