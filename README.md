@@ -1,6 +1,7 @@
 # GO-XTABLES
 
-![GitHub](https://img.shields.io/github/license/singchia/go-xtables)
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+
 
 ## 简介
 ### 说明
@@ -90,7 +91,6 @@ ebtables.NewEBTables().
 ```
 ### 现实场景
 #### 防止DDos攻击
-
 ```
 custom := "SYN_FLOOD"
 ipt := iptables.NewIPTables().Table(iptables.TableTypeFilter)
