@@ -1,9 +1,3 @@
-/*
- * Apache License 2.0
- *
- * Copyright (c) 2022, Austin Zhai
- * All rights reserved.
- */
 package iptables
 
 import (
@@ -11,23 +5,18 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"math"
 	"net"
 	"regexp"
 	"strconv"
 	"strings"
 
 	"github.com/singchia/go-hammer/tree"
+	"github.com/singchia/go-xtables"
+	"github.com/singchia/go-xtables/pkg/network"
 )
 
 type MatchType int
-
-func (mt MatchType) Type() string {
-	return "MatchType"
-}
-
-func (mt MatchType) Value() string {
-	return strconv.Itoa(int(mt))
-}
 
 const (
 	MatchTypeAddrType MatchType = iota
@@ -100,6 +89,155 @@ const (
 	MatchTypeUnclean // unsupport
 )
 
+func (mt MatchType) Type() string {
+	return "MatchType"
+}
+
+func (mt MatchType) Value() string {
+	return strconv.Itoa(int(mt))
+}
+
+func (mt MatchType) String() string {
+	switch mt {
+	case MatchTypeIPv4:
+		return "ipv4"
+	case MatchTypeIPv6:
+		return "ipv6"
+	case MatchTypeSource:
+		return "source"
+	case MatchTypeDestination:
+		return "destination"
+	case MatchTypeProtocol:
+		return "protocol"
+	case MatchTypeInInterface:
+		return "in-interface"
+	case MatchTypeOutInterface:
+		return "out-interface"
+	case MatchTypeAddrType:
+		return "addrtype"
+	case MatchTypeAH:
+		return "ah"
+	case MatchTypeBPF:
+		return "bpf"
+	case MatchTypeCGroup:
+		return "cgroup"
+	case MatchTypeCluster:
+		return "cluster"
+	case MatchTypeComment:
+		return "comment"
+	case MatchTypeConnBytes:
+		return "connbytes"
+	case MatchTypeConnLabel:
+		return "connlabel"
+	case MatchTypeConnLimit:
+		return "connlimit"
+	case MatchTypeConnMark:
+		return "connmark"
+	case MatchTypeConnTrack:
+		return "conntrack"
+	case MatchTypeCPU:
+		return "cpu"
+	case MatchTypeDCCP:
+		return "dccp"
+	case MatchTypeDevGroup:
+		return "devgroup"
+	case MatchTypeDSCP:
+		return "dscp"
+	case MatchTypeDst:
+		return "dst"
+	case MatchTypeECN:
+		return "ecn"
+	case MatchTypeESP:
+		return "esp"
+	case MatchTypeEUI64:
+		return "eui64"
+	case MatchTypeFrag:
+		return "frag"
+	case MatchTypeHashLimit:
+		return "hashlimit"
+	case MatchTypeHBH:
+		return "hbh"
+	case MatchTypeHelper:
+		return "helper"
+	case MatchTypeHL:
+		return "hl"
+	case MatchTypeICMP:
+		return "icmp"
+	case MatchTypeIPRange:
+		return "iprange"
+	case MatchTypeIPv6Header:
+		return "ipv6header"
+	case MatchTypeIPVS:
+		return "ipvs"
+	case MatchTypeLength:
+		return "length"
+	case MatchTypeLimit:
+		return "limit"
+	case MatchTypeMAC:
+		return "mac"
+	case MatchTypeMark:
+		return "mark"
+	case MatchTypeMH:
+		return "mh"
+	case MatchTypeMultiPort:
+		return "multiport"
+	case MatchTypeNFAcct:
+		return "nfacct"
+	case MatchTypeOSF:
+		return "osf"
+	case MatchTypeOwner:
+		return "owner"
+	case MatchTypePhysDev:
+		return "physdev"
+	case MatchTypePktType:
+		return "pkttype"
+	case MatchTypePolicy:
+		return "policy"
+	case MatchTypeQuota:
+		return "quota"
+	case MatchTypeRateEst:
+		return "rateest"
+	case MatchTypeRealm:
+		return "realm"
+	case MatchTypeRecent:
+		return "recent"
+	case MatchTypeRPFilter:
+		return "rpfilter"
+	case MatchTypeRT:
+		return "rt"
+	case MatchTypeSCTP:
+		return "sctp"
+	case MatchTypeSet:
+		return "set"
+	case MatchTypeSocket:
+		return "socket"
+	case MatchTypeSRH:
+		return "srh"
+	case MatchTypeState:
+		return "state"
+	case MatchTypeStatistic:
+		return "statistic"
+	case MatchTypeString:
+		return "string"
+	case MatchTypeTCP:
+		return "tcp"
+	case MatchTypeTCPMSS:
+		return "tcpmss"
+	case MatchTypeTime:
+		return "time"
+	case MatchTypeTOS:
+		return "tos"
+	case MatchTypeTTL:
+		return "ttl"
+	case MatchTypeU32:
+		return "u32"
+	case MatchTypeUDP:
+		return "udp"
+	default:
+		return ""
+	}
+}
+
 type Match interface {
 	Type() MatchType
 	Short() string
@@ -107,85 +245,256 @@ type Match interface {
 	Long() string
 	LongArgs() []string
 	Parse([]byte) (int, bool)
+	Depends() []MatchType
+	Equal(Match) bool
 }
 
-func NewMatch(matchType MatchType, args ...interface{}) (Match, error) {
+func matchFactory(matchType MatchType) Match {
 	switch matchType {
-	case MatchTypeInInterface:
-		if len(args) != 2 {
-			goto Err
-		}
-		yes, ok := args[0].(bool)
-		if !ok {
-			goto Err
-		}
-		iface, ok := args[1].(string)
-		if !ok {
-			goto Err
-		}
-		return NewMatchInInterface(yes, iface), nil
-
-	case MatchTypeOutInterface:
-		if len(args) != 2 {
-			goto Err
-		}
-		yes, ok := args[0].(bool)
-		if !ok {
-			goto Err
-		}
-		iface, ok := args[1].(string)
-		if !ok {
-			goto Err
-		}
-		return NewMatchOutInterface(yes, iface), nil
+	case MatchTypeAddrType:
+		match, _ := newMatchAddrType()
+		return match
+	case MatchTypeAH:
+		match, _ := newMatchAH()
+		return match
+	case MatchTypeBPF:
+		match, _ := newMatchBPF()
+		return match
+	case MatchTypeCGroup:
+		match, _ := newMatchCGroup()
+		return match
+	case MatchTypeCluster:
+		match, _ := newMatchCluster()
+		return match
+	case MatchTypeComment:
+		match, _ := newMatchComment("")
+		return match
+	case MatchTypeConnBytes:
+		match, _ := newMatchConnBytes()
+		return match
+	case MatchTypeConnLabel:
+		match, _ := newMatchConnLabel()
+		return match
+	case MatchTypeConnLimit:
+		match, _ := newMatchConnLimit()
+		return match
+	case MatchTypeConnMark:
+		match, _ := newMatchConnMark(true)
+		return match
+	case MatchTypeConnTrack:
+		match, _ := newMatchConnTrack()
+		return match
+	case MatchTypeCPU:
+		match, _ := newMatchCPU(true, -1)
+		return match
+	case MatchTypeDCCP:
+		match, _ := newMatchDCCP()
+		return match
+	case MatchTypeDevGroup:
+		match, _ := newMatchDevGroup()
+		return match
+	case MatchTypeDSCP:
+		match, _ := newMatchDSCP()
+		return match
+	case MatchTypeDst:
+		match, _ := newMatchDst()
+		return match
+	case MatchTypeECN:
+		match, _ := newMatchECN()
+		return match
+	case MatchTypeESP:
+		match, _ := newMatchESP(true)
+		return match
+	case MatchTypeEUI64:
+		match, _ := newMatchEUI64()
+		return match
+	case MatchTypeFrag:
+		match, _ := newMatchFrag()
+		return match
+	case MatchTypeHBH:
+		match, _ := newMatchHBH()
+		return match
+	case MatchTypeHelper:
+		match, _ := newMatchHelper("")
+		return match
+	case MatchTypeHL:
+		match, _ := newMatchHL(0, -1)
+		return match
+	case MatchTypeICMP:
+		match, _ := newMatchICMP(true, -1)
+		return match
+	case MatchTypeIPRange:
+		match, _ := newMatchIPRange()
+		return match
+	case MatchTypeIPv6Header:
+		match, _ := newMatchIPv6Header()
+		return match
+	case MatchTypeIPVS:
+		match, _ := newMatchIPVS()
+		return match
+	case MatchTypeLength:
+		match, _ := newMatchLength(true)
+		return match
+	case MatchTypeLimit:
+		match, _ := newMatchLimit()
+		return match
+	case MatchTypeMAC:
+		match, _ := newMatchMAC(true, nil)
+		return match
+	case MatchTypeMark:
+		match, _ := newMatchMark(true)
+		return match
+	case MatchTypeMH:
+		match, _ := newMatchMH(true)
+		return match
+	case MatchTypeMultiPort:
+		match, _ := newMatchMultiPort()
+		return match
+	case MatchTypeNFAcct:
+		match, _ := newMatchNFAcct("")
+		return match
+	case MatchTypeOSF:
+		match, _ := newMatchOSF()
+		return match
+	case MatchTypeOwner:
+		match, _ := newMatchOwner()
+		return match
+	case MatchTypePhysDev:
+		match, _ := newMatchPhysDev()
+		return match
+	case MatchTypePktType:
+		match, _ := newMatchPktType(true, -1)
+		return match
+	case MatchTypePolicy:
+		match, _ := newMatchPolicy()
+		return match
+	case MatchTypeQuota:
+		match, _ := newMatchQuota(true, -1)
+		return match
+	case MatchTypeRateEst:
+		match, _ := newMatchRateEst()
+		return match
+	case MatchTypeRealm:
+		match, _ := newMatchRealm(true)
+		return match
+	case MatchTypeRecent:
+		match, _ := newMatchRecent()
+		return match
+	case MatchTypeRPFilter:
+		match, _ := newMatchRPFilter()
+		return match
+	case MatchTypeRT:
+		match, _ := newMatchRT()
+		return match
+	case MatchTypeSCTP:
+		match, _ := newMatchSCTP()
+		return match
+	case MatchTypeSet:
+		match, _ := newMatchSet()
+		return match
+	case MatchTypeSocket:
+		match, _ := newMatchSocket()
+		return match
+	case MatchTypeState:
+		match, _ := newMatchState(-1)
+		return match
+	case MatchTypeStatistic:
+		match, _ := newMatchStatistic()
+		return match
+	case MatchTypeString:
+		match, _ := newMatchString()
+		return match
+	case MatchTypeTCP:
+		match, _ := newMatchTCP()
+		return match
+	case MatchTypeTCPMSS:
+		match, _ := newMatchTCPMSS(true)
+		return match
+	case MatchTypeTime:
+		match, _ := newMatchTime()
+		return match
+	case MatchTypeTOS:
+		match, _ := newMatchTOS(true)
+		return match
+	case MatchTypeTTL:
+		match, _ := newMatchTTL()
+		return match
+	case MatchTypeU32:
+		match, _ := newMatchU32(true, "")
+		return match
+	case MatchTypeUDP:
+		match, _ := newMatchUDP()
+		return match
+	default:
+		return nil
 	}
-
-Err:
-	return nil, ErrArgs
-}
-
-func MatchFactory(matchType MatchType) Match {
-	switch matchType {
-	}
-	return nil
 }
 
 type baseMatch struct {
 	matchType MatchType
 	invert    bool
-	ipType    IPType
+	addrType  network.AddressType
+	child     Match
 }
 
-func (bm baseMatch) Type() MatchType {
+func (bm *baseMatch) setChild(child Match) {
+	bm.child = child
+}
+
+func (bm *baseMatch) Type() MatchType {
 	return bm.matchType
 }
 
-func (bm baseMatch) Short() string {
+func (bm *baseMatch) Short() string {
+	if bm.child != nil {
+		return bm.child.Short()
+	}
 	return ""
 }
 
-func (bm baseMatch) ShortArgs() []string {
+func (bm *baseMatch) ShortArgs() []string {
+	if bm.child != nil {
+		return bm.child.ShortArgs()
+	}
 	return nil
 }
 
-func (bm baseMatch) Long() string {
-	return ""
+func (bm *baseMatch) Long() string {
+	return bm.Short()
 }
 
-func (bm baseMatch) LongArgs() []string {
-	return nil
+func (bm *baseMatch) LongArgs() []string {
+	return bm.LongArgs()
 }
 
 func (bm *baseMatch) Parse(params []byte) (int, bool) {
 	return 0, false
 }
 
-func (bm *baseMatch) IPType() IPType {
-	return bm.ipType
+func (bm *baseMatch) AddrType() network.AddressType {
+	return bm.addrType
+}
+
+func (bm *baseMatch) Depends() []MatchType {
+	return nil
+}
+
+func (bm *baseMatch) Equal(mth Match) bool {
+	return bm.Short() == mth.Short()
 }
 
 type MatchIPv4 struct {
-	baseMatch
+	*baseMatch
+}
+
+func newMatchIPv4() *MatchIPv4 {
+	match := &MatchIPv4{
+		baseMatch: &baseMatch{
+			matchType: MatchTypeIPv4,
+		},
+	}
+	match.setChild(match)
+	return match
 }
 
 func (mIPv4 *MatchIPv4) Short() string {
@@ -205,7 +514,17 @@ func (mIPv4 *MatchIPv4) LongArgs() []string {
 }
 
 type MatchIPv6 struct {
-	baseMatch
+	*baseMatch
+}
+
+func newMatchIPv6() *MatchIPv6 {
+	match := &MatchIPv6{
+		baseMatch: &baseMatch{
+			matchType: MatchTypeIPv6,
+		},
+	}
+	match.setChild(match)
+	return match
 }
 
 func (mIPv6 *MatchIPv6) Short() string {
@@ -225,8 +544,20 @@ func (mIPv6 *MatchIPv6) LongArgs() []string {
 }
 
 type MatchProtocol struct {
-	baseMatch
-	Protocol Protocol
+	*baseMatch
+	Protocol network.Protocol
+}
+
+func newMatchProtocol(invert bool, prot network.Protocol) *MatchProtocol {
+	match := &MatchProtocol{
+		baseMatch: &baseMatch{
+			matchType: MatchTypeProtocol,
+			invert:    invert,
+		},
+		Protocol: prot,
+	}
+	match.setChild(match)
+	return match
 }
 
 func (mProtocol *MatchProtocol) Short() string {
@@ -258,17 +589,20 @@ func (mProtocol *MatchProtocol) LongArgs() []string {
 }
 
 type MatchSource struct {
-	baseMatch
-	address *Address
+	*baseMatch
+	address network.Address
 }
 
-func NewMatchSource(yes bool, address *Address) *MatchSource {
-	return &MatchSource{
-		baseMatch: baseMatch{
+func newMatchSource(invert bool, address network.Address) (*MatchSource, error) {
+	match := &MatchSource{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeSource,
+			invert:    invert,
 		},
 		address: address,
 	}
+	match.setChild(match)
+	return match, nil
 }
 
 func (mSrc *MatchSource) Short() string {
@@ -300,8 +634,20 @@ func (mSrc *MatchSource) LongArgs() []string {
 }
 
 type MatchDestination struct {
-	baseMatch
-	address *Address
+	*baseMatch
+	address network.Address
+}
+
+func newMatchDestination(invert bool, address network.Address) (*MatchDestination, error) {
+	match := &MatchDestination{
+		baseMatch: &baseMatch{
+			matchType: MatchTypeDestination,
+			invert:    invert,
+		},
+		address: address,
+	}
+	match.setChild(match)
+	return match, nil
 }
 
 func (mDst *MatchDestination) Short() string {
@@ -333,18 +679,20 @@ func (mDst *MatchDestination) LongArgs() []string {
 }
 
 type MatchInInterface struct {
-	baseMatch
+	*baseMatch
 	iface string
 }
 
-func NewMatchInInterface(yes bool, iface string) *MatchInInterface {
-	return &MatchInInterface{
-		baseMatch: baseMatch{
+func newMatchInInterface(invert bool, iface string) (*MatchInInterface, error) {
+	match := &MatchInInterface{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeInInterface,
-			invert:    !yes,
+			invert:    invert,
 		},
 		iface: iface,
 	}
+	match.setChild(match)
+	return match, nil
 }
 
 func (mInIface *MatchInInterface) Short() string {
@@ -376,18 +724,20 @@ func (mInIface *MatchInInterface) LongArgs() []string {
 }
 
 type MatchOutInterface struct {
-	baseMatch
+	*baseMatch
 	iface string
 }
 
-func NewMatchOutInterface(yes bool, iface string) *MatchOutInterface {
-	return &MatchOutInterface{
-		baseMatch: baseMatch{
+func newMatchOutInterface(invert bool, iface string) (*MatchOutInterface, error) {
+	match := &MatchOutInterface{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeOutInterface,
-			invert:    !yes,
+			invert:    invert,
 		},
 		iface: iface,
 	}
+	match.setChild(match)
+	return match, nil
 }
 
 func (mOutIface *MatchOutInterface) Short() string {
@@ -486,18 +836,18 @@ var (
 type OptionMatchAddrType func(*MatchAddrType)
 
 // Matches if the source address is of given type.
-func WithMatchAddrTypeSrcType(yes bool, srcType AddrType) OptionMatchAddrType {
+func WithMatchAddrTypeSrcType(invert bool, srcType AddrType) OptionMatchAddrType {
 	return func(mAddrType *MatchAddrType) {
-		mAddrType.SrcTypeInvert = !yes
+		mAddrType.SrcTypeInvert = invert
 		mAddrType.SrcType = srcType
 		mAddrType.HasSrcType = true
 	}
 }
 
 // Matches if the destination address is of given type.
-func WithMatchAddrTypeDstType(yes bool, dstType AddrType) OptionMatchAddrType {
+func WithMatchAddrTypeDstType(invert bool, dstType AddrType) OptionMatchAddrType {
 	return func(mAddrType *MatchAddrType) {
-		mAddrType.DstTypeInvert = !yes
+		mAddrType.DstTypeInvert = invert
 		mAddrType.DstType = dstType
 		mAddrType.HasDstType = true
 	}
@@ -519,24 +869,22 @@ func WithMatchAddrLimitIfaceOut() OptionMatchAddrType {
 	}
 }
 
-func NewMatchAddrType(opts ...OptionMatchAddrType) (*MatchAddrType, error) {
+func newMatchAddrType(opts ...OptionMatchAddrType) (*MatchAddrType, error) {
 	match := &MatchAddrType{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeAddrType,
 		},
 	}
 	for _, opt := range opts {
 		opt(match)
 	}
-	if !match.HasSrcType && !match.HasDstType &&
-		!match.LimitIfaceIn && !match.LimitIfaceOut {
-		return nil, ErrAtLeastOneOptionRequired
-	}
+	match.setChild(match)
 	return match, nil
 }
 
+// Non-numeric unsupported
 type MatchAddrType struct {
-	baseMatch
+	*baseMatch
 	// src type
 	SrcTypeInvert bool
 	SrcType       AddrType
@@ -556,7 +904,8 @@ func (mAddrType *MatchAddrType) Short() string {
 }
 
 func (mAddrType *MatchAddrType) ShortArgs() []string {
-	args := make([]string, 0, 6)
+	args := make([]string, 0, 8)
+	args = append(args, "-m", mAddrType.matchType.String())
 	if mAddrType.HasSrcType {
 		if mAddrType.SrcTypeInvert {
 			args = append(args, "!")
@@ -651,7 +1000,7 @@ type OptionMatchAH func(*MatchAH)
 
 // This option takes mostly 2 spis, (min) or (min, max)
 // Matches SPI
-func WithMatchAHSPI(yes bool, spi ...int) OptionMatchAH {
+func WithMatchAHSPI(invert bool, spi ...int) OptionMatchAH {
 	return func(mAH *MatchAH) {
 		switch len(spi) {
 		case 1:
@@ -661,14 +1010,14 @@ func WithMatchAHSPI(yes bool, spi ...int) OptionMatchAH {
 			mAH.SPIMin = spi[0]
 			mAH.SPIMax = spi[1]
 		}
-		mAH.SPIInvert = !yes
+		mAH.SPIInvert = invert
 	}
 }
 
 // Total length of this header in octets
-func WithMatchAHSPILength(yes bool, length int) OptionMatchAH {
+func WithMatchAHSPILength(invert bool, length int) OptionMatchAH {
 	return func(mAH *MatchAH) {
-		mAH.LengthInvert = !yes
+		mAH.LengthInvert = invert
 		mAH.Length = length
 	}
 }
@@ -680,22 +1029,26 @@ func WithMatchAHReserved() OptionMatchAH {
 	}
 }
 
-func NewMatchAH(opts ...OptionMatchAH) (*MatchAH, error) {
+func newMatchAH(opts ...OptionMatchAH) (*MatchAH, error) {
 	match := &MatchAH{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeAH,
 		},
+		SPIMin: -1,
+		SPIMax: -1,
+		Length: -1,
 	}
 	for _, opt := range opts {
 		opt(match)
 	}
+	match.setChild(match)
 	return match, nil
 }
 
 // Both ipv4 and ipv6
 // Non-numeric unsupported
 type MatchAH struct {
-	baseMatch
+	*baseMatch
 	// spi
 	SPIMin int
 	SPIMax int
@@ -706,6 +1059,43 @@ type MatchAH struct {
 	// invert
 	SPIInvert    bool
 	LengthInvert bool
+}
+
+func (mAH *MatchAH) Short() string {
+	return strings.Join(mAH.ShortArgs(), " ")
+}
+
+func (mAH *MatchAH) ShortArgs() []string {
+	args := make([]string, 0, 7)
+	if mAH.SPIMin > -1 {
+		if mAH.SPIInvert {
+			args = append(args, "!")
+		}
+		if mAH.SPIMax > -1 {
+			args = append(args, "--ahspi",
+				strconv.Itoa(mAH.SPIMin)+":"+strconv.Itoa(mAH.SPIMax))
+		} else {
+			args = append(args, "--ahspi", strconv.Itoa(mAH.SPIMin))
+		}
+	}
+	if mAH.Length > -1 {
+		if mAH.LengthInvert {
+			args = append(args, "!")
+		}
+		args = append(args, "--ahlen", strconv.Itoa(mAH.Length))
+	}
+	if mAH.Reserved {
+		args = append(args, "--ahres")
+	}
+	return args
+}
+
+func (mAH *MatchAH) Long() string {
+	return mAH.Short()
+}
+
+func (mAH *MatchAH) LongArgs() []string {
+	return mAH.ShortArgs()
 }
 
 func (mAH *MatchAH) Parse(main []byte) (int, bool) {
@@ -800,23 +1190,49 @@ func WithMatchBPFObjectPinnedPath(path string) OptionMatchBPF {
 	}
 }
 
-func NewMatchBPF(opts ...OptionMatchBPF) (*MatchBPF, error) {
+func newMatchBPF(opts ...OptionMatchBPF) (*MatchBPF, error) {
 	match := &MatchBPF{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeBPF,
 		},
 	}
 	for _, opt := range opts {
 		opt(match)
 	}
+	match.setChild(match)
 	return match, nil
 }
 
+// Non-numeric unsupported
 type MatchBPF struct {
-	baseMatch
+	*baseMatch
 	BPF    []BPFSockFilter
 	BPFRaw string
 	Path   string
+}
+
+func (mBPF *MatchBPF) Short() string {
+	return strings.Join(mBPF.ShortArgs(), " ")
+}
+
+func (mBPF *MatchBPF) ShortArgs() []string {
+	args := make([]string, 0, 6)
+	args = append(args, "-m", mBPF.matchType.String())
+	if mBPF.Path != "" {
+		args = append(args, "--object-pinned", mBPF.Path)
+	}
+	if mBPF.BPFRaw != "" {
+		args = append(args, "--bytecode", mBPF.BPFRaw)
+	}
+	return args
+}
+
+func (mBPF *MatchBPF) Long() string {
+	return mBPF.Short()
+}
+
+func (mBPF *MatchBPF) LongArgs() []string {
+	return mBPF.ShortArgs()
 }
 
 func (mBPF *MatchBPF) Parse(main []byte) (int, bool) {
@@ -886,40 +1302,73 @@ type OptionMatchCGroup func(*MatchCGroup)
 // This allows for more fine-grained firewall policies that
 // only match for a subset of the system's processes.
 // fwid is the maker set through the net_cls cgroup's id.
-func WithMatchCGroupClassID(yes bool, classid int) OptionMatchCGroup {
+func WithMatchCGroupClassID(invert bool, classid int) OptionMatchCGroup {
 	return func(mCGroup *MatchCGroup) {
 		mCGroup.ClassID = classid
-		mCGroup.ClassIDInvert = !yes
+		mCGroup.ClassIDInvert = invert
 	}
 }
 
 // Match cgroup2 membership.
-func WithMatchCGroupPath(yes bool, path string) OptionMatchCGroup {
+func WithMatchCGroupPath(invert bool, path string) OptionMatchCGroup {
 	return func(mCGroup *MatchCGroup) {
 		mCGroup.Path = path
-		mCGroup.PathInvert = !yes
+		mCGroup.PathInvert = invert
 	}
 }
 
-func NewMatchCGroup(opts ...OptionMatchCGroup) (*MatchCGroup, error) {
+func newMatchCGroup(opts ...OptionMatchCGroup) (*MatchCGroup, error) {
 	match := &MatchCGroup{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeCGroup,
 		},
+		ClassID: -1,
 	}
 	for _, opt := range opts {
 		opt(match)
 	}
+	match.setChild(match)
 	return match, nil
 }
 
+// Non-numeric unsupported
 type MatchCGroup struct {
-	baseMatch
+	*baseMatch
 	Path    string
 	ClassID int
 	// invert
 	PathInvert    bool
 	ClassIDInvert bool
+}
+
+func (mCG *MatchCGroup) Short() string {
+	return strings.Join(mCG.ShortArgs(), " ")
+}
+
+func (mCG *MatchCGroup) ShortArgs() []string {
+	args := make([]string, 0, 8)
+	args = append(args, "-m", mCG.matchType.String())
+	if mCG.ClassID > -1 {
+		if mCG.ClassIDInvert {
+			args = append(args, "!")
+		}
+		args = append(args, "--cgroup", strconv.Itoa(mCG.ClassID))
+	}
+	if mCG.Path != "" {
+		if mCG.PathInvert {
+			args = append(args, "!")
+		}
+		args = append(args, "--path", mCG.Path)
+	}
+	return args
+}
+
+func (mCG *MatchCGroup) Long() string {
+	return mCG.Short()
+}
+
+func (mCG *MatchCGroup) LongArgs() []string {
+	return mCG.ShortArgs()
 }
 
 func (mCG *MatchCGroup) Parse(main []byte) (int, bool) {
@@ -966,43 +1415,81 @@ func WithMatchClusterTotalNodes(total int) OptionMatchCluster {
 }
 
 // Set the local node number ID.
-func WithMatchClusterLocalNode(localNode uint64) OptionMatchCluster {
+func WithMatchClusterLocalNode(localNode int64) OptionMatchCluster {
 	return func(mCluster *MatchCluster) {
 		mCluster.LocalNodeMask = localNode
 	}
 }
 
 // Set the local node number ID mask.
-func WithMatchClusterLocalNodeMask(mask uint64) OptionMatchCluster {
+func WithMatchClusterLocalNodeMask(mask int64) OptionMatchCluster {
 	return func(mCluster *MatchCluster) {
 		mCluster.LocalNodeMask = mask
 	}
 }
 
 // Set seed value of the Jenkins hash.
-func WithMatchClusterHashSeed(seed uint64) OptionMatchCluster {
+func WithMatchClusterHashSeed(seed int64) OptionMatchCluster {
 	return func(mCluster *MatchCluster) {
 		mCluster.HashSeed = seed
 	}
 }
 
-func NewMatchCluster(opts ...OptionMatchCluster) (*MatchCluster, error) {
+func newMatchCluster(opts ...OptionMatchCluster) (*MatchCluster, error) {
 	match := &MatchCluster{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeCluster,
 		},
+		TotalNodes:    -1,
+		LocalNodeMask: -1,
+		HashSeed:      -1,
 	}
 	for _, opt := range opts {
 		opt(match)
 	}
+	match.setChild(match)
 	return match, nil
 }
 
+// Non-numeric unsupported
 type MatchCluster struct {
-	baseMatch
+	*baseMatch
 	TotalNodes    int
-	LocalNodeMask uint64
-	HashSeed      uint64
+	LocalNodeMask int64
+	HashSeed      int64
+}
+
+func (mCluster *MatchCluster) Short() string {
+	return strings.Join(mCluster.ShortArgs(), " ")
+}
+
+func (mCluster *MatchCluster) ShortArgs() []string {
+	args := make([]string, 0, 9)
+	args = append(args, "-m", mCluster.matchType.String())
+	if mCluster.TotalNodes > -1 {
+		args = append(args, "--cluster-total-nodes",
+			strconv.Itoa(mCluster.TotalNodes))
+	}
+	if mCluster.LocalNodeMask > -1 {
+		if mCluster.invert {
+			args = append(args, "!")
+		}
+		args = append(args, "--cluster-local-nodemask",
+			strconv.FormatInt(mCluster.LocalNodeMask, 10))
+	}
+	if mCluster.HashSeed > -1 {
+		args = append(args, "--cluster-hash-seed",
+			strconv.FormatInt(mCluster.HashSeed, 10))
+	}
+	return args
+}
+
+func (mCluster *MatchCluster) Long() string {
+	return mCluster.Short()
+}
+
+func (mCluster *MatchCluster) LongArgs() []string {
+	return mCluster.ShortArgs()
 }
 
 func (mCluster *MatchCluster) Parse(main []byte) (int, bool) {
@@ -1019,7 +1506,7 @@ func (mCluster *MatchCluster) Parse(main []byte) (int, bool) {
 	}
 	// node mask
 	if len(matches[2]) != 0 {
-		mask, err := strconv.ParseUint(string(matches[2]), 16, 64)
+		mask, err := strconv.ParseInt(string(matches[2]), 16, 64)
 		if err != nil {
 			return 0, false
 		}
@@ -1038,7 +1525,7 @@ func (mCluster *MatchCluster) Parse(main []byte) (int, bool) {
 	}
 	// hash seed
 	if len(matches[4]) != 0 {
-		seed, err := strconv.ParseUint(string(matches[4]), 16, 54)
+		seed, err := strconv.ParseInt(string(matches[4]), 16, 54)
 		if err != nil {
 			return 0, false
 		}
@@ -1047,19 +1534,30 @@ func (mCluster *MatchCluster) Parse(main []byte) (int, bool) {
 	return len(matches[0]), true
 }
 
-func NewMatchComment(comment string) (*MatchComment, error) {
+func newMatchComment(comment string) (*MatchComment, error) {
 	match := &MatchComment{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeComment,
 		},
 		Comment: comment,
 	}
+	match.setChild(match)
 	return match, nil
 }
 
+// Non-numeric unsupported
 type MatchComment struct {
-	baseMatch
+	*baseMatch
 	Comment string
+}
+
+func (mComment *MatchComment) ShortArgs() []string {
+	args := make([]string, 0, 4)
+	args = append(args, "-m", mComment.matchType.String())
+	if mComment.Comment != "" {
+		args = append(args, "--comment", mComment.Comment)
+	}
+	return args
 }
 
 func (mComment *MatchComment) Parse(main []byte) (int, bool) {
@@ -1092,7 +1590,7 @@ type OptionMatchConnBytes func(*MatchConnBytes)
 // Match packets from a connection whose packets/bytes/average packet size
 // is more than FROM and less than TO bytes/packets.
 // if TO is omitted only FROM check is done.
-func WithMatchConnBytes(yes bool, bytes ...int64) OptionMatchConnBytes {
+func WithMatchConnBytes(invert bool, bytes ...int64) OptionMatchConnBytes {
 	return func(mConnBytes *MatchConnBytes) {
 		switch len(bytes) {
 		case 1:
@@ -1102,7 +1600,7 @@ func WithMatchConnBytes(yes bool, bytes ...int64) OptionMatchConnBytes {
 			mConnBytes.From = bytes[0]
 			mConnBytes.To = bytes[1]
 		}
-		mConnBytes.invert = !yes
+		mConnBytes.invert = invert
 	}
 }
 
@@ -1124,24 +1622,62 @@ func WithMatchConnBytesMode(mode ConnBytesMode) OptionMatchConnBytes {
 	}
 }
 
-func NewMatchConnBytes(opts ...OptionMatchConnBytes) (*MatchConnBytes, error) {
+func newMatchConnBytes(opts ...OptionMatchConnBytes) (*MatchConnBytes, error) {
 	match := &MatchConnBytes{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeConnBytes,
 		},
+		From:      -1,
+		To:        -1,
+		Direction: -1,
 	}
 	for _, opt := range opts {
 		opt(match)
 	}
+	match.setChild(match)
 	return match, nil
 }
 
+// Non-numeric unsupported
 type MatchConnBytes struct {
-	baseMatch
+	*baseMatch
 	From      int64
 	To        int64
 	Mode      ConnBytesMode
 	Direction ConnTrackDir
+}
+
+func (mConnBytes *MatchConnBytes) Short() string {
+	return strings.Join(mConnBytes.ShortArgs(), " ")
+}
+
+func (mConnBytes *MatchConnBytes) ShortArgs() []string {
+	args := make([]string, 0, 10)
+	args = append(args, "-m", mConnBytes.matchType.String())
+	if mConnBytes.From > -1 {
+		if mConnBytes.invert {
+			args = append(args, "!")
+		}
+		args = append(args, "--connbytes", strconv.FormatInt(mConnBytes.From, 10))
+		if mConnBytes.To > -1 {
+			args = append(args, ":"+strconv.FormatInt(mConnBytes.To, 10))
+		}
+	}
+	if mConnBytes.Mode != "" {
+		args = append(args, "--connbytes-mode", string(mConnBytes.Mode))
+	}
+	if mConnBytes.Direction > -1 {
+		args = append(args, "--connbytes-dir", mConnBytes.Direction.String())
+	}
+	return args
+}
+
+func (mConnBytes *MatchConnBytes) Long() string {
+	return mConnBytes.Short()
+}
+
+func (mConnBytes *MatchConnBytes) LongArgs() []string {
+	return mConnBytes.ShortArgs()
 }
 
 func (mConnBytes *MatchConnBytes) Parse(main []byte) (int, bool) {
@@ -1196,18 +1732,18 @@ type OptionMatchConnLabel func(*MatchConnLabel)
 
 // Matches if label number has been set on a connection.
 // Check /etc/xtables/connlabel.conf
-func WithMatchConnLabel(yes bool, label int) OptionMatchConnLabel {
+func WithMatchConnLabel(invert bool, label int) OptionMatchConnLabel {
 	return func(mConnLabel *MatchConnLabel) {
 		mConnLabel.Label = label
-		mConnLabel.invert = !yes
+		mConnLabel.invert = invert
 	}
 }
 
 // Matches if label name has been set on a connection.
-func WithMatchConnLabelName(yes bool, name string) OptionMatchConnLabel {
+func WithMatchConnLabelName(invert bool, name string) OptionMatchConnLabel {
 	return func(mConnLabel *MatchConnLabel) {
 		mConnLabel.LabelName = name
-		mConnLabel.invert = !yes
+		mConnLabel.invert = invert
 	}
 }
 
@@ -1218,23 +1754,58 @@ func WithMatchConnLabelSet() OptionMatchConnLabel {
 	}
 }
 
-func NewMatchConnLabel(opts ...OptionMatchConnLabel) (*MatchConnLabel, error) {
+func newMatchConnLabel(opts ...OptionMatchConnLabel) (*MatchConnLabel, error) {
 	match := &MatchConnLabel{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeConnLabel,
 		},
+		Label: -1,
 	}
 	for _, opt := range opts {
 		opt(match)
 	}
+	match.setChild(match)
 	return match, nil
 }
 
+// Numeric unsupported
 type MatchConnLabel struct {
-	baseMatch
+	*baseMatch
 	Label     int
 	LabelName string
 	Set       bool
+}
+
+func (mConnLabel *MatchConnLabel) Short() string {
+	return strings.Join(mConnLabel.ShortArgs(), " ")
+}
+
+func (mConnLabel *MatchConnLabel) ShortArgs() []string {
+	args := make([]string, 0, 6)
+	args = append(args, "-m", mConnLabel.matchType.String())
+	if mConnLabel.Label > -1 {
+		if mConnLabel.invert {
+			args = append(args, "!")
+		}
+		args = append(args, "--label", strconv.Itoa(mConnLabel.Label))
+	} else if mConnLabel.LabelName != "" {
+		if mConnLabel.invert {
+			args = append(args, "!")
+		}
+		args = append(args, "--label", mConnLabel.LabelName)
+	}
+	if mConnLabel.Set {
+		args = append(args, "--set")
+	}
+	return args
+}
+
+func (mConnLabel *MatchConnLabel) Long() string {
+	return mConnLabel.Short()
+}
+
+func (mConnLabel *MatchConnLabel) LongArgs() []string {
+	return mConnLabel.ShortArgs()
 }
 
 func (mConnLabel *MatchConnLabel) Parse(main []byte) (int, bool) {
@@ -1270,15 +1841,6 @@ func (mConnLabel *MatchConnLabel) Parse(main []byte) (int, bool) {
 		mConnLabel.Set = true
 	}
 	return len(matches[0]), true
-}
-
-type MatchConnLimit struct {
-	baseMatch
-	Upto  int
-	Above int
-	Mask  int
-	Src   bool
-	Dst   bool
 }
 
 type OptionMatchConnLimit func(*MatchConnLimit)
@@ -1321,16 +1883,63 @@ func WithMatchConnLimitDstAddr() OptionMatchConnLimit {
 	}
 }
 
-func NewMatchConnLimit(opts ...OptionMatchConnLimit) (*MatchConnLimit, error) {
+func newMatchConnLimit(opts ...OptionMatchConnLimit) (*MatchConnLimit, error) {
 	match := &MatchConnLimit{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeConnLimit,
 		},
+		Upto:  -1,
+		Above: -1,
+		Mask:  -1,
 	}
 	for _, opt := range opts {
 		opt(match)
 	}
+	match.setChild(match)
 	return match, nil
+}
+
+// Non-numeric unsupported
+type MatchConnLimit struct {
+	*baseMatch
+	Upto  int
+	Above int
+	Mask  int
+	Src   bool
+	Dst   bool
+}
+
+func (mConnLimit *MatchConnLimit) Short() string {
+	return strings.Join(mConnLimit.ShortArgs(), " ")
+}
+
+func (mConnLimit *MatchConnLimit) ShortArgs() []string {
+	args := make([]string, 0, 10)
+	args = append(args, "-m", mConnLimit.matchType.String())
+	if mConnLimit.Upto > -1 {
+		args = append(args, "--connlimit-upto", strconv.Itoa(mConnLimit.Upto))
+	}
+	if mConnLimit.Above > -1 {
+		args = append(args, "--connlimit-above", strconv.Itoa(mConnLimit.Above))
+	}
+	if mConnLimit.Mask > -1 {
+		args = append(args, "--connlimit-mask", strconv.Itoa(mConnLimit.Mask))
+	}
+	if mConnLimit.Src {
+		args = append(args, "--connlimit-saddr")
+	}
+	if mConnLimit.Dst {
+		args = append(args, "--connlimit-daddr")
+	}
+	return args
+}
+
+func (mConnLimit *MatchConnLimit) Long() string {
+	return strings.Join(mConnLimit.ShortArgs(), " ")
+}
+
+func (mConnLimit *MatchConnLimit) LongArgs() []string {
+	return mConnLimit.ShortArgs()
 }
 
 func (mConnLimit *MatchConnLimit) Parse(main []byte) (int, bool) {
@@ -1371,12 +1980,12 @@ func (mConnLimit *MatchConnLimit) Parse(main []byte) (int, bool) {
 	return len(matches[0]), true
 }
 
-// Takes mostly 2 value, (mark) or (mark, mask)
+// Takes mostly 2 values, (mark) or (mark, mask)
 // Matches packets in connections with the given mark value.
 // If a mask is specified, this is logically ANDed with the mark before the comparison.
-func NewMatchConnMark(yes bool, value ...int) (*MatchConnMark, error) {
+func newMatchConnMark(invert bool, value ...int) (*MatchConnMark, error) {
 	mConnMark := &MatchConnMark{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeConnMark,
 		},
 	}
@@ -1388,14 +1997,44 @@ func NewMatchConnMark(yes bool, value ...int) (*MatchConnMark, error) {
 		mConnMark.Value = value[0]
 		mConnMark.Mask = value[1]
 	}
-	mConnMark.invert = !yes
+	mConnMark.invert = invert
 	return mConnMark, nil
 }
 
+// Non-numeric unsupported
 type MatchConnMark struct {
-	baseMatch
+	*baseMatch
 	Value int
 	Mask  int
+}
+
+func (mConnMark *MatchConnMark) Short() string {
+	return strings.Join(mConnMark.ShortArgs(), " ")
+}
+
+func (mConnMark *MatchConnMark) ShortArgs() []string {
+	args := make([]string, 0, 6)
+	args = append(args, "-m", mConnMark.matchType.String())
+	if mConnMark.Value > -1 {
+		if mConnMark.invert {
+			args = append(args, "!")
+		}
+		if mConnMark.Mask > -1 {
+			args = append(args, "--mark",
+				strconv.Itoa(mConnMark.Value)+"/"+strconv.Itoa(mConnMark.Mask))
+		} else {
+			args = append(args, "--mark", strconv.Itoa(mConnMark.Value))
+		}
+	}
+	return args
+}
+
+func (mConnMark *MatchConnMark) Long() string {
+	return mConnMark.Short()
+}
+
+func (mConnMark *MatchConnMark) LongArgs() []string {
+	return mConnMark.ShortArgs()
 }
 
 func (mConnMark *MatchConnMark) Parse(main []byte) (int, bool) {
@@ -1430,6 +2069,18 @@ func (mConnMark *MatchConnMark) Parse(main []byte) (int, bool) {
 
 type ConnTrackState int
 
+func (connTrackState ConnTrackState) String() string {
+	states := []string{}
+	ctstates := []ConnTrackState{INVALID, NEW, ESTABLISHED, RELATED, UNTRACKED, SNAT, DNAT}
+	ctstatestrs := []string{"INVALID", "NEW", "ESTABLISHED", "RELATED", "UNTRACKED", "SNAT", "DNAT"}
+	for i, ctstate := range ctstates {
+		if connTrackState&ctstate != 0 {
+			states = append(states, ctstatestrs[i])
+		}
+	}
+	return strings.Join(states, ",")
+}
+
 const (
 	INVALID ConnTrackState = 1 << iota
 	NEW
@@ -1452,6 +2103,22 @@ const (
 
 type ConnTrackStatus int
 
+func (connTrackStatus ConnTrackStatus) String() string {
+	switch connTrackStatus {
+	case NONE:
+		return CTStatusNONE
+	case EXPECTED:
+		return CTStatusEXPECTED
+	case SEEN_REPLY:
+		return CTStatusSEEN_REPLY
+	case ASSURED:
+		return CTStatusASSURED
+	case CONFIRMED:
+		return CTStatusCONFIRMED
+	}
+	return ""
+}
+
 const (
 	NONE ConnTrackStatus = 1 << iota
 	EXPECTED
@@ -1469,6 +2136,18 @@ const (
 )
 
 type ConnTrackDir int
+
+func (connTrack ConnTrackDir) String() string {
+	switch connTrack {
+	case ORIGINAL:
+		return CTDirOriginal
+	case REPLY:
+		return CTDirReply
+	case BOTH:
+		return CTDirBoth
+	}
+	return ""
+}
 
 const (
 	ORIGINAL ConnTrackDir = 1 << iota
@@ -1521,46 +2200,46 @@ func WithMatchConnTrackStatus(statuses ...ConnTrackStatus) OptionMatchConnTrack 
 }
 
 // Layer-4 protocol to match
-func WithMatchConnTrackProtocol(proto Protocol) OptionMatchConnTrack {
+func WithMatchConnTrackProtocol(proto network.Protocol) OptionMatchConnTrack {
 	return func(mConnTrack *MatchConnTrack) {
 		mConnTrack.Proto = proto
 	}
 }
 
-func WithMatchConnTrackOriginSrc(yes bool, addr *net.IPNet) OptionMatchConnTrack {
+func WithMatchConnTrackOriginSrc(invert bool, addr *net.IPNet) OptionMatchConnTrack {
 	return func(mConnTrack *MatchConnTrack) {
-		addr, _ := ParseAddress(addr)
+		addr, _ := network.ParseAddress(addr)
 		mConnTrack.OrigSrc = addr
-		mConnTrack.OrigSrcInvert = !yes
+		mConnTrack.OrigSrcInvert = invert
 	}
 }
 
-func WithMatchConnTrackOriginDst(yes bool, addr *net.IPNet) OptionMatchConnTrack {
+func WithMatchConnTrackOriginDst(invert bool, addr *net.IPNet) OptionMatchConnTrack {
 	return func(mConnTrack *MatchConnTrack) {
-		addr, _ := ParseAddress(addr)
+		addr, _ := network.ParseAddress(addr)
 		mConnTrack.OrigDst = addr
-		mConnTrack.OrigDstInvert = !yes
+		mConnTrack.OrigDstInvert = invert
 	}
 }
 
-func WithMatchConnTrackReplySrc(yes bool, addr *net.IPNet) OptionMatchConnTrack {
+func WithMatchConnTrackReplySrc(invert bool, addr *net.IPNet) OptionMatchConnTrack {
 	return func(mConnTrack *MatchConnTrack) {
-		addr, _ := ParseAddress(addr)
+		addr, _ := network.ParseAddress(addr)
 		mConnTrack.ReplSrc = addr
-		mConnTrack.ReplSrcInvert = !yes
+		mConnTrack.ReplSrcInvert = invert
 	}
 }
 
-func WithMatchConnTrackReplyDst(yes bool, addr *net.IPNet) OptionMatchConnTrack {
+func WithMatchConnTrackReplyDst(invert bool, addr *net.IPNet) OptionMatchConnTrack {
 	return func(mConnTrack *MatchConnTrack) {
-		addr, _ := ParseAddress(addr)
+		addr, _ := network.ParseAddress(addr)
 		mConnTrack.ReplDst = addr
-		mConnTrack.ReplDstInvert = !yes
+		mConnTrack.ReplDstInvert = invert
 	}
 }
 
 // This option takes mostly 2 ports, (min) or (min, max)
-func WithMatchConnTrackOriginSrcPort(yes bool, port ...int) OptionMatchConnTrack {
+func WithMatchConnTrackOriginSrcPort(invert bool, port ...int) OptionMatchConnTrack {
 	return func(mConnTrack *MatchConnTrack) {
 		switch len(port) {
 		case 1:
@@ -1570,12 +2249,12 @@ func WithMatchConnTrackOriginSrcPort(yes bool, port ...int) OptionMatchConnTrack
 			mConnTrack.OrigSrcPortMin = port[0]
 			mConnTrack.OrigSrcPortMax = port[1]
 		}
-		mConnTrack.OrigSrcPortInvert = !yes
+		mConnTrack.OrigSrcPortInvert = invert
 	}
 }
 
 // This option takes mostly 2 ports, (min) or (min, max)
-func WithMatchConnTrackOriginDstPort(yes bool, port ...int) OptionMatchConnTrack {
+func WithMatchConnTrackOriginDstPort(invert bool, port ...int) OptionMatchConnTrack {
 	return func(mConnTrack *MatchConnTrack) {
 		switch len(port) {
 		case 1:
@@ -1585,12 +2264,12 @@ func WithMatchConnTrackOriginDstPort(yes bool, port ...int) OptionMatchConnTrack
 			mConnTrack.OrigDstPortMin = port[0]
 			mConnTrack.OrigDstPortMax = port[1]
 		}
-		mConnTrack.OrigDstPortInvert = !yes
+		mConnTrack.OrigDstPortInvert = invert
 	}
 }
 
 // This option takes mostly 2 ports, (min) or (min, max)
-func WithMatchConnTrackReplySrcPort(yes bool, port ...int) OptionMatchConnTrack {
+func WithMatchConnTrackReplySrcPort(invert bool, port ...int) OptionMatchConnTrack {
 	return func(mConnTrack *MatchConnTrack) {
 		switch len(port) {
 		case 1:
@@ -1600,12 +2279,12 @@ func WithMatchConnTrackReplySrcPort(yes bool, port ...int) OptionMatchConnTrack 
 			mConnTrack.ReplSrcPortMin = port[0]
 			mConnTrack.ReplSrcPortMax = port[1]
 		}
-		mConnTrack.ReplSrcPortInvert = !yes
+		mConnTrack.ReplSrcPortInvert = invert
 	}
 }
 
 // This option takes mostly 2 ports, (min) or (min, max)
-func WithMatchConnTrackReplyDstPort(yes bool, port ...int) OptionMatchConnTrack {
+func WithMatchConnTrackReplyDstPort(invert bool, port ...int) OptionMatchConnTrack {
 	return func(mConnTrack *MatchConnTrack) {
 		switch len(port) {
 		case 1:
@@ -1615,7 +2294,7 @@ func WithMatchConnTrackReplyDstPort(yes bool, port ...int) OptionMatchConnTrack 
 			mConnTrack.ReplDstPortMin = port[0]
 			mConnTrack.ReplDstPortMax = port[1]
 		}
-		mConnTrack.ReplDstPortInvert = !yes
+		mConnTrack.ReplDstPortInvert = invert
 	}
 }
 
@@ -1626,7 +2305,7 @@ func WithMatchConnTrackDirection(dir ConnTrackDir) OptionMatchConnTrack {
 }
 
 // This option takes mostly 2 time, (min) or (min, max)
-func WithMatchConnTrackExpire(yes bool, time ...int) OptionMatchConnTrack {
+func WithMatchConnTrackExpire(invert bool, time ...int) OptionMatchConnTrack {
 	return func(mConnTrack *MatchConnTrack) {
 		switch len(time) {
 		case 1:
@@ -1636,33 +2315,49 @@ func WithMatchConnTrackExpire(yes bool, time ...int) OptionMatchConnTrack {
 			mConnTrack.ExpireMin = time[0]
 			mConnTrack.ExpireMax = time[1]
 		}
-		mConnTrack.ExpireInvert = !yes
+		mConnTrack.ExpireInvert = invert
 
 	}
 }
 
-func NewMatchConnTrack(opts ...OptionMatchConnTrack) (*MatchConnTrack, error) {
+func newMatchConnTrack(opts ...OptionMatchConnTrack) (*MatchConnTrack, error) {
 	match := &MatchConnTrack{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeConnTrack,
 		},
+		State:          -1,
+		Status:         -1,
+		Proto:          -1,
+		Direction:      -1,
+		OrigSrcPortMin: -1,
+		OrigSrcPortMax: -1,
+		OrigDstPortMin: -1,
+		OrigDstPortMax: -1,
+		ReplSrcPortMin: -1,
+		ReplSrcPortMax: -1,
+		ReplDstPortMin: -1,
+		ReplDstPortMax: -1,
+		ExpireMin:      -1,
+		ExpireMax:      -1,
 	}
 	for _, opt := range opts {
 		opt(match)
 	}
+	match.setChild(match)
 	return match, nil
 }
 
+// Non-numeric supported
 type MatchConnTrack struct {
-	baseMatch
+	*baseMatch
 	State          ConnTrackState
 	Status         ConnTrackStatus
 	Direction      ConnTrackDir
-	Proto          Protocol
-	OrigSrc        *Address
-	OrigDst        *Address
-	ReplSrc        *Address
-	ReplDst        *Address
+	Proto          network.Protocol
+	OrigSrc        network.Address
+	OrigDst        network.Address
+	ReplSrc        network.Address
+	ReplDst        network.Address
 	OrigSrcPortMin int
 	OrigSrcPortMax int
 	OrigDstPortMin int
@@ -1686,25 +2381,142 @@ type MatchConnTrack struct {
 	ReplSrcPortInvert bool
 	ReplDstPortInvert bool
 	ExpireInvert      bool
-	DirectionInvert   bool
+	// unused
+	DirectionInvert bool
+}
+
+func (mConnTrack *MatchConnTrack) Short() string {
+	return strings.Join(mConnTrack.ShortArgs(), " ")
+}
+
+func (mConnTrack *MatchConnTrack) ShortArgs() []string {
+	args := make([]string, 0, 49)
+	args = append(args, "-m", mConnTrack.matchType.String())
+	if mConnTrack.State > -1 {
+		if mConnTrack.StateInvert {
+			args = append(args, "!")
+		}
+		args = append(args, "--ctstate", mConnTrack.State.String())
+	}
+	if mConnTrack.Status > -1 {
+		if mConnTrack.StatusInvert {
+			args = append(args, "!")
+		}
+		args = append(args, "--ctstatus", mConnTrack.Status.String())
+	}
+	if mConnTrack.Proto > -1 {
+		if mConnTrack.ProtoInvert {
+			args = append(args, "!")
+		}
+		args = append(args, "--ctproto", strconv.Itoa(int(mConnTrack.Proto)))
+	}
+	if mConnTrack.OrigSrc != nil {
+		if mConnTrack.OrigSrcInvert {
+			args = append(args, "!")
+		}
+		args = append(args, "--ctorigsrc", mConnTrack.OrigSrc.String())
+	}
+	if mConnTrack.OrigDst != nil {
+		if mConnTrack.OrigDstInvert {
+			args = append(args, "!")
+		}
+		args = append(args, "--ctorigdst", mConnTrack.OrigDst.String())
+	}
+	if mConnTrack.ReplSrc != nil {
+		if mConnTrack.ReplSrcInvert {
+			args = append(args, "!")
+		}
+		args = append(args, "--ctreplsrc", mConnTrack.ReplSrc.String())
+	}
+	if mConnTrack.ReplDst != nil {
+		if mConnTrack.ReplDstInvert {
+			args = append(args, "!")
+		}
+		args = append(args, "--ctrepldst", mConnTrack.ReplDst.String())
+	}
+	if mConnTrack.OrigSrcPortMin > -1 {
+		if mConnTrack.OrigSrcPortInvert {
+			args = append(args, "!")
+		}
+		if mConnTrack.OrigSrcPortMax > -1 {
+			args = append(args, "--ctorigsrcport",
+				strconv.Itoa(mConnTrack.OrigSrcPortMin)+":"+strconv.Itoa(mConnTrack.OrigSrcPortMax))
+		} else {
+			args = append(args, "--ctorigsrcport",
+				strconv.Itoa(mConnTrack.OrigSrcPortMin))
+		}
+	}
+	if mConnTrack.OrigDstPortMin > -1 {
+		if mConnTrack.OrigDstPortInvert {
+			args = append(args, "!")
+		}
+		if mConnTrack.OrigDstPortMax > -1 {
+			args = append(args, "--ctorigdstport",
+				strconv.Itoa(mConnTrack.OrigDstPortMin)+":"+strconv.Itoa(mConnTrack.OrigDstPortMax))
+		} else {
+			args = append(args, "--ctorigdstport", strconv.Itoa(mConnTrack.OrigDstPortMin))
+		}
+	}
+	if mConnTrack.ReplSrcPortMin > -1 {
+		if mConnTrack.ReplSrcPortInvert {
+			args = append(args, "!")
+		}
+		if mConnTrack.ReplSrcPortMax > -1 {
+			args = append(args, "--ctreplsrcport",
+				strconv.Itoa(mConnTrack.ReplSrcPortMin)+":"+strconv.Itoa(mConnTrack.ReplSrcPortMax))
+		} else {
+			args = append(args, "--ctreplsrcport", strconv.Itoa(mConnTrack.ReplSrcPortMin))
+		}
+	}
+	if mConnTrack.ReplDstPortMin > -1 {
+		if mConnTrack.ReplDstPortInvert {
+			args = append(args, "!")
+		}
+		if mConnTrack.ReplDstPortMax > -1 {
+			args = append(args, "--ctrepldstport",
+				strconv.Itoa(mConnTrack.ReplDstPortMin)+":"+strconv.Itoa(mConnTrack.ReplDstPortMax))
+		} else {
+			args = append(args, "--ctrepldstport", strconv.Itoa(mConnTrack.ReplDstPortMin))
+		}
+	}
+	if mConnTrack.ExpireMin > -1 {
+		if mConnTrack.ExpireInvert {
+			args = append(args, "!")
+		}
+		if mConnTrack.ExpireMax > -1 {
+			args = append(args, "--ctexpire",
+				strconv.Itoa(mConnTrack.ExpireMin)+":"+strconv.Itoa(mConnTrack.ExpireMax))
+		} else {
+			args = append(args, "--ctexpire", strconv.Itoa(mConnTrack.ExpireMin))
+		}
+	}
+	if mConnTrack.Direction > -1 {
+		args = append(args, "--ctdir", mConnTrack.Direction.String())
+	}
+	return args
+}
+
+func (mConnTrack *MatchConnTrack) Long() string {
+	return mConnTrack.Short()
+}
+
+func (mConnTrack *MatchConnTrack) LongArgs() []string {
+	return mConnTrack.ShortArgs()
 }
 
 func (mConnTrack *MatchConnTrack) Parse(main []byte) (int, bool) {
 	pattern :=
-		`^(! )?(state|ctstate|ctproto|ctstatus|ctexpire|ctdir|` +
+		`^(! )?(state|ctstate|ctproto|ctstatus|ctexpire|ctdir|` + // #1 #2
 			`ctorigsrc|ctorigdst|ctreplsrc|ctrepldst|` +
 			`ctorigsrcport|ctorigdstport|ctreplsrcport|ctrepldstport)` +
 			` +` +
-			`((([0-9]{1,3}\.){3}[0-9]{1,3}(\/([1-2][0-9]|3[0-2]|[0-9]))?)|` +
-			`(anywhere)|` +
-			`(REPLY|ORIGINAL)|` +
-			`([0-9]+)(:([0-9]+))?|` +
-			`([A-Za-z/,]+)) *`
+			`((REPLY|ORIGINAL)|` + // #3 #4
+			`(([0-9A-Za-z:/.,-]+)?)) *` // #5 #6
 	reg := regexp.MustCompile(pattern)
 	index := 0
 	for len(main) > 0 {
 		matches := reg.FindSubmatch(main)
-		if len(matches) != 14 {
+		if len(matches) != 7 {
 			goto END
 		}
 		if len(matches[2]) == 0 {
@@ -1715,9 +2527,11 @@ func (mConnTrack *MatchConnTrack) Parse(main []byte) (int, bool) {
 			invert = true
 		}
 		opt := string(matches[2])
+
 		switch opt {
 		case CTStateAlias, CTState:
-			states := strings.Split(string(matches[13]), ",")
+			statesRow := string(matches[6])
+			states := strings.Split(statesRow, ",")
 			for _, state := range states {
 				switch state {
 				case CTStateINVALID:
@@ -1739,15 +2553,19 @@ func (mConnTrack *MatchConnTrack) Parse(main []byte) (int, bool) {
 				}
 			}
 			mConnTrack.StateInvert = invert
+
 		case CTProto:
-			proto, err := strconv.Atoi(string(matches[10]))
+			protoRow := string(matches[6])
+			proto, err := strconv.Atoi(protoRow)
 			if err != nil {
 				goto END
 			}
-			mConnTrack.Proto = Protocol(proto)
+			mConnTrack.Proto = network.Protocol(proto)
 			mConnTrack.ProtoInvert = invert
+
 		case CTStatus:
-			statuses := strings.Split(string(matches[13]), ",")
+			statusRow := string(matches[6])
+			statuses := strings.Split(statusRow, ",")
 			for _, status := range statuses {
 				switch status {
 				case CTStatusNONE:
@@ -1765,21 +2583,26 @@ func (mConnTrack *MatchConnTrack) Parse(main []byte) (int, bool) {
 				}
 			}
 			mConnTrack.StatusInvert = invert
+
 		case CTExpire:
-			min, err := strconv.Atoi(string(matches[10]))
-			if err != nil {
-				goto END
+			expiresRow := string(matches[6])
+			expires := strings.Split(expiresRow, ":")
+			if len(expires) == 2 {
+				max, err := strconv.Atoi(expires[1])
+				if err != nil {
+					goto END
+				}
+				mConnTrack.ExpireMax = max
 			}
-			max, err := strconv.Atoi(string(matches[12]))
+			min, err := strconv.Atoi(expires[0])
 			if err != nil {
 				goto END
 			}
 			mConnTrack.ExpireMin = min
-			mConnTrack.ExpireMax = max
 			mConnTrack.ExpireInvert = invert
 
 		case CTDir:
-			dir := string(matches[9])
+			dir := string(matches[4])
 			if dir == CTDirREPLY {
 				mConnTrack.Direction = REPLY
 			} else if dir == CTDirORIGINAL {
@@ -1788,85 +2611,133 @@ func (mConnTrack *MatchConnTrack) Parse(main []byte) (int, bool) {
 				goto END
 			}
 			mConnTrack.DirectionInvert = invert
+
 		case CTOrigSrc:
-			src := string(matches[4])
-			addr, err := ParseAddress(src)
-			if err != nil {
-				goto END
+			src := string(matches[6])
+			if src == "anywhere" {
+				addr := network.NewIP(nil)
+				addr.SetAnywhere(mConnTrack.addrType)
+				mConnTrack.OrigSrc = addr
+			} else {
+				addr, err := network.ParseAddress(src)
+				if err != nil {
+					goto END
+				}
+				mConnTrack.OrigSrc = addr
 			}
-			mConnTrack.OrigSrc = addr
 			mConnTrack.OrigSrcInvert = invert
+
 		case CTOrigDst:
-			dst := string(matches[4])
-			addr, err := ParseAddress(dst)
-			if err != nil {
-				goto END
+			dst := string(matches[6])
+			if dst == "anywhere" {
+				addr := network.NewIP(nil)
+				addr.SetAnywhere(mConnTrack.addrType)
+				mConnTrack.OrigSrc = addr
+			} else {
+				addr, err := network.ParseAddress(dst)
+				if err != nil {
+					goto END
+				}
+				mConnTrack.OrigDst = addr
 			}
-			mConnTrack.OrigDst = addr
 			mConnTrack.OrigDstInvert = invert
+
 		case CTReplSrc:
-			src := string(matches[4])
-			addr, err := ParseAddress(src)
-			if err != nil {
-				goto END
+			src := string(matches[6])
+			if src == "anywhere" {
+				addr := network.NewIP(nil)
+				addr.SetAnywhere(mConnTrack.addrType)
+				mConnTrack.OrigSrc = addr
+			} else {
+				addr, err := network.ParseAddress(src)
+				if err != nil {
+					goto END
+				}
+				mConnTrack.ReplSrc = addr
 			}
-			mConnTrack.ReplSrc = addr
 			mConnTrack.ReplSrcInvert = invert
+
 		case CTReplDst:
-			dst := string(matches[4])
-			addr, err := ParseAddress(dst)
-			if err != nil {
-				goto END
+			dst := string(matches[6])
+			if dst == "anywhere" {
+				addr := network.NewIP(nil)
+				addr.SetAnywhere(mConnTrack.addrType)
+				mConnTrack.OrigSrc = addr
+			} else {
+				addr, err := network.ParseAddress(dst)
+				if err != nil {
+					goto END
+				}
+				mConnTrack.ReplDst = addr
 			}
-			mConnTrack.ReplDst = addr
 			mConnTrack.ReplDstInvert = invert
+
 		case CTOrigSrcPort:
-			min, err := strconv.Atoi(string(matches[10]))
-			if err != nil {
-				goto END
+			portsRow := string(matches[6])
+			ports := strings.Split(portsRow, ":")
+			if len(ports) == 2 {
+				max, err := strconv.Atoi(ports[1])
+				if err != nil {
+					goto END
+				}
+				mConnTrack.OrigSrcPortMax = max
 			}
-			max, err := strconv.Atoi(string(matches[12]))
+			min, err := strconv.Atoi(ports[0])
 			if err != nil {
 				goto END
 			}
 			mConnTrack.OrigSrcPortMin = min
-			mConnTrack.OrigSrcPortMax = max
 			mConnTrack.OrigSrcPortInvert = invert
+
 		case CTOrigDstPort:
-			min, err := strconv.Atoi(string(matches[10]))
-			if err != nil {
-				goto END
+			portsRow := string(matches[6])
+			ports := strings.Split(portsRow, ":")
+			if len(ports) == 2 {
+				max, err := strconv.Atoi(ports[1])
+				if err != nil {
+					goto END
+				}
+				mConnTrack.OrigDstPortMax = max
 			}
-			max, err := strconv.Atoi(string(matches[12]))
+			min, err := strconv.Atoi(ports[0])
 			if err != nil {
 				goto END
 			}
 			mConnTrack.OrigDstPortMin = min
-			mConnTrack.OrigDstPortMax = max
 			mConnTrack.OrigDstPortInvert = invert
+
 		case CTReplSrcPort:
-			min, err := strconv.Atoi(string(matches[10]))
-			if err != nil {
-				goto END
+			portsRow := string(matches[6])
+			ports := strings.Split(portsRow, ":")
+			if len(ports) == 2 {
+				max, err := strconv.Atoi(ports[1])
+				if err != nil {
+					goto END
+				}
+				mConnTrack.ReplSrcPortMax = max
 			}
-			max, err := strconv.Atoi(string(matches[12]))
+			min, err := strconv.Atoi(ports[0])
 			if err != nil {
 				goto END
 			}
 			mConnTrack.ReplSrcPortMin = min
-			mConnTrack.ReplSrcPortMax = max
 			mConnTrack.ReplSrcPortInvert = invert
+
 		case CTReplDstPort:
-			min, err := strconv.Atoi(string(matches[10]))
-			if err != nil {
-				goto END
+			portsRow := string(matches[6])
+			ports := strings.Split(portsRow, ":")
+			if len(ports) == 2 {
+				max, err := strconv.Atoi(ports[1])
+				if err != nil {
+					goto END
+				}
+				mConnTrack.ReplDstPortMax = max
 			}
-			max, err := strconv.Atoi(string(matches[12]))
+			min, err := strconv.Atoi(ports[0])
 			if err != nil {
 				goto END
 			}
 			mConnTrack.ReplDstPortMin = min
-			mConnTrack.ReplDstPortMax = max
 			mConnTrack.ReplDstPortInvert = invert
 		}
 		index += len(matches[0])
@@ -1882,20 +2753,43 @@ END:
 // Match cpu handling this packet. cpus are numbered from 0 to NR_CPUS-1
 // Can be used in combination with RPS (Remote Packet Steering) or
 // multiqueue NICs to spread network traffic on different queues.
-func NewMatchCPU(yes bool, cpu int) (*MatchCPU, error) {
+func newMatchCPU(invert bool, cpu int) (*MatchCPU, error) {
 	mCPU := &MatchCPU{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeCPU,
-			invert:    !yes,
+			invert:    invert,
 		},
 		CPU: cpu,
 	}
 	return mCPU, nil
 }
 
+// Non-numeric unsupport
 type MatchCPU struct {
-	baseMatch
+	*baseMatch
 	CPU int
+}
+
+func (mCPU *MatchCPU) Short() string {
+	return strings.Join(mCPU.ShortArgs(), " ")
+}
+
+func (mCPU *MatchCPU) ShortArgs() []string {
+	args := make([]string, 0, 5)
+	args = append(args, "-m", mCPU.matchType.String())
+	if mCPU.invert {
+		args = append(args, "!")
+	}
+	args = append(args, "--cpu", strconv.Itoa(mCPU.CPU))
+	return args
+}
+
+func (mCPU *MatchCPU) Long() string {
+	return mCPU.Short()
+}
+
+func (mCPU *MatchCPU) LongArgs() []string {
+	return mCPU.ShortArgs()
 }
 
 func (mCPU *MatchCPU) Parse(main []byte) (int, bool) {
@@ -1918,6 +2812,34 @@ func (mCPU *MatchCPU) Parse(main []byte) (int, bool) {
 }
 
 type DCCPType int
+
+func (dccpType DCCPType) String() string {
+	switch dccpType {
+	case DCCPTypeREQUEST:
+		return "REQUEST"
+	case DCCPTypeRESPONSE:
+		return "RESPONSE"
+	case DCCPTypeDATA:
+		return "DATA"
+	case DCCPTypeACK:
+		return "ACK"
+	case DCCPTypeDATAACK:
+		return "DATAACK"
+	case DCCPTypeCLOSEREQ:
+		return "CLOSEREQ"
+	case DCCPTypeCLOSE:
+		return "CLOSE"
+	case DCCPTypeRESET:
+		return "RESET"
+	case DCCPTypeSYNC:
+		return "SYNC"
+	case DCCPTypeSYNCACK:
+		return "SYNCACK"
+	case DCCPTypeINVALID:
+		return "INVALID"
+	}
+	return ""
+}
 
 const (
 	DCCPTypeREQUEST DCCPType = 1 << iota
@@ -1952,7 +2874,7 @@ var (
 type OptionMatchDCCP func(*MatchDCCP)
 
 // This option takes mostly 2 ports, (min) or (min, max)
-func WithMatchDCCPSrcPort(yes bool, port ...int) OptionMatchDCCP {
+func WithMatchDCCPSrcPort(invert bool, port ...int) OptionMatchDCCP {
 	return func(mDCCP *MatchDCCP) {
 		switch len(port) {
 		case 1:
@@ -1962,12 +2884,12 @@ func WithMatchDCCPSrcPort(yes bool, port ...int) OptionMatchDCCP {
 			mDCCP.SrcPortMin = port[0]
 			mDCCP.SrcPortMax = port[1]
 		}
-		mDCCP.SrcPortInvert = !yes
+		mDCCP.SrcPortInvert = invert
 	}
 }
 
 // This option takes mostly 2 ports, (min) or (min, max)
-func WithMatchDCCPDstPort(yes bool, port ...int) OptionMatchDCCP {
+func WithMatchDCCPDstPort(invert bool, port ...int) OptionMatchDCCP {
 	return func(mDCCP *MatchDCCP) {
 		switch len(port) {
 		case 1:
@@ -1977,47 +2899,55 @@ func WithMatchDCCPDstPort(yes bool, port ...int) OptionMatchDCCP {
 			mDCCP.DstPortMin = port[0]
 			mDCCP.DstPortMax = port[1]
 		}
-		mDCCP.DstPortInvert = !yes
+		mDCCP.DstPortInvert = invert
 	}
 }
 
 // Match when the DCCP packet type in types.
-func WithMatchDCCPMask(yes bool, types ...DCCPType) OptionMatchDCCP {
+func WithMatchDCCPMask(invert bool, types ...DCCPType) OptionMatchDCCP {
 	return func(mDCCP *MatchDCCP) {
 		for _, typ := range types {
-			mDCCP.Type |= typ
+			mDCCP.DCCPType |= typ
 		}
-		mDCCP.TypeInvert = !yes
+		mDCCP.TypeInvert = invert
 	}
 }
 
 // Match if DCCP option set.
-func WithMatchDCCOption(yes bool, option int) OptionMatchDCCP {
+func WithMatchDCCOption(invert bool, option int) OptionMatchDCCP {
 	return func(mDCCP *MatchDCCP) {
 		mDCCP.Option = option
-		mDCCP.OptionInvert = !yes
+		mDCCP.OptionInvert = invert
 	}
 }
 
-func NewMatchDCCP(opts ...OptionMatchDCCP) (*MatchDCCP, error) {
+func newMatchDCCP(opts ...OptionMatchDCCP) (*MatchDCCP, error) {
 	match := &MatchDCCP{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeDCCP,
 		},
+		SrcPortMin: -1,
+		SrcPortMax: -1,
+		DstPortMin: -1,
+		DstPortMax: -1,
+		DCCPType:   -1,
+		Option:     -1,
 	}
 	for _, opt := range opts {
 		opt(match)
 	}
+	match.setChild(match)
 	return match, nil
 }
 
+// Non-numeric support
 type MatchDCCP struct {
-	baseMatch
+	*baseMatch
 	SrcPortMin int
 	SrcPortMax int
 	DstPortMin int
 	DstPortMax int
-	Type       DCCPType
+	DCCPType   DCCPType
 	Option     int
 	// invert
 	SrcPortInvert bool
@@ -2026,6 +2956,87 @@ type MatchDCCP struct {
 	OptionInvert  bool
 }
 
+func (mDCCP *MatchDCCP) Short() string {
+	return strings.Join(mDCCP.ShortArgs(), " ")
+}
+
+func (mDCCP *MatchDCCP) ShortArgs() []string {
+	args := make([]string, 0, 16)
+	args = append(args, "-m", mDCCP.matchType.String())
+	if mDCCP.SrcPortMin > -1 {
+		if mDCCP.SrcPortInvert {
+			args = append(args, "!")
+		}
+		args = append(args, "--sport", strconv.Itoa(mDCCP.SrcPortMin))
+		if mDCCP.SrcPortMax > -1 {
+			args = append(args, ":"+strconv.Itoa(mDCCP.SrcPortMax))
+		}
+	}
+	if mDCCP.DstPortMin > -1 {
+		if mDCCP.DstPortInvert {
+			args = append(args, "!")
+		}
+		args = append(args, "--dport", strconv.Itoa(mDCCP.DstPortMin))
+		if mDCCP.DstPortMax > -1 {
+			args = append(args, ":"+strconv.Itoa(mDCCP.DstPortMax))
+		}
+	}
+	if mDCCP.DCCPType > -1 {
+		if mDCCP.TypeInvert {
+			args = append(args, "!")
+		}
+		args = append(args, "--dccp-types", mDCCP.DCCPType.String())
+	}
+	if mDCCP.Option > -1 {
+		if mDCCP.OptionInvert {
+			args = append(args, "!")
+		}
+		args = append(args, "--dccp-option", strconv.Itoa(mDCCP.Option))
+	}
+	return args
+}
+
+func (mDCCP *MatchDCCP) Long() string {
+	return strings.Join(mDCCP.LongArgs(), " ")
+}
+
+func (mDCCP *MatchDCCP) LongArgs() []string {
+	args := make([]string, 0, 16)
+	args = append(args, "-m", mDCCP.matchType.String())
+	if mDCCP.SrcPortMin > -1 {
+		if mDCCP.SrcPortInvert {
+			args = append(args, "!")
+		}
+		args = append(args, "--source-port", strconv.Itoa(mDCCP.SrcPortMin))
+		if mDCCP.SrcPortMax > -1 {
+			args = append(args, ":"+strconv.Itoa(mDCCP.SrcPortMax))
+		}
+	}
+	if mDCCP.DstPortMin > -1 {
+		if mDCCP.DstPortInvert {
+			args = append(args, "!")
+		}
+		args = append(args, "--destination-port", strconv.Itoa(mDCCP.DstPortMin))
+		if mDCCP.DstPortMax > -1 {
+			args = append(args, ":"+strconv.Itoa(mDCCP.DstPortMax))
+		}
+	}
+	if mDCCP.DCCPType > -1 {
+		if mDCCP.TypeInvert {
+			args = append(args, "!")
+		}
+		args = append(args, "--dccp-types", mDCCP.DCCPType.String())
+	}
+	if mDCCP.Option > -1 {
+		if mDCCP.OptionInvert {
+			args = append(args, "!")
+		}
+		args = append(args, "--dccp-option", strconv.Itoa(mDCCP.Option))
+	}
+	return args
+}
+
+// the service name may match patten '[0-9a-z/.*_+-]+'
 func (mDCCP *MatchDCCP) Parse(main []byte) (int, bool) {
 	// 1. "^dccp"
 	// 2. "( spt(:(!)?([0-9]+))?(s:(!)?([0-9]+):([0-9]+))?)?" #1 #2 #3 #4 #5 #6 #7 #8
@@ -2033,9 +3044,9 @@ func (mDCCP *MatchDCCP) Parse(main []byte) (int, bool) {
 	// 4. "(( !)? ([0-9,]+))?" #17 #18 #19
 	// 5. "( option=(!)?([0-9]+))?" #20 #21 #22
 	pattern := `^dccp` +
-		`( spt(:(!)?([0-9]+))?(s:(!)?([0-9]+):([0-9]+))?)?` +
-		`( dpt(:(!)?([0-9]+))?(s:(!)?([0-9]+):([0-9]+))?)?` +
-		`(( !)? ([0-9,]+))?` +
+		`( spt(:(!)?([0-9]+))?(s:(!)?([0-9a-z/.*_+-]+):([0-9a-z/.*_+-]+))?)?` +
+		`( dpt(:(!)?([0-9]+))?(s:(!)?([0-9a-z/.*_+-]+):([0-9a-z/.*_+-]+))?)?` +
+		`(( !)? ([0-9a-z/.*_+-,]+))?` +
 		`( option=(!)?([0-9]+))? *`
 	reg := regexp.MustCompile(pattern)
 	matches := reg.FindSubmatch(main)
@@ -2043,9 +3054,13 @@ func (mDCCP *MatchDCCP) Parse(main []byte) (int, bool) {
 		return 0, false
 	}
 	if len(matches[4]) != 0 {
-		spt, err := strconv.Atoi(string(matches[4]))
+		sptRow := string(matches[4])
+		spt, err := strconv.Atoi(sptRow)
 		if err != nil {
-			return 0, false
+			spt = network.GetPortByServiceAndProtocol(network.Service(sptRow), network.ProtocolDCCP)
+			if spt == -1 {
+				return 0, false
+			}
 		}
 		mDCCP.SrcPortMin = spt
 		if len(matches[3]) != 0 {
@@ -2053,13 +3068,21 @@ func (mDCCP *MatchDCCP) Parse(main []byte) (int, bool) {
 		}
 	}
 	if len(matches[7]) != 0 {
-		min, err := strconv.Atoi(string(matches[7]))
+		minRow := string(matches[7])
+		min, err := strconv.Atoi(minRow)
 		if err != nil {
-			return 0, false
+			min = network.GetPortByServiceAndProtocol(network.Service(minRow), network.ProtocolDCCP)
+			if min == -1 {
+				return 0, false
+			}
 		}
-		max, err := strconv.Atoi(string(matches[8]))
+		maxRow := string(matches[8])
+		max, err := strconv.Atoi(maxRow)
 		if err != nil {
-			return 0, false
+			max = network.GetPortByServiceAndProtocol(network.Service(maxRow), network.ProtocolDCCP)
+			if max == -1 {
+				return 0, false
+			}
 		}
 		if len(matches[6]) != 0 {
 			mDCCP.SrcPortInvert = true
@@ -2068,9 +3091,13 @@ func (mDCCP *MatchDCCP) Parse(main []byte) (int, bool) {
 		mDCCP.SrcPortMax = max
 	}
 	if len(matches[12]) != 0 {
-		dpt, err := strconv.Atoi(string(matches[12]))
+		dptRow := string(matches[12])
+		dpt, err := strconv.Atoi(dptRow)
 		if err != nil {
-			return 0, false
+			dpt = network.GetPortByServiceAndProtocol(network.Service(dptRow), network.ProtocolDCCP)
+			if dpt == -1 {
+				return 0, false
+			}
 		}
 		mDCCP.DstPortMin = dpt
 		if len(matches[11]) != 0 {
@@ -2078,13 +3105,21 @@ func (mDCCP *MatchDCCP) Parse(main []byte) (int, bool) {
 		}
 	}
 	if len(matches[15]) != 0 {
-		min, err := strconv.Atoi(string(matches[15]))
+		minRow := string(matches[15])
+		min, err := strconv.Atoi(minRow)
 		if err != nil {
-			return 0, false
+			min = network.GetPortByServiceAndProtocol(network.Service(minRow), network.ProtocolDCCP)
+			if min == -1 {
+				return 0, false
+			}
 		}
-		max, err := strconv.Atoi(string(matches[16]))
+		maxRow := string(matches[16])
+		max, err := strconv.Atoi(maxRow)
 		if err != nil {
-			return 0, false
+			max = network.GetPortByServiceAndProtocol(network.Service(maxRow), network.ProtocolDCCP)
+			if max == -1 {
+				return 0, false
+			}
 		}
 		if len(matches[14]) != 0 {
 			mDCCP.DstPortInvert = true
@@ -2097,9 +3132,14 @@ func (mDCCP *MatchDCCP) Parse(main []byte) (int, bool) {
 		for _, elem := range elems {
 			typ, err := strconv.Atoi(elem)
 			if err != nil {
-				return 0, false
+				value, ok := DCCPTypes[elem]
+				if !ok {
+					return 0, false
+				}
+				mDCCP.DCCPType |= value
+			} else {
+				mDCCP.DCCPType |= 1 << typ
 			}
-			mDCCP.Type |= 1 << typ
 		}
 		if len(matches[18]) != 0 {
 			mDCCP.TypeInvert = true
@@ -2121,40 +3161,75 @@ func (mDCCP *MatchDCCP) Parse(main []byte) (int, bool) {
 type OptionMatchDevGroup func(*MatchDevGroup)
 
 // Match device group of incoming device.
-func WithMatchDevGroupSrc(yes bool, src uint64) OptionMatchDevGroup {
+func WithMatchDevGroupSrc(invert bool, src int64) OptionMatchDevGroup {
 	return func(mDevGroup *MatchDevGroup) {
 		mDevGroup.SrcGroup = src
-		mDevGroup.SrcGroupInvert = !yes
+		mDevGroup.SrcGroupInvert = invert
 	}
 }
 
 // Match device group of outgoing device.
-func WithMatchDevGroupDst(yes bool, dst uint64) OptionMatchDevGroup {
+func WithMatchDevGroupDst(invert bool, dst int64) OptionMatchDevGroup {
 	return func(mDevGroup *MatchDevGroup) {
 		mDevGroup.DstGroup = dst
-		mDevGroup.DstGroupInvert = !yes
+		mDevGroup.DstGroupInvert = invert
 	}
 }
 
-func NewMatchDevGroup(opts ...OptionMatchDevGroup) (*MatchDevGroup, error) {
+func newMatchDevGroup(opts ...OptionMatchDevGroup) (*MatchDevGroup, error) {
 	match := &MatchDevGroup{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeDevGroup,
 		},
+		SrcGroup: -1,
+		DstGroup: -1,
 	}
 	for _, opt := range opts {
 		opt(match)
 	}
+	match.setChild(match)
 	return match, nil
 }
 
 type MatchDevGroup struct {
-	baseMatch
-	SrcGroup uint64
-	DstGroup uint64
+	*baseMatch
+	SrcGroup int64
+	DstGroup int64
 	// invert
 	SrcGroupInvert bool
 	DstGroupInvert bool
+}
+
+func (mDevGroup *MatchDevGroup) Short() string {
+	return strings.Join(mDevGroup.ShortArgs(), " ")
+}
+
+func (mDevGroup *MatchDevGroup) ShortArgs() []string {
+	args := make([]string, 0, 8)
+	args = append(args, "-m", mDevGroup.matchType.String())
+	if mDevGroup.SrcGroup > -1 {
+		if mDevGroup.SrcGroupInvert {
+			args = append(args, "!")
+		}
+		args = append(args, "--src-group",
+			"0x"+strconv.FormatInt(mDevGroup.SrcGroup, 16))
+	}
+	if mDevGroup.DstGroup > -1 {
+		if mDevGroup.DstGroupInvert {
+			args = append(args, "!")
+		}
+		args = append(args, "--dst-group",
+			"0x"+strconv.FormatInt(mDevGroup.DstGroup, 16))
+	}
+	return args
+}
+
+func (mDevGroup *MatchDevGroup) Long() string {
+	return mDevGroup.Short()
+}
+
+func (mDevGroup *MatchDevGroup) LongArgs() []string {
+	return mDevGroup.ShortArgs()
 }
 
 func (mDevGroup *MatchDevGroup) Parse(main []byte) (int, bool) {
@@ -2174,14 +3249,14 @@ func (mDevGroup *MatchDevGroup) Parse(main []byte) (int, bool) {
 		opt := string(matches[2])
 		switch opt {
 		case "src-group":
-			group, err := strconv.ParseUint(string(matches[3]), 16, 64)
+			group, err := strconv.ParseInt(string(matches[3]), 16, 64)
 			if err != nil {
 				goto END
 			}
 			mDevGroup.SrcGroup = group
 			mDevGroup.SrcGroupInvert = invert
 		case "dst-group":
-			group, err := strconv.ParseUint(string(matches[3]), 16, 64)
+			group, err := strconv.ParseInt(string(matches[3]), 16, 64)
 			if err != nil {
 				return 0, false
 			}
@@ -2231,35 +3306,61 @@ const (
 type OptionMatchDSCP func(*MatchDSCP)
 
 // Match against a numeric value [0-63].
-func WithMatchDSCPValue(yes bool, value int) OptionMatchDSCP {
+func WithMatchDSCPValue(invert bool, value int) OptionMatchDSCP {
 	return func(mDSCP *MatchDSCP) {
 		mDSCP.Value = value
-		mDSCP.invert = !yes
+		mDSCP.invert = invert
 	}
 }
 
-func WithMatchDSCPClass(yes bool, class DSCPClass) OptionMatchDSCP {
+func WithMatchDSCPClass(invert bool, class DSCPClass) OptionMatchDSCP {
 	return func(mDSCP *MatchDSCP) {
 		mDSCP.Value = int(class)
-		mDSCP.invert = !yes
+		mDSCP.invert = invert
 	}
 }
 
-func NewMatchDSCP(opts ...OptionMatchDSCP) (*MatchDSCP, error) {
+func newMatchDSCP(opts ...OptionMatchDSCP) (*MatchDSCP, error) {
 	match := &MatchDSCP{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeDSCP,
 		},
+		Value: -1,
 	}
 	for _, opt := range opts {
 		opt(match)
 	}
+	match.setChild(match)
 	return match, nil
 }
 
 type MatchDSCP struct {
-	baseMatch
+	*baseMatch
 	Value int
+}
+
+func (mDSCP *MatchDSCP) Short() string {
+	return strings.Join(mDSCP.ShortArgs(), " ")
+}
+
+func (mDSCP *MatchDSCP) ShortArgs() []string {
+	args := make([]string, 0, 5)
+	args = append(args, "-m", mDSCP.matchType.String())
+	if mDSCP.Value > -1 {
+		if mDSCP.invert {
+			args = append(args, "!")
+		}
+		args = append(args, "--dscp", strconv.Itoa(mDSCP.Value))
+	}
+	return args
+}
+
+func (mDSCP *MatchDSCP) Long() string {
+	return mDSCP.Short()
+}
+
+func (mDSCP *MatchDSCP) LongArgs() []string {
+	return mDSCP.ShortArgs()
 }
 
 func (mDSCP *MatchDSCP) Parse(main []byte) (int, bool) {
@@ -2285,38 +3386,76 @@ func (mDSCP *MatchDSCP) Parse(main []byte) (int, bool) {
 type OptionMatchDst func(*MatchDst)
 
 // Total length of this header in octets.
-func WithMatchDstLen(yes bool, length int) OptionMatchDst {
+func WithMatchDstLen(invert bool, length int) OptionMatchDst {
 	return func(mDst *MatchDst) {
 		mDst.Length = length
-		mDst.invert = !yes
+		mDst.invert = invert
 	}
 }
 
 // Numeric type of option and the length of the option data in octets.
-func WithMatchDstOpts(opts ...IPv6Option) OptionMatchDst {
+func WithMatchDstOpts(opts ...network.IPv6Option) OptionMatchDst {
 	return func(mDst *MatchDst) {
 		mDst.Options = opts
 	}
 }
 
-func NewMatchDst(opts ...OptionMatchDst) (*MatchDst, error) {
+func newMatchDst(opts ...OptionMatchDst) (*MatchDst, error) {
 	match := &MatchDst{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeDst,
 		},
+		Length: -1,
 	}
 	for _, opt := range opts {
 		opt(match)
 	}
+	match.setChild(match)
 	return match, nil
 }
 
 // IPv6 specific
 // Non-numeric unsupport
 type MatchDst struct {
-	baseMatch
+	*baseMatch
 	Length  int
-	Options []IPv6Option
+	Options []network.IPv6Option
+}
+
+func (mDst *MatchDst) Short() string {
+	return strings.Join(mDst.ShortArgs(), " ")
+}
+
+func (mDst *MatchDst) ShortArgs() []string {
+	args := make([]string, 0, 7)
+	args = append(args, "-m", mDst.matchType.String())
+	if mDst.Length > -1 {
+		if mDst.invert {
+			args = append(args, "!")
+		}
+		args = append(args, "--dst-len", strconv.Itoa(mDst.Length))
+	}
+	if mDst.Options != nil && len(mDst.Options) != 0 {
+		opts := ""
+		sep := ""
+		for _, opt := range mDst.Options {
+			opts += sep + strconv.Itoa(opt.Type)
+			if opt.Length > 0 {
+				opts += ":" + strconv.Itoa(opt.Length)
+			}
+			sep = ","
+		}
+		args = append(args, "--dst-opts", opts)
+	}
+	return args
+}
+
+func (mDst *MatchDst) Long() string {
+	return mDst.Short()
+}
+
+func (mDst *MatchDst) LongArgs() []string {
+	return mDst.ShortArgs()
 }
 
 func (mDst *MatchDst) Parse(main []byte) (int, bool) {
@@ -2343,11 +3482,14 @@ func (mDst *MatchDst) Parse(main []byte) (int, bool) {
 			mDst.invert = true
 		}
 	}
-	mDst.Options = []IPv6Option{}
+	mDst.Options = []network.IPv6Option{}
 	if len(matches[5]) != 0 {
 		elems := strings.Split(string(matches[5]), ",")
 		for _, elem := range elems {
-			opt := IPv6Option{}
+			opt := network.IPv6Option{
+				Type:   -1,
+				Length: -1,
+			}
 			typelength := strings.Split(string(elem), ":")
 			if len(typelength) >= 1 {
 				typ, err := strconv.Atoi(typelength[0])
@@ -2372,50 +3514,88 @@ func (mDst *MatchDst) Parse(main []byte) (int, bool) {
 type OptionMatchECN func(*MatchECN)
 
 // This matches if the TCP ECN ECE (ECN Echo) bit is set.
-func WithMatchECNECE(yes bool) OptionMatchECN {
+func WithMatchECNECE(invert bool) OptionMatchECN {
 	return func(mECN *MatchECN) {
 		mECN.ECE = true
-		mECN.ECEInvert = !yes
+		mECN.ECEInvert = invert
 	}
 }
 
 // This matches if the TCP ECN CWR (Congestion Window Received) bit is set.
-func WithMatchECNCWR(yes bool) OptionMatchECN {
+func WithMatchECNCWR(invert bool) OptionMatchECN {
 	return func(mECN *MatchECN) {
 		mECN.CWR = true
-		mECN.CWRInvert = !yes
+		mECN.CWRInvert = invert
 	}
 }
 
 // This matches a particular IPv4/IPv6 ECT (ECN-Capable Transport).
 // You have to specify a number between `0' and `3'.
-func WithMatchECNECT(yes bool, ect int) OptionMatchECN {
+func WithMatchECNECT(invert bool, ect int) OptionMatchECN {
 	return func(mECN *MatchECN) {
 		mECN.ECT = ect
-		mECN.ECTInvert = !yes
+		mECN.ECTInvert = invert
 	}
 }
 
-func NewMatchECN(opts ...OptionMatchECN) (*MatchECN, error) {
+func newMatchECN(opts ...OptionMatchECN) (*MatchECN, error) {
 	match := &MatchECN{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeECN,
 		},
+		ECT: -1,
 	}
 	for _, opt := range opts {
 		opt(match)
 	}
+	match.setChild(match)
 	return match, nil
 }
 
 type MatchECN struct {
-	baseMatch
+	*baseMatch
 	ECE       bool
 	CWR       bool
 	ECT       int
 	ECEInvert bool
 	CWRInvert bool
 	ECTInvert bool
+}
+
+func (mECN *MatchECN) Short() string {
+	return strings.Join(mECN.ShortArgs(), " ")
+}
+
+func (mECN *MatchECN) ShortArgs() []string {
+	args := make([]string, 0, 9)
+	args = append(args, "-m", mECN.matchType.String())
+	if mECN.ECE {
+		if mECN.ECEInvert {
+			args = append(args, "!")
+		}
+		args = append(args, "--ecn-tcp-ece")
+	}
+	if mECN.CWR {
+		if mECN.CWRInvert {
+			args = append(args, "!")
+		}
+		args = append(args, "--ecn-tcp-cwr")
+	}
+	if mECN.ECT > -1 {
+		if mECN.ECTInvert {
+			args = append(args, "!")
+		}
+		args = append(args, "--ecn-tcp-ect", strconv.Itoa(mECN.ECT))
+	}
+	return args
+}
+
+func (mECN *MatchECN) Long() string {
+	return mECN.Short()
+}
+
+func (mECN *MatchECN) LongArgs() []string {
+	return mECN.ShortArgs()
 }
 
 func (mECN *MatchECN) Parse(main []byte) (int, bool) {
@@ -2459,11 +3639,13 @@ func (mECN *MatchECN) Parse(main []byte) (int, bool) {
 
 // This option takes mostly 2 spis, (min) or (min, max)
 // Matches SPI
-func NewMatchESP(yes bool, spi ...int) (*MatchESP, error) {
+func newMatchESP(invert bool, spi ...int) (*MatchESP, error) {
 	match := &MatchESP{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeESP,
 		},
+		SPIMin: -1,
+		SPIMax: -1,
 	}
 	switch len(spi) {
 	case 1:
@@ -2473,14 +3655,42 @@ func NewMatchESP(yes bool, spi ...int) (*MatchESP, error) {
 		match.SPIMin = spi[0]
 		match.SPIMax = spi[1]
 	}
-	match.invert = !yes
+	match.invert = invert
+	match.setChild(match)
 	return match, nil
 }
 
 type MatchESP struct {
-	baseMatch
+	*baseMatch
 	SPIMin int
 	SPIMax int
+}
+
+func (mESP *MatchESP) Short() string {
+	return strings.Join(mESP.ShortArgs(), " ")
+}
+
+func (mESP *MatchESP) ShortArgs() []string {
+	args := make([]string, 0, 5)
+	args = append(args, "-m", mESP.matchType.String())
+	if mESP.SPIMin > -1 {
+		if mESP.invert {
+			args = append(args, "!")
+		}
+		if mESP.SPIMax > -1 {
+			args = append(args, "--espspi",
+				strconv.Itoa(mESP.SPIMin)+":"+strconv.Itoa(mESP.SPIMax))
+		}
+	}
+	return args
+}
+
+func (mESP *MatchESP) Long() string {
+	return mESP.Short()
+}
+
+func (mESP *MatchESP) LongArgs() []string {
+	return mESP.ShortArgs()
 }
 
 func (mESP *MatchESP) Parse(main []byte) (int, bool) {
@@ -2535,9 +3745,9 @@ func (mESP *MatchESP) Parse(main []byte) (int, bool) {
 // But "Universal/Local" bit is not compared.
 // This module doesn't match other link layer frame,
 // and is only valid in the PREROUTING, INPUT and FORWARD chains.
-func NewMatchEUI64() (*MatchEUI64, error) {
+func newMatchEUI64() (*MatchEUI64, error) {
 	return &MatchEUI64{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeEUI64,
 		},
 	}, nil
@@ -2546,7 +3756,23 @@ func NewMatchEUI64() (*MatchEUI64, error) {
 // IPv6 specific
 // Non-numeric unsupport
 type MatchEUI64 struct {
-	baseMatch
+	*baseMatch
+}
+
+func (mEUI64 *MatchEUI64) Short() string {
+	return strings.Join(mEUI64.ShortArgs(), " ")
+}
+
+func (mEUI64 *MatchEUI64) ShortArgs() []string {
+	return []string{"-m", mEUI64.matchType.String()}
+}
+
+func (mEUI64 *MatchEUI64) Long() string {
+	return mEUI64.Short()
+}
+
+func (mEUI64 *MatchEUI64) LongArgs() []string {
+	return mEUI64.ShortArgs()
 }
 
 func (mEUI64 *MatchEUI64) Parse(main []byte) (int, bool) {
@@ -2563,7 +3789,7 @@ type OptionMatchFrag func(*MatchFrag)
 
 // This option takes mostly 2 ids, (min) or (min, max)
 // Matches the given Identification or range of it.
-func WithMatchFragID(yes bool, id ...int) OptionMatchFrag {
+func WithMatchFragID(invert bool, id ...int) OptionMatchFrag {
 	return func(mFrag *MatchFrag) {
 		switch len(id) {
 		case 1:
@@ -2573,16 +3799,16 @@ func WithMatchFragID(yes bool, id ...int) OptionMatchFrag {
 			mFrag.IDMin = id[0]
 			mFrag.IDMax = id[1]
 		}
-		mFrag.IDInvert = !yes
+		mFrag.IDInvert = invert
 	}
 }
 
 // This option cannot be used with kernel version 2.6.10 or later.
 // The length of Fragment header is static and this option doesn't make sense.
-func WithMatchFragLen(yes bool, length int) OptionMatchFrag {
+func WithMatchFragLen(invert bool, length int) OptionMatchFrag {
 	return func(mFrag *MatchFrag) {
 		mFrag.Length = length
-		mFrag.LengthInvert = !yes
+		mFrag.LengthInvert = invert
 	}
 }
 
@@ -2614,22 +3840,26 @@ func WithMatchFragMore() OptionMatchFrag {
 	}
 }
 
-func NewMatchFrag(opts ...OptionMatchFrag) (*MatchFrag, error) {
+func newMatchFrag(opts ...OptionMatchFrag) (*MatchFrag, error) {
 	match := &MatchFrag{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeFrag,
 		},
+		IDMin:  -1,
+		IDMax:  -1,
+		Length: -1,
 	}
 	for _, opt := range opts {
 		opt(match)
 	}
+	match.setChild(match)
 	return match, nil
 }
 
 // IPv6 specific
 // Non-numeric unsupport
 type MatchFrag struct {
-	baseMatch
+	*baseMatch
 	IDMin    int
 	IDMax    int
 	Length   int
@@ -2640,6 +3870,35 @@ type MatchFrag struct {
 	// invert
 	IDInvert     bool
 	LengthInvert bool
+}
+
+func (mFrag *MatchFrag) Short() string {
+	return strings.Join(mFrag.ShortArgs(), " ")
+}
+
+func (mFrag *MatchFrag) ShortArgs() []string {
+	args := make([]string, 0, 12)
+	args = append(args, "-m", mFrag.matchType.String())
+	if mFrag.IDMin > -1 {
+		if mFrag.IDInvert {
+			args = append(args, "!")
+		}
+		if mFrag.IDMax > -1 {
+			args = append(args, "--fragid",
+				strconv.Itoa(mFrag.IDMin)+":"+strconv.Itoa(mFrag.IDMax))
+		} else {
+			args = append(args, "--fragid", strconv.Itoa(mFrag.IDMin))
+		}
+	}
+	return args
+}
+
+func (mFrag *MatchFrag) Long() string {
+	return mFrag.Short()
+}
+
+func (mFrag *MatchFrag) LongArgs() []string {
+	return mFrag.ShortArgs()
 }
 
 func (mFrag *MatchFrag) Parse(main []byte) (int, bool) {
@@ -2730,14 +3989,14 @@ func (mFrag *MatchFrag) Parse(main []byte) (int, bool) {
 type OptionMatchHashLimit func(*MatchHashLimit)
 
 // Match if the rate is below or equal to amount/quantum.
-func WithMatchHashLimitUpto(rate Rate) OptionMatchHashLimit {
+func WithMatchHashLimitUpto(rate xtables.Rate) OptionMatchHashLimit {
 	return func(mHashLimit *MatchHashLimit) {
 		mHashLimit.Avg = rate
 	}
 }
 
 // Match if the rate is above amount/quantum.
-func WithMatchHashLimitAbove(rate Rate) OptionMatchHashLimit {
+func WithMatchHashLimitAbove(rate xtables.Rate) OptionMatchHashLimit {
 	return func(mHashLimit *MatchHashLimit) {
 		mHashLimit.Avg = rate
 		mHashLimit.AvgInvert = true
@@ -2747,9 +4006,9 @@ func WithMatchHashLimitAbove(rate Rate) OptionMatchHashLimit {
 // Maximum initial number of packets to match:
 // this number gets recharged by one every time the limit specified above is not reached,
 // up to this number; the default is 5.
-func WithMatchHashLimitBurst(rate Rate) OptionMatchHashLimit {
+func WithMatchHashLimitBurst(burst int) OptionMatchHashLimit {
 	return func(mHashLimit *MatchHashLimit) {
-		mHashLimit.Burst = rate
+		mHashLimit.Burst = burst
 	}
 }
 
@@ -2823,19 +4082,49 @@ func WithMatchHashLimitRateInterval(interval int) OptionMatchHashLimit {
 	}
 }
 
-func NewHashLimit(opts ...OptionMatchHashLimit) (*MatchHashLimit, error) {
+func newMatchHashLimit(opts ...OptionMatchHashLimit) (*MatchHashLimit, error) {
 	match := &MatchHashLimit{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeHashLimit,
 		},
+		Burst:               -1,
+		SrcMask:             -1,
+		DstMask:             -1,
+		HashtableSize:       -1,
+		HashtableMax:        -1,
+		HashtableGCInterval: -1,
+		HashtableExpire:     -1,
+		RateInterval:        -1,
 	}
 	for _, opt := range opts {
 		opt(match)
 	}
+	match.setChild(match)
 	return match, nil
 }
 
 type HashLimitMode uint8
+
+func (hashLimitMode HashLimitMode) String() string {
+	mode := ""
+	sep := ""
+	if (hashLimitMode & HashLimitModeSrcIP) != 0 {
+		mode += sep + "srcip"
+		sep = ","
+	}
+	if (hashLimitMode & HashLimitModeSrcPort) != 0 {
+		mode += sep + "srcport"
+		sep = ","
+	}
+	if (hashLimitMode & HashLimitModeDstIP) != 0 {
+		mode += sep + "dstip"
+		sep = ","
+	}
+	if (hashLimitMode & HashLimitModeDstPort) != 0 {
+		mode += sep + "dstport"
+	}
+	return mode
+}
 
 const (
 	HashLimitModeSrcIP HashLimitMode = 1 << iota
@@ -2845,9 +4134,9 @@ const (
 )
 
 type MatchHashLimit struct {
-	baseMatch
-	Avg                 Rate // <= avg
-	Burst               Rate
+	*baseMatch
+	Avg                 xtables.Rate // <= avg
+	Burst               int
 	Mode                HashLimitMode
 	SrcMask             int
 	DstMask             int
@@ -2859,7 +4148,72 @@ type MatchHashLimit struct {
 	RateMatch           bool
 	RateInterval        int
 	// invert
-	AvgInvert bool // > avg
+	AvgInvert bool // > avg, true means above, false means upto
+}
+
+func (mHashLimit *MatchHashLimit) Short() string {
+	return strings.Join(mHashLimit.ShortArgs(), " ")
+}
+
+func (mHashLimit *MatchHashLimit) ShortArgs() []string {
+	args := make([]string, 0, 27)
+	args = append(args, "-m", mHashLimit.matchType.String())
+	if (mHashLimit.Avg != xtables.Rate{}) {
+		if mHashLimit.AvgInvert {
+			args = append(args, "--hashlimit-above", mHashLimit.Avg.String())
+		} else {
+			args = append(args, "--hashlimit-upto", mHashLimit.Avg.String())
+		}
+	}
+	if mHashLimit.Burst > -1 {
+		args = append(args, "--hashlimit-burst", strconv.Itoa(mHashLimit.Burst))
+	}
+	if mHashLimit.Mode != 0 {
+		args = append(args, "--hashlimit-mode", mHashLimit.Mode.String())
+	}
+	if mHashLimit.SrcMask > -1 {
+		args = append(args, "--hashlimit-srcmask",
+			strconv.Itoa(mHashLimit.SrcMask))
+	}
+	if mHashLimit.DstMask > -1 {
+		args = append(args, "--hashlimit-dstmask",
+			strconv.Itoa(mHashLimit.DstMask))
+	}
+	if mHashLimit.Name != "" {
+		args = append(args, "--hashlimit-name", mHashLimit.Name)
+	}
+	if mHashLimit.HashtableSize > -1 {
+		args = append(args, "--hashlimit-htable-size",
+			strconv.Itoa(mHashLimit.HashtableSize))
+	}
+	if mHashLimit.HashtableMax > -1 {
+		args = append(args, "--hashlimit-htable-max",
+			strconv.Itoa(mHashLimit.HashtableMax))
+	}
+	if mHashLimit.HashtableExpire > -1 {
+		args = append(args, "--hashlimit-htable-expire",
+			strconv.Itoa(mHashLimit.HashtableExpire))
+	}
+	if mHashLimit.HashtableGCInterval > -1 {
+		args = append(args, "--hashlimit-htable-interval",
+			strconv.Itoa(mHashLimit.HashtableGCInterval))
+	}
+	if mHashLimit.RateInterval > -1 {
+		args = append(args, "--hashlimit-rate-interval",
+			strconv.Itoa(mHashLimit.RateInterval))
+	}
+	if mHashLimit.RateMatch {
+		args = append(args, "--hashlimit-rate-match")
+	}
+	return args
+}
+
+func (mHashLimit *MatchHashLimit) Long() string {
+	return mHashLimit.Short()
+}
+
+func (mHashLimit *MatchHashLimit) LongShort() []string {
+	return mHashLimit.ShortArgs()
 }
 
 func (mHashLimit *MatchHashLimit) Parse(main []byte) (int, bool) {
@@ -2897,30 +4251,33 @@ func (mHashLimit *MatchHashLimit) Parse(main []byte) (int, bool) {
 	if err != nil {
 		return 0, false
 	}
-	unit := Unit(0)
+	unit := xtables.Unit(0)
 	switch string(matches[3]) {
 	case "sec":
-		unit = Second
+		unit = xtables.Second
 	case "min":
-		unit = Minute
+		unit = xtables.Minute
 	case "hour":
-		unit = Hour
+		unit = xtables.Hour
 	case "day":
-		unit = Day
+		unit = xtables.Day
 	case "bs":
-		unit = BPS
+		unit = xtables.BPS
 	case "kb/s":
-		unit = KBPS
+		unit = xtables.KBPS
 	case "mb/s":
-		unit = MBPS
+		unit = xtables.MBPS
 	}
-	mHashLimit.Avg = Rate{avg, unit}
+	mHashLimit.Avg = xtables.Rate{
+		Rate: avg,
+		Unit: unit,
+	}
 	if len(matches[5]) != 0 {
 		burst, err := strconv.Atoi(string(matches[5]))
 		if err != nil {
 			return 0, false
 		}
-		mHashLimit.Burst = Rate{burst, unit}
+		mHashLimit.Burst = burst
 	}
 	if len(matches[7]) != 0 {
 		modes := strings.Split(string(matches[7]), "-")
@@ -2995,38 +4352,76 @@ func (mHashLimit *MatchHashLimit) Parse(main []byte) (int, bool) {
 type OptionMatchHBH func(*MatchHBH)
 
 // Total length of this header in octets.
-func WithMatchHBHLength(yes bool, length int) OptionMatchHBH {
+func WithMatchHBHLength(invert bool, length int) OptionMatchHBH {
 	return func(mHBH *MatchHBH) {
 		mHBH.Length = length
-		mHBH.invert = !yes
+		mHBH.invert = invert
 	}
 }
 
 // Numeric type of option and the length of the option data in octets.
-func WithMatchHBHOpts(opts ...IPv6Option) OptionMatchHBH {
+func WithMatchHBHOpts(opts ...network.IPv6Option) OptionMatchHBH {
 	return func(mHBH *MatchHBH) {
 		mHBH.Options = opts
 	}
 }
 
-func NewMatchHBH(opts ...OptionMatchHBH) (*MatchHBH, error) {
+func newMatchHBH(opts ...OptionMatchHBH) (*MatchHBH, error) {
 	match := &MatchHBH{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeHBH,
 		},
+		Length: -1,
 	}
 	for _, opt := range opts {
 		opt(match)
 	}
+	match.setChild(match)
 	return match, nil
 }
 
 // IPv6 specific
 // Non-numeric unsupport
 type MatchHBH struct {
-	baseMatch
+	*baseMatch
 	Length  int
-	Options []IPv6Option
+	Options []network.IPv6Option
+}
+
+func (mHBH *MatchHBH) Short() string {
+	return strings.Join(mHBH.ShortArgs(), " ")
+}
+
+func (mHBH *MatchHBH) ShortArgs() []string {
+	args := make([]string, 0, 7)
+	args = append(args, "-m", mHBH.matchType.String())
+	if mHBH.Length > -1 {
+		if mHBH.invert {
+			args = append(args, "!")
+		}
+		args = append(args, "--hbh-len", strconv.Itoa(mHBH.Length))
+	}
+	if mHBH.Options != nil && len(mHBH.Options) > 0 {
+		opts := ""
+		sep := ""
+		for _, opt := range mHBH.Options {
+			opts += sep + strconv.Itoa(opt.Type)
+			if opt.Length > 0 {
+				opts += ":" + strconv.Itoa(opt.Length)
+			}
+			sep = ","
+		}
+		args = append(args, "--hbh-opts", opts)
+	}
+	return args
+}
+
+func (mHBH *MatchHBH) Long() string {
+	return mHBH.Short()
+}
+
+func (mHBH *MatchHBH) LongArgs() []string {
+	return mHBH.ShortArgs()
 }
 
 func (mHBH *MatchHBH) Parse(main []byte) (int, bool) {
@@ -3053,11 +4448,11 @@ func (mHBH *MatchHBH) Parse(main []byte) (int, bool) {
 			mHBH.invert = true
 		}
 	}
-	mHBH.Options = []IPv6Option{}
+	mHBH.Options = []network.IPv6Option{}
 	if len(matches[5]) != 0 {
 		elems := strings.Split(string(matches[5]), ",")
 		for _, elem := range elems {
-			opt := IPv6Option{}
+			opt := network.IPv6Option{}
 			typelength := strings.Split(string(elem), ":")
 			if len(typelength) >= 1 {
 				typ, err := strconv.Atoi(typelength[0])
@@ -3080,9 +4475,9 @@ func (mHBH *MatchHBH) Parse(main []byte) (int, bool) {
 }
 
 // Matches packets related to the specified conntrack-helper.
-func NewMatchHelper(name string) (*MatchHelper, error) {
+func newMatchHelper(name string) (*MatchHelper, error) {
 	mHelper := &MatchHelper{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeHelper,
 		},
 		Name: name,
@@ -3091,8 +4486,32 @@ func NewMatchHelper(name string) (*MatchHelper, error) {
 }
 
 type MatchHelper struct {
-	baseMatch
+	*baseMatch
 	Name string
+}
+
+func (mHelper *MatchHelper) Short() string {
+	return strings.Join(mHelper.ShortArgs(), " ")
+}
+
+func (mHelper *MatchHelper) ShortArgs() []string {
+	args := make([]string, 0, 5)
+	args = append(args, "-m", mHelper.matchType.String())
+	if mHelper.Name != "" {
+		if mHelper.invert {
+			args = append(args, "!")
+		}
+		args = append(args, "--helper", mHelper.Name)
+	}
+	return args
+}
+
+func (mHelper *MatchHelper) Long() string {
+	return mHelper.Short()
+}
+
+func (mHelper *MatchHelper) LongArgs() []string {
+	return mHelper.ShortArgs()
 }
 
 func (mHelper *MatchHelper) Parse(main []byte) (int, bool) {
@@ -3113,9 +4532,9 @@ func (mHelper *MatchHelper) Parse(main []byte) (int, bool) {
 }
 
 // This module matches the Hop Limit field in the IPv6 header.
-func NewMatchHL(operator Operator, value int) (*MatchHL, error) {
+func newMatchHL(operator xtables.Operator, value int) (*MatchHL, error) {
 	mHL := &MatchHL{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeHL,
 		},
 		Operator: operator,
@@ -3125,9 +4544,37 @@ func NewMatchHL(operator Operator, value int) (*MatchHL, error) {
 }
 
 type MatchHL struct {
-	baseMatch
-	Operator Operator
+	*baseMatch
+	Operator xtables.Operator
 	Value    int
+}
+
+func (mHL *MatchHL) Short() string {
+	return strings.Join(mHL.ShortArgs(), " ")
+}
+
+func (mHL *MatchHL) ShortArgs() []string {
+	args := make([]string, 0, 5)
+	args = append(args, "-m", mHL.matchType.String())
+	switch mHL.Operator {
+	case xtables.OperatorNE:
+		args = append(args, "!", "--hl-eq", strconv.Itoa(mHL.Value))
+	case xtables.OperatorEQ:
+		args = append(args, "--hl-eq", strconv.Itoa(mHL.Value))
+	case xtables.OperatorLT:
+		args = append(args, "--hl-lt", strconv.Itoa(mHL.Value))
+	case xtables.OperatorGT:
+		args = append(args, "--hl-gt", strconv.Itoa(mHL.Value))
+	}
+	return args
+}
+
+func (mHL *MatchHL) Long() string {
+	return mHL.Short()
+}
+
+func (mHL *MatchHL) LongArgs() []string {
+	return mHL.ShortArgs()
 }
 
 func (mHL *MatchHL) Parse(main []byte) (int, bool) {
@@ -3139,13 +4586,13 @@ func (mHL *MatchHL) Parse(main []byte) (int, bool) {
 	}
 	switch string(matches[1]) {
 	case "==":
-		mHL.Operator = OperatorEQ
+		mHL.Operator = xtables.OperatorEQ
 	case "!=":
-		mHL.Operator = OperatorNE
+		mHL.Operator = xtables.OperatorNE
 	case "<":
-		mHL.Operator = OperatorLT
+		mHL.Operator = xtables.OperatorLT
 	case ">":
-		mHL.Operator = OperatorGT
+		mHL.Operator = xtables.OperatorGT
 	default:
 		return 0, false
 	}
@@ -3159,33 +4606,67 @@ func (mHL *MatchHL) Parse(main []byte) (int, bool) {
 
 type OptionMatchICMP func(*MatchICMP)
 
-func WithMatchICMPCode(code ICMPCode) OptionMatchICMP {
+func WithMatchICMPCode(code network.ICMPCode) OptionMatchICMP {
 	return func(mICMP *MatchICMP) {
 		mICMP.CodeMin = code
 	}
 }
 
-func NewMatchICMP(yes bool, typ ICMPType, opts ...OptionMatchICMP) (*MatchICMP, error) {
+func newMatchICMP(invert bool, typ network.ICMPType, opts ...OptionMatchICMP) (*MatchICMP, error) {
 	match := &MatchICMP{
-		Type: typ,
-		baseMatch: baseMatch{
+		ICMPType: typ,
+		baseMatch: &baseMatch{
 			matchType: MatchTypeICMP,
-			invert:    !yes,
+			invert:    invert,
 		},
+		CodeMin:    -1,
+		CodeMax:    -1,
+		typeString: "--icmp-type",
 	}
 	for _, opt := range opts {
 		opt(match)
 	}
+	match.setChild(match)
 	return match, nil
 }
 
-// IPv6 specific
+// IPv6 and IPv4 specific
 // Non-numeric support
 type MatchICMP struct {
-	baseMatch
-	Type    ICMPType
-	CodeMin ICMPCode
-	CodeMax ICMPCode
+	*baseMatch
+	ICMPType   network.ICMPType
+	CodeMin    network.ICMPCode
+	CodeMax    network.ICMPCode
+	typeString string
+}
+
+func (mICMP *MatchICMP) Depends() []MatchType {
+	return []MatchType{MatchTypeIPv4, MatchTypeIPv6}
+}
+
+func (mICMP *MatchICMP) Short() string {
+	return strings.Join(mICMP.ShortArgs(), " ")
+}
+
+func (mICMP *MatchICMP) ShortArgs() []string {
+	args := make([]string, 0, 5)
+	args = append(args, "-m", mICMP.matchType.String())
+	if mICMP.CodeMin > -1 {
+		args = append(args, mICMP.typeString,
+			strconv.Itoa(int(mICMP.ICMPType))+"/"+strconv.Itoa(int(mICMP.CodeMin)))
+	} else {
+		args = append(args, mICMP.typeString,
+			strconv.Itoa(int(mICMP.ICMPType)))
+	}
+	return args
+}
+
+func (mICMP *MatchICMP) Long() string {
+	return mICMP.Short()
+}
+
+func (mICMP *MatchICMP) LongArgs() []string {
+	return mICMP.ShortArgs()
 }
 
 func (mICMP *MatchICMP) Parse(main []byte) (int, bool) {
@@ -3206,16 +4687,16 @@ func (mICMP *MatchICMP) Parse(main []byte) (int, bool) {
 	}
 	switch string(matches[1]) {
 	case "ipv6-icmp":
-		mICMP.ipType = IPv6
+		mICMP.addrType = network.AddressTypeIPv6
 	case "icmp":
-		mICMP.ipType = IPv4
+		mICMP.addrType = network.AddressTypeIPv4
 	}
 	if len(matches[4]) != 0 {
 		typ, err := strconv.Atoi(string(matches[4]))
 		if err != nil {
 			return 0, false
 		}
-		mICMP.Type = ICMPType(typ)
+		mICMP.ICMPType = network.ICMPType(typ)
 		if len(matches[3]) != 0 {
 			mICMP.invert = true
 		}
@@ -3225,7 +4706,7 @@ func (mICMP *MatchICMP) Parse(main []byte) (int, bool) {
 		if err != nil {
 			return 0, false
 		}
-		mICMP.CodeMin = ICMPCode(code)
+		mICMP.CodeMin = network.ICMPCode(code)
 	}
 	if len(matches[9]) != 0 {
 		codeMin, err := strconv.Atoi(string(matches[9]))
@@ -3236,37 +4717,37 @@ func (mICMP *MatchICMP) Parse(main []byte) (int, bool) {
 		if err != nil {
 			return 0, false
 		}
-		mICMP.CodeMin = ICMPCode(codeMin)
-		mICMP.CodeMax = ICMPCode(codeMax)
+		mICMP.CodeMin = network.ICMPCode(codeMin)
+		mICMP.CodeMax = network.ICMPCode(codeMax)
 	}
 	if len(matches[13]) != 0 {
 		str := string(matches[13])
-		switch mICMP.ipType {
-		case IPv4:
-			typ, ok := ICMP4Types[str]
+		switch mICMP.addrType {
+		case network.AddressTypeIPv4:
+			typ, ok := network.ICMP4Types[str]
 			if !ok {
-				code, ok := ICMP4Codes[str]
+				code, ok := network.ICMP4Codes[str]
 				if !ok {
 					return 0, false
 				} else {
-					mICMP.CodeMin = ICMPCode(code.Code)
-					mICMP.Type = ICMPType(code.Type)
+					mICMP.CodeMin = network.ICMPCode(code.Code)
+					mICMP.ICMPType = network.ICMPType(code.Type)
 				}
 			} else {
-				mICMP.Type = ICMPType(typ)
+				mICMP.ICMPType = network.ICMPType(typ)
 			}
-		case IPv6:
-			typ, ok := ICMP6Types[str]
+		case network.AddressTypeIPv6:
+			typ, ok := network.ICMPv6TypeMap[str]
 			if !ok {
-				code, ok := ICMP6Codes[str]
+				code, ok := network.ICMPv6Codes[str]
 				if !ok {
 					return 0, false
 				} else {
-					mICMP.CodeMin = ICMPCode(code.Code)
-					mICMP.Type = ICMPType(code.Type)
+					mICMP.CodeMin = network.ICMPCode(code.Code)
+					mICMP.ICMPType = network.ICMPType(code.Type)
 				}
 			} else {
-				mICMP.Type = ICMPType(typ)
+				mICMP.ICMPType = network.ICMPType(typ)
 			}
 		}
 	}
@@ -3277,7 +4758,7 @@ type OptionMatchIPRange func(*MatchIPRange)
 
 // This option takes mostly 2 ips, (min) or (min, max)
 // Match source IP in the specified range.
-func WithMatchIPRangeSrc(yes bool, ip ...net.IP) OptionMatchIPRange {
+func WithMatchIPRangeSrc(invert bool, ip ...net.IP) OptionMatchIPRange {
 	return func(mIPRange *MatchIPRange) {
 		switch len(ip) {
 		case 1:
@@ -3286,13 +4767,13 @@ func WithMatchIPRangeSrc(yes bool, ip ...net.IP) OptionMatchIPRange {
 			mIPRange.SrcIPMin = ip[0]
 			mIPRange.SrcIPMax = ip[1]
 		}
-		mIPRange.SrcIPInvert = !yes
+		mIPRange.SrcIPInvert = invert
 	}
 }
 
 // This option takes mostly 2 ips, (min) or (min, max)
 // Match destination IP in the specified range.
-func WithMatchIPRangeDst(yes bool, ip ...net.IP) OptionMatchIPRange {
+func WithMatchIPRangeDst(invert bool, ip ...net.IP) OptionMatchIPRange {
 	return func(mIPRange *MatchIPRange) {
 		switch len(ip) {
 		case 1:
@@ -3301,30 +4782,71 @@ func WithMatchIPRangeDst(yes bool, ip ...net.IP) OptionMatchIPRange {
 			mIPRange.DstIPMin = ip[0]
 			mIPRange.DstIPMax = ip[1]
 		}
-		mIPRange.DstIPInvert = !yes
+		mIPRange.DstIPInvert = invert
 	}
 }
 
-func NewMatchIPRange(opts ...OptionMatchIPRange) (*MatchIPRange, error) {
+func newMatchIPRange(opts ...OptionMatchIPRange) (*MatchIPRange, error) {
 	match := &MatchIPRange{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeIPRange,
 		},
 	}
 	for _, opt := range opts {
 		opt(match)
 	}
+	match.setChild(match)
 	return match, nil
 }
 
 type MatchIPRange struct {
-	baseMatch
+	*baseMatch
 	SrcIPMin    net.IP
 	SrcIPMax    net.IP
 	DstIPMin    net.IP
 	DstIPMax    net.IP
 	SrcIPInvert bool
 	DstIPInvert bool
+}
+
+func (mIPRange *MatchIPRange) Short() string {
+	return strings.Join(mIPRange.ShortArgs(), " ")
+}
+
+func (mIPRange *MatchIPRange) ShortArgs() []string {
+	args := make([]string, 0, 8)
+	args = append(args, "-m", mIPRange.matchType.String())
+	if mIPRange.SrcIPMin != nil {
+		if mIPRange.SrcIPInvert {
+			args = append(args, "!")
+		}
+		if mIPRange.SrcIPMax != nil {
+			args = append(args, "--src-range",
+				mIPRange.SrcIPMin.String()+"-"+mIPRange.SrcIPMax.String())
+		} else {
+			args = append(args, "--src-range", mIPRange.SrcIPMin.String())
+		}
+	}
+	if mIPRange.DstIPMin != nil {
+		if mIPRange.DstIPInvert {
+			args = append(args, "!")
+		}
+		if mIPRange.DstIPMax != nil {
+			args = append(args, "--src-range",
+				mIPRange.DstIPMin.String()+"-"+mIPRange.DstIPMax.String())
+		} else {
+			args = append(args, "--src-range", mIPRange.DstIPMin.String())
+		}
+	}
+	return args
+}
+
+func (mIPRange *MatchIPRange) Long() string {
+	return mIPRange.Short()
+}
+
+func (mIPRange *MatchIPRange) LongArgs() []string {
+	return mIPRange.ShortArgs()
 }
 
 func (mIPRange *MatchIPRange) Parse(main []byte) (int, bool) {
@@ -3392,7 +4914,7 @@ END:
 type OptionMatchIPv6Header func(*MatchIPv6Header)
 
 // Matches the packet which EXACTLY includes all specified headers.
-func WithMatchIPv6Header(headers ...IPHeaderType) OptionMatchIPv6Header {
+func WithMatchIPv6Header(headers ...network.IPv6HeaderType) OptionMatchIPv6Header {
 	return func(mIPv6Header *MatchIPv6Header) {
 		mIPv6Header.IPHeaderTypes = headers
 	}
@@ -3405,24 +4927,55 @@ func WithMatchIPv6HeaderSoft() OptionMatchIPv6Header {
 	}
 }
 
-func NewMatchIPv6Header(opts ...OptionMatchIPv6Header) (*MatchIPv6Header, error) {
+func newMatchIPv6Header(opts ...OptionMatchIPv6Header) (*MatchIPv6Header, error) {
 	match := &MatchIPv6Header{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeIPv6Header,
 		},
 	}
 	for _, opt := range opts {
 		opt(match)
 	}
+	match.setChild(match)
 	return match, nil
 }
 
 // IPv6 specific
 // Non-numeric support
 type MatchIPv6Header struct {
-	baseMatch
+	*baseMatch
 	Soft          bool
-	IPHeaderTypes []IPHeaderType
+	IPHeaderTypes []network.IPv6HeaderType
+}
+
+func (mIPv6 *MatchIPv6Header) Short() string {
+	return strings.Join(mIPv6.ShortArgs(), " ")
+}
+
+func (mIPv6 *MatchIPv6Header) ShortArgs() []string {
+	args := make([]string, 0, 6)
+	args = append(args, "-m", mIPv6.matchType.String())
+	if mIPv6.Soft {
+		args = append(args, "--soft")
+	}
+	if mIPv6.IPHeaderTypes != nil && len(mIPv6.IPHeaderTypes) != 0 {
+		opts := ""
+		sep := ""
+		for _, head := range mIPv6.IPHeaderTypes {
+			opts += sep + head.String()
+			sep = ","
+		}
+		args = append(args, "--header", opts)
+	}
+	return args
+}
+
+func (mIPv6 *MatchIPv6Header) Long() string {
+	return mIPv6.Short()
+}
+
+func (mIPv6 *MatchIPv6Header) LongArgs() []string {
+	return mIPv6.ShortArgs()
 }
 
 func (mIPv6 *MatchIPv6Header) Parse(main []byte) (int, bool) {
@@ -3440,7 +4993,7 @@ func (mIPv6 *MatchIPv6Header) Parse(main []byte) (int, bool) {
 	if len(matches[2]) != 0 {
 		mIPv6.invert = true
 	}
-	mIPv6.IPHeaderTypes = []IPHeaderType{}
+	mIPv6.IPHeaderTypes = []network.IPv6HeaderType{}
 	// 0x02X
 	if len(matches[4]) != 0 {
 		hex, err := strconv.ParseUint(string(matches[4]), 16, 8)
@@ -3449,8 +5002,8 @@ func (mIPv6 *MatchIPv6Header) Parse(main []byte) (int, bool) {
 		}
 		hex8 := uint8(hex)
 		for hex8 != 0 {
-			for _, mask := range IPHeaderTypeMasks {
-				v, _ := IPHeaderTypeMaskMap[mask]
+			for _, mask := range network.IPv6HeaderTypeMasks {
+				v, _ := network.IPv6HeaderTypeMaskMap[mask]
 				if hex8&uint8(mask) != 0 {
 					mIPv6.IPHeaderTypes = append(mIPv6.IPHeaderTypes, v)
 					hex8 &= ^uint8(mask)
@@ -3462,7 +5015,7 @@ func (mIPv6 *MatchIPv6Header) Parse(main []byte) (int, bool) {
 	if len(matches[5]) != 0 {
 		elems := strings.Split(string(matches[5]), ",")
 		for _, elem := range elems {
-			typ, ok := IPHeaderTypes[elem]
+			typ, ok := network.IPv6HeaderTypes[elem]
 			if !ok {
 				return 0, false
 			}
@@ -3476,6 +5029,21 @@ func (mIPv6 *MatchIPv6Header) Parse(main []byte) (int, bool) {
 }
 
 type IPVSMethod int
+
+func (ipvsMethod IPVSMethod) String() string {
+	switch ipvsMethod {
+	case GATE:
+		return IPVSGATE
+	case IPIP:
+		return IPVSIPIP
+	case MASQ:
+		return IPVSMASQ
+	case UNKNOWN:
+		return IPVSUNKNOWN
+	default:
+		return ""
+	}
+}
 
 const (
 	GATE = 1 << iota
@@ -3504,33 +5072,33 @@ const (
 type OptionMatchIPVS func(*MatchIPVS)
 
 // Packet belongs to an IPVS connection.
-func WithMatchIPVS(yes bool) OptionMatchIPVS {
+func WithMatchIPVS(invert bool) OptionMatchIPVS {
 	return func(mIPVS *MatchIPVS) {
-		mIPVS.IPVS = yes
+		mIPVS.IPVS = invert
 	}
 }
 
 // VIP protocol to match.
-func WithMatchVProto(yes bool, proto Protocol) OptionMatchIPVS {
+func WithMatchVProto(invert bool, proto network.Protocol) OptionMatchIPVS {
 	return func(mIPVS *MatchIPVS) {
 		mIPVS.VProto = proto
-		mIPVS.VProtoInvert = !yes
+		mIPVS.VProtoInvert = invert
 	}
 }
 
 // VIP address to match.
-func WithMatchVAddr(yes bool, addr *Address) OptionMatchIPVS {
+func WithMatchVAddr(invert bool, addr network.Address) OptionMatchIPVS {
 	return func(mIPVS *MatchIPVS) {
 		mIPVS.VAddr = addr
-		mIPVS.VAddrInvert = !yes
+		mIPVS.VAddrInvert = invert
 	}
 }
 
-//  VIP port to match.
-func WithMatchVPort(yes bool, port int) OptionMatchIPVS {
+// VIP port to match.
+func WithMatchVPort(invert bool, port int) OptionMatchIPVS {
 	return func(mIPVS *MatchIPVS) {
 		mIPVS.VPort = port
-		mIPVS.VPortInvert = !yes
+		mIPVS.VPortInvert = invert
 	}
 }
 
@@ -3542,38 +5110,44 @@ func WithMatchVDir(dir ConnTrackDir) OptionMatchIPVS {
 }
 
 // IPVS forwarding method used.
-func WithMatchVMethod(yes bool, method IPVSMethod) OptionMatchIPVS {
+func WithMatchVMethod(invert bool, method IPVSMethod) OptionMatchIPVS {
 	return func(mIPVS *MatchIPVS) {
 		mIPVS.VMethod = method
-		mIPVS.VMethodInvert = !yes
+		mIPVS.VMethodInvert = invert
 	}
 }
 
 // VIP port of the controlling connection to match.
-func WithMatchVPortCtl(yes bool, portCtl int) OptionMatchIPVS {
+func WithMatchVPortCtl(invert bool, portCtl int) OptionMatchIPVS {
 	return func(mIPVS *MatchIPVS) {
 		mIPVS.VPortCtl = portCtl
-		mIPVS.VPortCtlInvert = !yes
+		mIPVS.VPortCtlInvert = invert
 	}
 }
 
-func NewMatchIPVS(opts ...OptionMatchIPVS) (*MatchIPVS, error) {
+func newMatchIPVS(opts ...OptionMatchIPVS) (*MatchIPVS, error) {
 	match := &MatchIPVS{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeIPVS,
 		},
+		VProto:   -1,
+		VPort:    -1,
+		VDir:     -1,
+		VMethod:  -1,
+		VPortCtl: -1,
 	}
 	for _, opt := range opts {
 		opt(match)
 	}
+	match.setChild(match)
 	return match, nil
 }
 
 type MatchIPVS struct {
-	baseMatch
+	*baseMatch
 	IPVS     bool
-	VProto   Protocol
-	VAddr    *Address
+	VProto   network.Protocol
+	VAddr    network.Address
 	VPort    int
 	VDir     ConnTrackDir
 	VMethod  IPVSMethod
@@ -3586,6 +5160,63 @@ type MatchIPVS struct {
 	//VDirInvert     bool
 	VMethodInvert  bool
 	VPortCtlInvert bool
+}
+
+func (mIPVS *MatchIPVS) Short() string {
+	return strings.Join(mIPVS.ShortArgs(), " ")
+}
+
+func (mIPVS *MatchIPVS) ShortArgs() []string {
+	args := make([]string, 0, 19)
+	args = append(args, "-m", mIPVS.matchType.String())
+	if mIPVS.IPVS {
+		if mIPVS.IPVSInvert {
+			args = append(args, "!")
+		}
+		args = append(args, "--ipvs")
+	}
+	if mIPVS.VProto > -1 {
+		if mIPVS.VProtoInvert {
+			args = append(args, "!")
+		}
+		args = append(args, "--vproto", strconv.Itoa(int(mIPVS.VProto)))
+	}
+	if mIPVS.VAddr != nil {
+		if mIPVS.VAddrInvert {
+			args = append(args, "!")
+		}
+		args = append(args, "--vaddr", mIPVS.VAddr.String())
+	}
+	if mIPVS.VPort > -1 {
+		if mIPVS.VPortInvert {
+			args = append(args, "!")
+		}
+		args = append(args, "--vport", strconv.Itoa(int(mIPVS.VPort)))
+	}
+	if mIPVS.VDir > -1 {
+		args = append(args, "--vdir", mIPVS.VDir.String())
+	}
+	if mIPVS.VMethod > -1 {
+		if mIPVS.VMethodInvert {
+			args = append(args, "!")
+		}
+		args = append(args, "--vmethod", mIPVS.VMethod.String())
+	}
+	if mIPVS.VPortCtl > -1 {
+		if mIPVS.VPortCtlInvert {
+			args = append(args, "!")
+		}
+		args = append(args, "--vportctl", strconv.Itoa(int(mIPVS.VPortCtl)))
+	}
+	return args
+}
+
+func (mIPVS *MatchIPVS) Long() string {
+	return mIPVS.Short()
+}
+
+func (mIPVS *MatchIPVS) LongArgs() []string {
+	return mIPVS.ShortArgs()
 }
 
 func (mIPVS *MatchIPVS) Parse(main []byte) (int, bool) {
@@ -3621,11 +5252,11 @@ func (mIPVS *MatchIPVS) Parse(main []byte) (int, bool) {
 			if err != nil {
 				goto END
 			}
-			mIPVS.VProto = Protocol(proto)
+			mIPVS.VProto = network.Protocol(proto)
 			mIPVS.VProtoInvert = invert
 		case IPVSVAddr:
 			vaddr := string(matches[4])
-			addr, err := ParseAddress(vaddr)
+			addr, err := network.ParseAddress(vaddr)
 			if err != nil {
 				goto END
 			}
@@ -3679,11 +5310,13 @@ END:
 }
 
 // This option takes mostly 2 length, (min) or (min, max)
-func NewMatchLength(yes bool, length ...int) (*MatchLength, error) {
+func newMatchLength(invert bool, length ...int) (*MatchLength, error) {
 	match := &MatchLength{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeLength,
 		},
+		LengthMin: -1,
+		LengthMax: -1,
 	}
 	switch len(length) {
 	case 1:
@@ -3693,14 +5326,44 @@ func NewMatchLength(yes bool, length ...int) (*MatchLength, error) {
 		match.LengthMin = length[0]
 		match.LengthMax = length[1]
 	}
-	match.invert = !yes
+	match.invert = invert
+	match.setChild(match)
 	return match, nil
 }
 
 type MatchLength struct {
-	baseMatch
+	*baseMatch
 	LengthMin int
 	LengthMax int
+}
+
+func (mLength *MatchLength) Short() string {
+	return strings.Join(mLength.ShortArgs(), " ")
+}
+
+func (mLength *MatchLength) ShortArgs() []string {
+	args := make([]string, 0, 5)
+	args = append(args, "-m", mLength.matchType.String())
+	if mLength.LengthMin > -1 {
+		if mLength.invert {
+			args = append(args, "!")
+		}
+		if mLength.LengthMax > -1 {
+			args = append(args, "--length",
+				strconv.Itoa(mLength.LengthMin)+":"+strconv.Itoa(mLength.LengthMax))
+		} else {
+			args = append(args, "--length", strconv.Itoa(mLength.LengthMin))
+		}
+	}
+	return args
+}
+
+func (mLength *MatchLength) Long() string {
+	return mLength.Short()
+}
+
+func (mLength *MatchLength) LongArgs() []string {
+	return mLength.ShortArgs()
 }
 
 func (mLength *MatchLength) Parse(main []byte) (int, bool) {
@@ -3735,35 +5398,61 @@ func (mLength *MatchLength) Parse(main []byte) (int, bool) {
 type OptionMatchLimit func(*MatchLimit)
 
 // Maximum average matching rate.
-func WithMatchLimit(rate Rate) OptionMatchLimit {
+func WithMatchLimit(rate xtables.Rate) OptionMatchLimit {
 	return func(mLimit *MatchLimit) {
 		mLimit.Avg = rate
 	}
 }
 
 // Maximum initial number of packets to match.
-func WithMatchLimitBurst(burst Rate) OptionMatchLimit {
+func WithMatchLimitBurst(burst int) OptionMatchLimit {
 	return func(mLimit *MatchLimit) {
 		mLimit.Burst = burst
 	}
 }
 
-func NewMatchLimit(opts ...OptionMatchLimit) (*MatchLimit, error) {
+func newMatchLimit(opts ...OptionMatchLimit) (*MatchLimit, error) {
 	match := &MatchLimit{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeLimit,
 		},
+		Burst: -1,
 	}
 	for _, opt := range opts {
 		opt(match)
 	}
+	match.setChild(match)
 	return match, nil
 }
 
 type MatchLimit struct {
-	baseMatch
-	Avg   Rate
-	Burst Rate
+	*baseMatch
+	Avg   xtables.Rate
+	Burst int
+}
+
+func (mLimit *MatchLimit) Short() string {
+	return strings.Join(mLimit.ShortArgs(), " ")
+}
+
+func (mLimit *MatchLimit) ShortArgs() []string {
+	args := make([]string, 0, 6)
+	args = append(args, "-m", mLimit.matchType.String())
+	if (mLimit.Avg != xtables.Rate{}) {
+		args = append(args, "--limit", mLimit.Avg.String())
+	}
+	if mLimit.Burst > -1 {
+		args = append(args, "--limit-burst", strconv.Itoa(mLimit.Burst))
+	}
+	return args
+}
+
+func (mLimit *MatchLimit) Long() string {
+	return mLimit.Short()
+}
+
+func (mLimit *MatchLimit) LongArgs() []string {
+	return mLimit.ShortArgs()
 }
 
 func (mLimit *MatchLimit) Parse(main []byte) (int, bool) {
@@ -3783,43 +5472,67 @@ func (mLimit *MatchLimit) Parse(main []byte) (int, bool) {
 	if err != nil {
 		return 0, false
 	}
-	unit := Unit(0)
+	unit := xtables.Unit(0)
 	switch string(matches[3]) {
 	case "second":
-		unit = Second
+		unit = xtables.Second
 	case "minute":
-		unit = Minute
+		unit = xtables.Minute
 	case "hour":
-		unit = Hour
+		unit = xtables.Hour
 	case "day":
-		unit = Day
+		unit = xtables.Day
 	default:
 		return 0, false
 	}
-	mLimit.Avg = Rate{
-		avg, unit,
+	mLimit.Avg = xtables.Rate{
+		Rate: avg,
+		Unit: unit,
 	}
-	mLimit.Burst = Rate{
-		burst, unit,
-	}
+	mLimit.Burst = burst
 	return len(matches[0]), true
 }
 
 // Match source MAC address.
-func NewMatchMAC(yes bool, mac net.HardwareAddr) (*MatchMAC, error) {
+func newMatchMAC(invert bool, mac net.HardwareAddr) (*MatchMAC, error) {
 	match := &MatchMAC{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeMAC,
-			invert:    !yes,
+			invert:    invert,
 		},
 		SrcMac: mac,
 	}
+	match.setChild(match)
 	return match, nil
 }
 
 type MatchMAC struct {
-	baseMatch
+	*baseMatch
 	SrcMac net.HardwareAddr
+}
+
+func (mMAC *MatchMAC) Short() string {
+	return strings.Join(mMAC.ShortArgs(), " ")
+}
+
+func (mMAC *MatchMAC) ShortArgs() []string {
+	args := make([]string, 0, 5)
+	args = append(args, "-m", mMAC.matchType.String())
+	if mMAC.SrcMac != nil {
+		if mMAC.invert {
+			args = append(args, "!")
+		}
+		args = append(args, "--mac-source", mMAC.SrcMac.String())
+	}
+	return args
+}
+
+func (mMAC *MatchMAC) Long() string {
+	return mMAC.Short()
+}
+
+func (mMAC *MatchMAC) LongArgs() []string {
+	return mMAC.ShortArgs()
 }
 
 func (mMAC *MatchMAC) Parse(main []byte) (int, bool) {
@@ -3840,13 +5553,15 @@ func (mMAC *MatchMAC) Parse(main []byte) (int, bool) {
 	return len(matches[0]), true
 }
 
-// Takes mostly 2 value, (mark) or (mark/mask)
+// The argument value takes mostly 2 values, mark or mark/mask.
 // Matches packets with the given unsigned mark value
-func NewMatchMark(yes bool, value ...int) (*MatchMark, error) {
+func newMatchMark(invert bool, value ...int) (*MatchMark, error) {
 	mMark := &MatchMark{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeMark,
 		},
+		Value: -1,
+		Mask:  -1,
 	}
 	switch len(value) {
 	case 1:
@@ -3856,14 +5571,43 @@ func NewMatchMark(yes bool, value ...int) (*MatchMark, error) {
 		mMark.Value = value[0]
 		mMark.Mask = value[1]
 	}
-	mMark.invert = !yes
+	mMark.invert = invert
 	return mMark, nil
 }
 
 type MatchMark struct {
-	baseMatch
+	*baseMatch
 	Value int
 	Mask  int
+}
+
+func (mMark *MatchMark) Short() string {
+	return strings.Join(mMark.ShortArgs(), " ")
+}
+
+func (mMark *MatchMark) ShortArgs() []string {
+	args := make([]string, 0, 5)
+	args = append(args, "-m", mMark.matchType.String())
+	if mMark.Value > -1 {
+		if mMark.invert {
+			args = append(args, "!")
+		}
+		if mMark.Mask > -1 {
+			args = append(args, "--mark",
+				strconv.Itoa(mMark.Value)+"/"+strconv.Itoa(mMark.Mask))
+		} else {
+			args = append(args, "--mark", strconv.Itoa(mMark.Value))
+		}
+	}
+	return args
+}
+
+func (mMark *MatchMark) Long() string {
+	return mMark.Short()
+}
+
+func (mMark *MatchMark) LongArgs() []string {
+	return mMark.ShortArgs()
 }
 
 func (mMark *MatchMark) Parse(main []byte) (int, bool) {
@@ -3900,7 +5644,30 @@ func (mMark *MatchMark) Parse(main []byte) (int, bool) {
 	return len(matches[0]), true
 }
 
-type MHType uint8
+type MHType int
+
+func (mhType MHType) String() string {
+	switch mhType {
+	case BRR:
+		return "brr"
+	case HOTI:
+		return "hoti"
+	case COTI:
+		return "coti"
+	case HOT:
+		return "hot"
+	case COT:
+		return "cot"
+	case BU:
+		return "bu"
+	case BA:
+		return "ba"
+	case BE:
+		return "be"
+	default:
+		return ""
+	}
+}
 
 const (
 	BindingRefreshRequest  MHType = 0
@@ -3943,29 +5710,61 @@ var (
 )
 
 // This option takes mostly 2 types, (min) or (min, max)
-func NewMatchMH(yes bool, types ...MHType) (*MatchMH, error) {
+func newMatchMH(invert bool, typ ...MHType) (*MatchMH, error) {
 	match := &MatchMH{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeMH,
-			invert:    !yes,
+			invert:    invert,
 		},
+		TypeMin: -1,
+		TypeMax: -1,
 	}
-	switch len(types) {
+	switch len(typ) {
 	case 1:
-		match.TypeMin = types[0]
+		match.TypeMin = typ[0]
 	case 2:
-		match.TypeMin = types[0]
-		match.TypeMax = types[1]
+		match.TypeMin = typ[0]
+		match.TypeMax = typ[1]
 	}
+	match.setChild(match)
 	return match, nil
 }
 
 // IPv6 specific
 // Non-numeric support
 type MatchMH struct {
-	baseMatch
+	*baseMatch
 	TypeMin MHType
 	TypeMax MHType
+}
+
+func (mMH *MatchMH) Short() string {
+	return strings.Join(mMH.ShortArgs(), " ")
+}
+
+func (mMH *MatchMH) ShortArgs() []string {
+	args := make([]string, 0, 5)
+	args = append(args, "-m", mMH.matchType.String())
+	if mMH.TypeMin > -1 {
+		if mMH.invert {
+			args = append(args, "!")
+		}
+		if mMH.TypeMax > -1 {
+			args = append(args, "--mh-type",
+				mMH.TypeMin.String()+":", mMH.TypeMax.String())
+		} else {
+			args = append(args, "--mh-type", mMH.TypeMin.String())
+		}
+	}
+	return args
+}
+
+func (mMH *MatchMH) Long() string {
+	return mMH.Short()
+}
+
+func (mMH *MatchMH) LongArgs() []string {
+	return mMH.ShortArgs()
 }
 
 func (mMH *MatchMH) Parse(main []byte) (int, bool) {
@@ -4014,49 +5813,147 @@ func (mMH *MatchMH) Parse(main []byte) (int, bool) {
 	return len(matches[0]), true
 }
 
+type PortRange struct {
+	Start int
+	End   int
+}
+
 type OptionMatchMultiPort func(*MatchMultiPort)
 
 // Match if the source port is one of the given ports.
-func WithMatchMultiPortSrc(yes bool, ports ...PortRange) OptionMatchMultiPort {
+func WithMatchMultiPortSrc(invert bool, ports ...PortRange) OptionMatchMultiPort {
 	return func(mMultiPort *MatchMultiPort) {
 		mMultiPort.SrcPorts = ports
-		mMultiPort.invert = !yes
+		mMultiPort.invert = invert
 	}
 }
 
-//  Match if the destination port is one of the given ports.
-func WithMatchMultiPortDst(yes bool, ports ...PortRange) OptionMatchMultiPort {
+// Match if the destination port is one of the given ports.
+func WithMatchMultiPortDst(invert bool, ports ...PortRange) OptionMatchMultiPort {
 	return func(mMultiPort *MatchMultiPort) {
 		mMultiPort.DstPorts = ports
-		mMultiPort.invert = !yes
+		mMultiPort.invert = invert
 	}
 }
 
 // Match if either the source or destination ports are equal to one of the given ports.
-func WithMatchMultiPort(yes bool, ports ...PortRange) OptionMatchMultiPort {
+func WithMatchMultiPort(invert bool, ports ...PortRange) OptionMatchMultiPort {
 	return func(mMultiPort *MatchMultiPort) {
 		mMultiPort.Ports = ports
-		mMultiPort.invert = !yes
+		mMultiPort.invert = invert
 	}
 }
 
-func NewMatchMultiPort(opts ...OptionMatchMultiPort) (*MatchMultiPort, error) {
+func newMatchMultiPort(opts ...OptionMatchMultiPort) (*MatchMultiPort, error) {
 	match := &MatchMultiPort{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeMultiPort,
 		},
 	}
 	for _, opt := range opts {
 		opt(match)
 	}
+	match.setChild(match)
 	return match, nil
 }
 
 type MatchMultiPort struct {
-	baseMatch
+	*baseMatch
 	SrcPorts []PortRange
 	DstPorts []PortRange
 	Ports    []PortRange
+}
+
+func (mMultiPort *MatchMultiPort) Short() string {
+	return strings.Join(mMultiPort.ShortArgs(), " ")
+}
+
+func (mMultiPort *MatchMultiPort) ShortArgs() []string {
+	args := make([]string, 0, 11)
+	args = append(args, "-m", mMultiPort.matchType.String())
+	if mMultiPort.SrcPorts != nil && len(mMultiPort.SrcPorts) != 0 {
+		ports := ""
+		sep := ""
+		for _, port := range mMultiPort.SrcPorts {
+			ports += sep + strconv.Itoa(port.Start)
+			if port.End > 0 {
+				ports += ":" + strconv.Itoa(port.End)
+			}
+			sep = ","
+		}
+		args = append(args, "--sports", ports)
+	}
+	if mMultiPort.DstPorts != nil && len(mMultiPort.DstPorts) != 0 {
+		ports := ""
+		sep := ""
+		for _, port := range mMultiPort.DstPorts {
+			ports += sep + strconv.Itoa(port.Start)
+			if port.End > 0 {
+				ports += ":" + strconv.Itoa(port.End)
+			}
+			sep = ","
+		}
+		args = append(args, "--dports", ports)
+	}
+	if mMultiPort.Ports != nil && len(mMultiPort.Ports) != 0 {
+		ports := ""
+		sep := ""
+		for _, port := range mMultiPort.Ports {
+			ports += sep + strconv.Itoa(port.Start)
+			if port.End > 0 {
+				ports += ":" + strconv.Itoa(port.End)
+			}
+			sep = ","
+		}
+		args = append(args, "--ports", ports)
+	}
+	return args
+}
+
+func (mMultiPort *MatchMultiPort) Long() string {
+	return strings.Join(mMultiPort.LongArgs(), " ")
+}
+
+func (mMultiPort *MatchMultiPort) LongArgs() []string {
+	args := make([]string, 0, 11)
+	args = append(args, "-m", mMultiPort.matchType.String())
+	if mMultiPort.SrcPorts != nil && len(mMultiPort.SrcPorts) != 0 {
+		ports := ""
+		sep := ""
+		for _, port := range mMultiPort.SrcPorts {
+			ports += sep + strconv.Itoa(port.Start)
+			if port.End > 0 {
+				ports += ":" + strconv.Itoa(port.End)
+			}
+			sep = ","
+		}
+		args = append(args, "--source-ports", ports)
+	}
+	if mMultiPort.DstPorts != nil && len(mMultiPort.DstPorts) != 0 {
+		ports := ""
+		sep := ""
+		for _, port := range mMultiPort.DstPorts {
+			ports += sep + strconv.Itoa(port.Start)
+			if port.End > 0 {
+				ports += ":" + strconv.Itoa(port.End)
+			}
+			sep = ","
+		}
+		args = append(args, "--destination-ports", ports)
+	}
+	if mMultiPort.Ports != nil && len(mMultiPort.Ports) != 0 {
+		ports := ""
+		sep := ""
+		for _, port := range mMultiPort.Ports {
+			ports += sep + strconv.Itoa(port.Start)
+			if port.End > 0 {
+				ports += ":" + strconv.Itoa(port.End)
+			}
+			sep = ","
+		}
+		args = append(args, "--ports", ports)
+	}
+	return args
 }
 
 func (mMultiPort *MatchMultiPort) Parse(main []byte) (int, bool) {
@@ -4119,19 +6016,41 @@ func (mMultiPort *MatchMultiPort) Parse(main []byte) (int, bool) {
 	return len(matches[0]), true
 }
 
-func NewMatchNFAcct(name string) (*MatchNFAcct, error) {
+func newMatchNFAcct(name string) (*MatchNFAcct, error) {
 	match := &MatchNFAcct{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeNFAcct,
 		},
 		AccountingName: name,
 	}
+	match.setChild(match)
 	return match, nil
 }
 
 type MatchNFAcct struct {
-	baseMatch
+	*baseMatch
 	AccountingName string
+}
+
+func (mNFAcct *MatchNFAcct) Short() string {
+	return strings.Join(mNFAcct.ShortArgs(), " ")
+}
+
+func (mNFAcct *MatchNFAcct) ShortArgs() []string {
+	args := make([]string, 0, 4)
+	args = append(args, "-m", mNFAcct.matchType.String())
+	if mNFAcct.AccountingName != "" {
+		args = append(args, "--nfacct-name", mNFAcct.AccountingName)
+	}
+	return args
+}
+
+func (mNFAcct *MatchNFAcct) Long() string {
+	return mNFAcct.Short()
+}
+
+func (mNFAcct *MatchNFAcct) LongArgs() []string {
+	return mNFAcct.ShortArgs()
 }
 
 func (mNFAcct *MatchNFAcct) Parse(main []byte) (int, bool) {
@@ -4150,10 +6069,10 @@ func (mNFAcct *MatchNFAcct) Parse(main []byte) (int, bool) {
 type OptionMatchOSF func(*MatchOSF)
 
 // Match an operating system genre by using a passive fingerprinting.
-func WithMatchOSFGenre(yes bool, genre string) OptionMatchOSF {
+func WithMatchOSFGenre(invert bool, genre string) OptionMatchOSF {
 	return func(mOSF *MatchOSF) {
 		mOSF.Genre = genre
-		mOSF.invert = !yes
+		mOSF.invert = invert
 	}
 }
 
@@ -4171,23 +6090,56 @@ func WithMatchOSFLog(log int) OptionMatchOSF {
 	}
 }
 
-func NewMatchOSF(opts ...OptionMatchOSF) (*MatchOSF, error) {
+func newMatchOSF(opts ...OptionMatchOSF) (*MatchOSF, error) {
 	match := &MatchOSF{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeOSF,
 		},
+		TTLLevel: -1,
+		LogLevel: -1,
 	}
 	for _, opt := range opts {
 		opt(match)
 	}
+	match.setChild(match)
 	return match, nil
 }
 
 type MatchOSF struct {
-	baseMatch
+	*baseMatch
 	Genre    string
 	TTLLevel int
 	LogLevel int
+}
+
+func (mOSF *MatchOSF) Short() string {
+	return strings.Join(mOSF.ShortArgs(), " ")
+}
+
+func (mOSF *MatchOSF) ShortArgs() []string {
+	args := make([]string, 0, 9)
+	args = append(args, "-m", mOSF.matchType.String())
+	if mOSF.Genre != "" {
+		if mOSF.invert {
+			args = append(args, "!")
+		}
+		args = append(args, "--genre", mOSF.Genre)
+	}
+	if mOSF.TTLLevel > -1 {
+		args = append(args, "--ttl", strconv.Itoa(mOSF.TTLLevel))
+	}
+	if mOSF.LogLevel > -1 {
+		args = append(args, "--log", strconv.Itoa(mOSF.LogLevel))
+	}
+	return args
+}
+
+func (mOSF *MatchOSF) Long() string {
+	return mOSF.Short()
+}
+
+func (mOSF *MatchOSF) LongArgs() []string {
+	return mOSF.ShortArgs()
 }
 
 func (mOSF *MatchOSF) Parse(main []byte) (int, bool) {
@@ -4208,34 +6160,46 @@ func (mOSF *MatchOSF) Parse(main []byte) (int, bool) {
 type OptionMatchOwner func(*MatchOwner)
 
 // Matches if the packet socket's file structure (if it has one) is owned by the given user.
-func WithMatchOwnerUid(yes bool, uid int) OptionMatchOwner {
+func WithMatchOwnerUid(invert bool, uid ...int) OptionMatchOwner {
 	return func(mOwner *MatchOwner) {
-		mOwner.UidOwner = uid
-		mOwner.UidOwnerInvert = !yes
+		switch len(uid) {
+		case 1:
+			mOwner.UidOwnerMin = uid[0]
+		case 2:
+			mOwner.UidOwnerMin = uid[0]
+			mOwner.UidOwnerMax = uid[1]
+		}
+		mOwner.UidOwnerInvert = invert
 	}
 }
 
 // Matches if the packet socket's file structure (if it has one) is owned by the given user.
-func WithMatchOwnerUser(yes bool, name string) OptionMatchOwner {
+func WithMatchOwnerUser(invert bool, name string) OptionMatchOwner {
 	return func(mOwner *MatchOwner) {
 		mOwner.User = name
-		mOwner.UidOwnerInvert = !yes
+		mOwner.UidOwnerInvert = invert
 	}
 }
 
 // Matches if the packet socket's file structure is owned by the given group.
-func WithMatchOwnerGid(yes bool, gid int) OptionMatchOwner {
+func WithMatchOwnerGid(invert bool, gid ...int) OptionMatchOwner {
 	return func(mOwner *MatchOwner) {
-		mOwner.GidOwner = gid
-		mOwner.GidOwnerInvert = !yes
+		switch len(gid) {
+		case 1:
+			mOwner.GidOwnerMin = gid[0]
+		case 2:
+			mOwner.GidOwnerMin = gid[0]
+			mOwner.GidOwnerMax = gid[1]
+		}
+		mOwner.GidOwnerInvert = invert
 	}
 }
 
 // Matches if the packet socket's file structure is owned by the given group.
-func WithMatchOwnerGroup(yes bool, group string) OptionMatchOwner {
+func WithMatchOwnerGroup(invert bool, group string) OptionMatchOwner {
 	return func(mOwner *MatchOwner) {
 		mOwner.Group = group
-		mOwner.GidOwnerInvert = !yes
+		mOwner.GidOwnerInvert = invert
 	}
 }
 
@@ -4247,30 +6211,37 @@ func WithMatchOwnerSupplGroups() OptionMatchOwner {
 }
 
 // Matches if the packet is associated with a socket.
-func WithMatchOwnerSocketExists(yes bool) OptionMatchOwner {
+func WithMatchOwnerSocketExists(invert bool) OptionMatchOwner {
 	return func(mOwner *MatchOwner) {
 		mOwner.HasSocketExists = true
-		mOwner.SocketExistsInvert = !yes
+		mOwner.SocketExistsInvert = invert
 	}
 }
 
-func NewMatchOwner(opts ...OptionMatchOwner) (*MatchOwner, error) {
+func newMatchOwner(opts ...OptionMatchOwner) (*MatchOwner, error) {
 	match := &MatchOwner{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeOwner,
 		},
+		UidOwnerMin: -1,
+		UidOwnerMax: -1,
+		GidOwnerMin: -1,
+		GidOwnerMax: -1,
 	}
 	for _, opt := range opts {
 		opt(match)
 	}
+	match.setChild(match)
 	return match, nil
 }
 
 type MatchOwner struct {
-	baseMatch
-	UidOwner        int
+	*baseMatch
+	UidOwnerMin     int
+	UidOwnerMax     int
 	User            string
-	GidOwner        int
+	GidOwnerMin     int
+	GidOwnerMax     int
 	Group           string
 	SupplGroups     bool
 	HasSocketExists bool
@@ -4278,6 +6249,67 @@ type MatchOwner struct {
 	UidOwnerInvert     bool
 	GidOwnerInvert     bool
 	SocketExistsInvert bool
+}
+
+func (mOwner *MatchOwner) Short() string {
+	return strings.Join(mOwner.ShortArgs(), " ")
+}
+
+func (mOwner *MatchOwner) ShortArgs() []string {
+	args := make([]string, 0, 7)
+	args = append(args, "-m", mOwner.matchType.String())
+	if mOwner.User != "" {
+		if mOwner.UidOwnerInvert {
+			args = append(args, "!")
+		}
+		args = append(args, "--uid-owner", mOwner.User)
+	}
+	if mOwner.UidOwnerMin > -1 {
+		if mOwner.UidOwnerInvert {
+			args = append(args, "!")
+		}
+		if mOwner.UidOwnerMax > -1 {
+			args = append(args, "--uid-owner",
+				strconv.Itoa(mOwner.UidOwnerMin)+"-"+strconv.Itoa(mOwner.UidOwnerMax))
+		} else {
+			args = append(args, "--uid-owner", strconv.Itoa(mOwner.UidOwnerMin))
+		}
+	}
+	if mOwner.Group != "" {
+		if mOwner.GidOwnerInvert {
+			args = append(args, "!")
+		}
+		args = append(args, "--gid-owner", mOwner.Group)
+	}
+	if mOwner.GidOwnerMin > -1 {
+		if mOwner.GidOwnerInvert {
+			args = append(args, "!")
+		}
+		if mOwner.GidOwnerMax > -1 {
+			args = append(args, "--gid-owner",
+				strconv.Itoa(mOwner.GidOwnerMin)+"-"+strconv.Itoa(mOwner.GidOwnerMax))
+		} else {
+			args = append(args, "--gid-owner", strconv.Itoa(mOwner.GidOwnerMin))
+		}
+	}
+	if mOwner.SupplGroups {
+		args = append(args, "--suppl-groups")
+	}
+	if mOwner.HasSocketExists {
+		if mOwner.SocketExistsInvert {
+			args = append(args, "!")
+		}
+		args = append(args, "--socket-exists")
+	}
+	return args
+}
+
+func (mOwner *MatchOwner) Long() string {
+	return mOwner.Short()
+}
+
+func (mOwner *MatchOwner) LongArgs() []string {
+	return mOwner.ShortArgs()
 }
 
 func (mOwner *MatchOwner) Parse(main []byte) (int, bool) {
@@ -4305,18 +6337,47 @@ func (mOwner *MatchOwner) Parse(main []byte) (int, bool) {
 			uidRaw := string(matches[4])
 			uid, err := strconv.Atoi(uidRaw)
 			if err != nil {
-				mOwner.User = uidRaw
+				minmax := strings.Split(uidRaw, "-")
+				if len(minmax) != 2 {
+					mOwner.User = uidRaw
+				} else {
+					min, err := strconv.Atoi(minmax[0])
+					if err != nil {
+						mOwner.User = uidRaw
+					}
+					max, err := strconv.Atoi(minmax[1])
+					if err != nil {
+						mOwner.User = uidRaw
+					}
+					mOwner.UidOwnerMin = min
+					mOwner.UidOwnerMax = max
+				}
 			} else {
-				mOwner.UidOwner = uid
+				mOwner.UidOwnerMin = uid
 			}
 			mOwner.UidOwnerInvert = invert
 		case "owner GID match":
 			gidRaw := string(matches[4])
 			gid, err := strconv.Atoi(gidRaw)
 			if err != nil {
-				mOwner.Group = gidRaw
+				minmax := strings.Split(gidRaw, "-")
+				if len(minmax) != 2 {
+					mOwner.Group = gidRaw
+				} else {
+					min, err := strconv.Atoi(minmax[0])
+					if err != nil {
+						mOwner.Group = gidRaw
+					}
+					max, err := strconv.Atoi(minmax[1])
+					if err != nil {
+						mOwner.Group = gidRaw
+					}
+					mOwner.GidOwnerMin = min
+					mOwner.GidOwnerMax = max
+				}
+
 			} else {
-				mOwner.GidOwner = gid
+				mOwner.GidOwnerMin = gid
 			}
 			mOwner.GidOwnerInvert = invert
 		case "incl. suppl.":
@@ -4335,69 +6396,118 @@ END:
 type OptionMatchPhysDev func(*MatchPhysDev)
 
 // Name of a bridge port via which a packet is received.
-func WithMatchPhysDevIn(yes bool, in string) OptionMatchPhysDev {
+func WithMatchPhysDevIn(invert bool, in string) OptionMatchPhysDev {
 	return func(mPhysDev *MatchPhysDev) {
-		mPhysDev.PhysdevIn = in
-		mPhysDev.PhysdevInInvert = !yes
+		mPhysDev.PhysDevIn = in
+		mPhysDev.PhysDevInInvert = invert
 	}
 }
 
 // Name of a bridge port via which a packet is going to be sent.
-func WithMatchPhysDevOut(yes bool, out string) OptionMatchPhysDev {
+func WithMatchPhysDevOut(invert bool, out string) OptionMatchPhysDev {
 	return func(mPhysDev *MatchPhysDev) {
-		mPhysDev.PhysdevOut = out
-		mPhysDev.PhysdevOutInvert = !yes
+		mPhysDev.PhysDevOut = out
+		mPhysDev.PhysDevOutInvert = invert
 	}
 }
 
 // Matches if the packet has entered through a bridge interface.
-func WithMatchPhysDevIsIn(yes bool) OptionMatchPhysDev {
+func WithMatchPhysDevIsIn(invert bool) OptionMatchPhysDev {
 	return func(mPhysDev *MatchPhysDev) {
-		mPhysDev.PhysdevIsIn = true
-		mPhysDev.PhysdevIsInInvert = true
+		mPhysDev.PhysDevIsIn = true
+		mPhysDev.PhysDevIsInInvert = true
 	}
 }
 
 // Matches if the packet will leave through a bridge interface.
-func WithMatchPhysDevIsOut(yes bool) OptionMatchPhysDev {
+func WithMatchPhysDevIsOut(invert bool) OptionMatchPhysDev {
 	return func(mPhysDev *MatchPhysDev) {
-		mPhysDev.PhysdevIsOut = true
-		mPhysDev.PhysdevIsOutInvert = true
+		mPhysDev.PhysDevIsOut = true
+		mPhysDev.PhysDevIsOutInvert = true
 	}
 }
 
-func WithMatchPhysDevIsBridged(yes bool) OptionMatchPhysDev {
+func WithMatchPhysDevIsBridged(invert bool) OptionMatchPhysDev {
 	return func(mPhysDev *MatchPhysDev) {
-		mPhysDev.PhysdevIsBridged = true
-		mPhysDev.PhysdevIsBridgedInvert = true
+		mPhysDev.PhysDevIsBridged = true
+		mPhysDev.PhysDevIsBridgedInvert = true
 	}
 }
 
-func NewMatchPhysDev(opts ...OptionMatchPhysDev) (*MatchPhysDev, error) {
+func newMatchPhysDev(opts ...OptionMatchPhysDev) (*MatchPhysDev, error) {
 	match := &MatchPhysDev{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypePhysDev,
 		},
 	}
 	for _, opt := range opts {
 		opt(match)
 	}
+	match.setChild(match)
 	return match, nil
 }
 
 type MatchPhysDev struct {
-	baseMatch
-	PhysdevIn        string
-	PhysdevOut       string
-	PhysdevIsIn      bool
-	PhysdevIsOut     bool
-	PhysdevIsBridged bool
+	*baseMatch
+	PhysDevIn        string
+	PhysDevOut       string
+	PhysDevIsIn      bool
+	PhysDevIsOut     bool
+	PhysDevIsBridged bool
 	// invert
-	PhysdevInInvert        bool
-	PhysdevOutInvert       bool
-	PhysdevIsInInvert      bool
-	PhysdevIsOutInvert     bool
-	PhysdevIsBridgedInvert bool
+	PhysDevInInvert        bool
+	PhysDevOutInvert       bool
+	PhysDevIsInInvert      bool
+	PhysDevIsOutInvert     bool
+	PhysDevIsBridgedInvert bool
+}
+
+func (mPhysDev *MatchPhysDev) Short() string {
+	return strings.Join(mPhysDev.ShortArgs(), " ")
+}
+
+func (mPhysDev *MatchPhysDev) ShortArgs() []string {
+	args := make([]string, 0, 13)
+	args = append(args, "-m", mPhysDev.matchType.String())
+	if mPhysDev.PhysDevIn != "" {
+		if mPhysDev.PhysDevInInvert {
+			args = append(args, "!")
+		}
+		args = append(args, "--physdev-in", mPhysDev.PhysDevIn)
+	}
+	if mPhysDev.PhysDevOut != "" {
+		if mPhysDev.PhysDevOutInvert {
+			args = append(args, "!")
+		}
+		args = append(args, "--physdev-out", mPhysDev.PhysDevOut)
+	}
+	if mPhysDev.PhysDevIsIn {
+		if mPhysDev.PhysDevIsInInvert {
+			args = append(args, "!")
+		}
+		args = append(args, "--physdev-is-in")
+	}
+	if mPhysDev.PhysDevIsOut {
+		if mPhysDev.PhysDevIsOutInvert {
+			args = append(args, "!")
+		}
+		args = append(args, "--physdev-is-out")
+	}
+	if mPhysDev.PhysDevIsBridged {
+		if mPhysDev.PhysDevIsBridgedInvert {
+			args = append(args, "!")
+		}
+		args = append(args, "--physdev-is-bridged")
+	}
+	return args
+}
+
+func (mPhysDev *MatchPhysDev) Long() string {
+	return mPhysDev.Short()
+}
+
+func (mPhysDev *MatchPhysDev) LongArgs() []string {
+	return mPhysDev.ShortArgs()
 }
 
 func (mPhysDev *MatchPhysDev) Parse(main []byte) (int, bool) {
@@ -4419,39 +6529,52 @@ func (mPhysDev *MatchPhysDev) Parse(main []byte) (int, bool) {
 		return 0, false
 	}
 	if len(matches[1]) != 0 {
-		mPhysDev.PhysdevIsIn = true
+		mPhysDev.PhysDevIsIn = true
 		if len(matches[2]) != 0 {
-			mPhysDev.PhysdevIsInInvert = true
+			mPhysDev.PhysDevIsInInvert = true
 		}
 	}
 	if len(matches[5]) != 0 {
-		mPhysDev.PhysdevIn = string(matches[5])
+		mPhysDev.PhysDevIn = string(matches[5])
 		if len(matches[3]) != 0 {
-			mPhysDev.PhysdevInInvert = true
+			mPhysDev.PhysDevInInvert = true
 		}
 	}
 	if len(matches[6]) != 0 {
-		mPhysDev.PhysdevIsOut = true
+		mPhysDev.PhysDevIsOut = true
 		if len(matches[7]) != 0 {
-			mPhysDev.PhysdevIsOutInvert = true
+			mPhysDev.PhysDevIsOutInvert = true
 		}
 	}
 	if len(matches[10]) != 0 {
-		mPhysDev.PhysdevOut = string(matches[10])
+		mPhysDev.PhysDevOut = string(matches[10])
 		if len(matches[8]) != 0 {
-			mPhysDev.PhysdevOutInvert = true
+			mPhysDev.PhysDevOutInvert = true
 		}
 	}
 	if len(matches[11]) != 0 {
-		mPhysDev.PhysdevIsBridged = true
+		mPhysDev.PhysDevIsBridged = true
 		if len(matches[12]) != 0 {
-			mPhysDev.PhysdevIsBridgedInvert = true
+			mPhysDev.PhysDevIsBridgedInvert = true
 		}
 	}
 	return len(matches[0]), true
 }
 
 type PktType int
+
+func (pktType PktType) String() string {
+	switch pktType {
+	case Unicast:
+		return PktTypeUnicast
+	case Broadcast:
+		return PktTypeBroadcast
+	case Multicast:
+		return PktTypeMulticast
+	default:
+		return ""
+	}
+}
 
 const (
 	Unicast PktType = 1 << iota
@@ -4465,20 +6588,45 @@ const (
 	PktTypeMulticast = "multicast"
 )
 
-func NewMatchPktType(yes bool, pktType PktType) (*MatchPktType, error) {
+func newMatchPktType(invert bool, pktType PktType) (*MatchPktType, error) {
 	match := &MatchPktType{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypePktType,
-			invert:    !yes,
+			invert:    invert,
 		},
 		PktType: pktType,
 	}
+	match.setChild(match)
 	return match, nil
 }
 
 type MatchPktType struct {
-	baseMatch
+	*baseMatch
 	PktType PktType
+}
+
+func (mPktType *MatchPktType) Short() string {
+	return strings.Join(mPktType.ShortArgs(), " ")
+}
+
+func (mPktType *MatchPktType) ShortArgs() []string {
+	args := make([]string, 0, 5)
+	args = append(args, "-m", mPktType.matchType.String())
+	if mPktType.PktType > -1 {
+		if mPktType.invert {
+			args = append(args, "!")
+		}
+		args = append(args, "--pkt-type", mPktType.PktType.String())
+	}
+	return args
+}
+
+func (mPktType *MatchPktType) Long() string {
+	return mPktType.Short()
+}
+
+func (mPktType *MatchPktType) LongArgs() []string {
+	return mPktType.ShortArgs()
 }
 
 func (mPktType *MatchPktType) Parse(main []byte) (int, bool) {
@@ -4513,6 +6661,17 @@ const (
 
 type PolicyMode int
 
+func (policyMode PolicyMode) String() string {
+	switch policyMode {
+	case Tunnel:
+		return "tunnel"
+	case Transport:
+		return "transport"
+	default:
+		return ""
+	}
+}
+
 const (
 	_ PolicyMode = iota
 	Tunnel
@@ -4522,19 +6681,31 @@ const (
 
 type PolicyPol int
 
+func (policyPol PolicyPol) String() string {
+	switch policyPol {
+	case None:
+		return "none"
+	case IPSec:
+		return "ipsec"
+	default:
+		return ""
+	}
+}
+
 const (
 	_ PolicyPol = iota
 	None
 	IPSec
 )
 
+// The field won't be use must be set to -1
 type MatchPolicyElement struct {
 	ReqID     int
 	SPI       int
-	Proto     Protocol
+	Proto     network.Protocol
 	Mode      PolicyMode
-	TunnelSrc *Address
-	TunnelDst *Address
+	TunnelSrc network.Address
+	TunnelDst network.Address
 	// invert
 	ReqIDInvert     bool
 	SPIInvert       bool
@@ -4546,9 +6717,10 @@ type MatchPolicyElement struct {
 
 type OptionMatchPolicy func(*MatchPolicy)
 
-//  Used to select whether to match the policy used for decapsulation or
+//	Used to select whether to match the policy used for decapsulation or
+//
 // the policy that will be used for encapsulation.
-func WithMatchPolicyDir(dir Dir) OptionMatchPolicy {
+func WithMatchPolicyDir(dir xtables.Direction) OptionMatchPolicy {
 	return func(mPolicy *MatchPolicy) {
 		mPolicy.Dir = dir
 	}
@@ -4575,24 +6747,99 @@ func WithMatchPolicyElements(elems ...*MatchPolicyElement) OptionMatchPolicy {
 	}
 }
 
-func NewMatchPolicy(opts ...OptionMatchPolicy) (*MatchPolicy, error) {
+func newMatchPolicy(opts ...OptionMatchPolicy) (*MatchPolicy, error) {
 	match := &MatchPolicy{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypePolicy,
 		},
+		Dir: -1,
+		Pol: -1,
 	}
 	for _, opt := range opts {
 		opt(match)
 	}
+	match.setChild(match)
 	return match, nil
 }
 
 type MatchPolicy struct {
-	baseMatch
-	Dir      Dir
+	*baseMatch
+	Dir      xtables.Direction
 	Pol      PolicyPol
 	Strict   bool
 	Elements []*MatchPolicyElement
+}
+
+func (mPolicy *MatchPolicy) Short() string {
+	return strings.Join(mPolicy.ShortArgs(), " ")
+}
+
+func (mPolicy *MatchPolicy) ShortArgs() []string {
+	args := []string{}
+	args = append(args, "-m", mPolicy.matchType.String())
+	if mPolicy.Dir > -1 {
+		args = append(args, "--dir", mPolicy.Dir.String())
+	}
+	if mPolicy.Pol > -1 {
+		args = append(args, "--pol", mPolicy.Pol.String())
+	}
+	if mPolicy.Strict {
+		args = append(args, "--strict")
+	}
+	if mPolicy.Elements != nil && len(mPolicy.Elements) != 0 {
+		sep := ""
+		for _, elem := range mPolicy.Elements {
+			if sep != "" {
+				args = append(args, sep)
+			}
+			if elem.ReqID > -1 {
+				if elem.ReqIDInvert {
+					args = append(args, "!")
+				}
+				args = append(args, "--reqid", strconv.Itoa(elem.ReqID))
+			}
+			if elem.SPI > -1 {
+				if elem.SPIInvert {
+					args = append(args, "!")
+				}
+				args = append(args, "--spi", strconv.Itoa(elem.SPI))
+			}
+			if elem.Proto > -1 {
+				if elem.ProtoInvert {
+					args = append(args, "!")
+				}
+				args = append(args, "--proto", strconv.Itoa(int(elem.Proto)))
+			}
+			if elem.Mode > -1 {
+				if elem.ModeInvert {
+					args = append(args, "!")
+				}
+				args = append(args, "--mode", elem.Mode.String())
+			}
+			if elem.TunnelSrc != nil {
+				if elem.TunnelSrcInvert {
+					args = append(args, "!")
+				}
+				args = append(args, "--tunnel-src", elem.TunnelSrc.String())
+			}
+			if elem.TunnelDst != nil {
+				if elem.TunnelDstInvert {
+					args = append(args, "!")
+				}
+				args = append(args, "--tunnel-dst", elem.TunnelDst.String())
+			}
+			sep = "--next"
+		}
+	}
+	return args
+}
+
+func (mPolicy *MatchPolicy) Long() string {
+	return mPolicy.Short()
+}
+
+func (mPolicy *MatchPolicy) LongArgs() []string {
+	return mPolicy.ShortArgs()
 }
 
 func (mPolicy *MatchPolicy) Parse(main []byte) (int, bool) {
@@ -4611,9 +6858,9 @@ func (mPolicy *MatchPolicy) Parse(main []byte) (int, bool) {
 		return 0, false
 	}
 	if len(matches[1]) != 0 {
-		mPolicy.Dir = In
+		mPolicy.Dir = xtables.In
 		if matches[1][4] == 'o' {
-			mPolicy.Dir = Out
+			mPolicy.Dir = xtables.Out
 		}
 	}
 	if len(matches[2]) != 0 {
@@ -4677,17 +6924,17 @@ func (mPolicy *MatchPolicy) Parse(main []byte) (int, bool) {
 			protocol := string(matches[10])
 			switch protocol {
 			case AH:
-				elem.Proto = ProtocolAH
+				elem.Proto = network.ProtocolAH
 			case ESP:
-				elem.Proto = ProtocolESP
+				elem.Proto = network.ProtocolESP
 			case IPComp:
-				elem.Proto = ProtocolIPComp
+				elem.Proto = network.ProtocolIPComp
 			default:
 				proto, err := strconv.Atoi(protocol)
 				if err != nil {
 					goto END
 				}
-				elem.Proto = Protocol(proto)
+				elem.Proto = network.Protocol(proto)
 			}
 			if len(matches[9]) != 0 {
 				elem.ProtoInvert = true
@@ -4710,7 +6957,7 @@ func (mPolicy *MatchPolicy) Parse(main []byte) (int, bool) {
 			matched = true
 		}
 		if len(matches[16]) != 0 {
-			addr, err := ParseAddress(string(matches[16]))
+			addr, err := network.ParseAddress(string(matches[16]))
 			if err != nil {
 				goto END
 			}
@@ -4721,7 +6968,7 @@ func (mPolicy *MatchPolicy) Parse(main []byte) (int, bool) {
 			matched = true
 		}
 		if len(matches[19]) != 0 {
-			addr, err := ParseAddress(string(matches[19]))
+			addr, err := network.ParseAddress(string(matches[19]))
 			if err != nil {
 				goto END
 			}
@@ -4745,20 +6992,43 @@ END:
 	return 0, false
 }
 
-func NewMatchQuota(yes bool, quota uint64) (*MatchQuota, error) {
+func newMatchQuota(invert bool, quota int64) (*MatchQuota, error) {
 	match := &MatchQuota{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeQuota,
-			invert:    !yes,
+			invert:    invert,
 		},
 		Quota: quota,
 	}
+	match.setChild(match)
 	return match, nil
 }
 
 type MatchQuota struct {
-	baseMatch
-	Quota uint64
+	*baseMatch
+	Quota int64
+}
+
+func (mQuota *MatchQuota) Short() string {
+	return strings.Join(mQuota.ShortArgs(), " ")
+}
+
+func (mQuota *MatchQuota) ShortArgs() []string {
+	args := make([]string, 0, 5)
+	args = append(args, "-m", mQuota.matchType.String())
+	if mQuota.invert {
+		args = append(args, "!")
+	}
+	args = append(args, "--quota", strconv.FormatInt(mQuota.Quota, 10))
+	return args
+}
+
+func (mQuota *MatchQuota) Long() string {
+	return mQuota.Short()
+}
+
+func (mQuota *MatchQuota) LongArgs() []string {
+	return mQuota.ShortArgs()
 }
 
 func (mQuota *MatchQuota) Parse(main []byte) (int, bool) {
@@ -4769,7 +7039,7 @@ func (mQuota *MatchQuota) Parse(main []byte) (int, bool) {
 	if len(matches) != 2 {
 		return 0, false
 	}
-	quota, err := strconv.ParseUint(string(matches[1]), 10, 64)
+	quota, err := strconv.ParseInt(string(matches[1]), 10, 64)
 	if err != nil {
 		return 0, false
 	}
@@ -4789,10 +7059,10 @@ func WithMatchRateEstDelta() OptionMatchRateEst {
 }
 
 // LT, GT or EQ
-func WithMatchRateEstOperator(yes bool, operator Operator) OptionMatchRateEst {
+func WithMatchRateEstOperator(invert bool, operator xtables.Operator) OptionMatchRateEst {
 	return func(mRateEst *MatchRateEst) {
 		mRateEst.Operator = operator
-		mRateEst.invert = !yes
+		mRateEst.invert = invert
 	}
 }
 
@@ -4814,6 +7084,18 @@ func WithMatchRateEst1(name string) OptionMatchRateEst {
 func WithMatchRateEst2(name string) OptionMatchRateEst {
 	return func(mRateEst *MatchRateEst) {
 		mRateEst.Rateest2 = name
+	}
+}
+
+func WithMatchRateBPS(value int) OptionMatchRateEst {
+	return func(mRateEst *MatchRateEst) {
+		mRateEst.RateestBPS = value
+	}
+}
+
+func WithMatchRatePPS(value int) OptionMatchRateEst {
+	return func(mRateEst *MatchRateEst) {
+		mRateEst.RateestPPS = value
 	}
 }
 
@@ -4841,26 +7123,29 @@ func WithMatchRatePPS2(value int) OptionMatchRateEst {
 	}
 }
 
-func NewMatchRateEst(opts ...OptionMatchRateEst) (*MatchRateEst, error) {
+func newMatchRateEst(opts ...OptionMatchRateEst) (*MatchRateEst, error) {
 	match := &MatchRateEst{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeRateEst,
 		},
 	}
 	for _, opt := range opts {
 		opt(match)
 	}
+	match.setChild(match)
 	return match, nil
 }
 
 type MatchRateEst struct {
-	baseMatch
+	*baseMatch
 	RateestDelta bool
-	Operator     Operator
+	Operator     xtables.Operator
 	Name         string
 	Rateest1     string
 	Rateest2     string
 	Relative     bool
+	RateestBPS   int // in bytes
+	RateestPPS   int
 	RateestBPS1  int // in bytes
 	RateestPPS1  int
 	RateestBPS2  int // in bytes
@@ -4868,6 +7153,77 @@ type MatchRateEst struct {
 	//RateestLT    bool
 	//RateestGT    bool
 	//RateestEQ    bool
+}
+
+func (mRateEst *MatchRateEst) Short() string {
+	return strings.Join(mRateEst.ShortArgs(), " ")
+}
+
+func (mRateEst *MatchRateEst) ShortArgs() []string {
+	args := make([]string, 0, 27)
+	args = append(args, "-m", mRateEst.matchType.String())
+	if mRateEst.RateestDelta {
+		args = append(args, "--rateest-delta")
+	}
+	switch mRateEst.Operator {
+	case xtables.OperatorLT:
+		if mRateEst.invert {
+			args = append(args, "!")
+		}
+		args = append(args, "--rateest-lt")
+	case xtables.OperatorGT:
+		if mRateEst.invert {
+			args = append(args, "!")
+		}
+		args = append(args, "--rateest-gt")
+	case xtables.OperatorEQ:
+		if mRateEst.invert {
+			args = append(args, "!")
+		}
+		args = append(args, "--rateest-eq")
+	}
+	if mRateEst.Name != "" {
+		args = append(args, "--rateest", mRateEst.Name)
+	}
+	if mRateEst.Rateest1 != "" {
+		args = append(args, "--rateest1", mRateEst.Name)
+	}
+	if mRateEst.Rateest2 != "" {
+		args = append(args, "--rateest2", mRateEst.Name)
+	}
+	if mRateEst.RateestBPS > -1 {
+		args = append(args, "--rateest-bps",
+			strconv.Itoa(mRateEst.RateestBPS))
+	}
+	if mRateEst.RateestPPS > -1 {
+		args = append(args, "--rateest-pps",
+			strconv.Itoa(mRateEst.RateestPPS))
+	}
+	if mRateEst.RateestBPS1 > -1 {
+		args = append(args, "--rateest-bps1",
+			strconv.Itoa(mRateEst.RateestBPS1))
+	}
+	if mRateEst.RateestPPS1 > -1 {
+		args = append(args, "--rateest-pps1",
+			strconv.Itoa(mRateEst.RateestPPS1))
+	}
+	if mRateEst.RateestBPS2 > -1 {
+		args = append(args, "--rateest-bps2",
+			strconv.Itoa(mRateEst.RateestBPS1))
+	}
+	if mRateEst.RateestPPS2 > -1 {
+		args = append(args, "--rateest-pps2",
+			strconv.Itoa(mRateEst.RateestPPS1))
+	}
+	return args
+}
+
+func (mRateEst *MatchRateEst) Long() string {
+	return mRateEst.Short()
+}
+
+func (mRateEst *MatchRateEst) LongArgs() []string {
+	return mRateEst.ShortArgs()
 }
 
 func (mRateEst *MatchRateEst) Parse(main []byte) (int, bool) {
@@ -4920,13 +7276,13 @@ func (mRateEst *MatchRateEst) Parse(main []byte) (int, bool) {
 	if len(matches[10]) != 0 {
 		switch string(matches[10]) {
 		case "lt":
-			mRateEst.Operator = OperatorLT
+			mRateEst.Operator = xtables.OperatorLT
 			//mRateEst.RateestLT = true
 		case "eq":
-			mRateEst.Operator = OperatorEQ
+			mRateEst.Operator = xtables.OperatorEQ
 			//mRateEst.RateestEQ = true
 		case "gt":
-			mRateEst.Operator = OperatorGT
+			mRateEst.Operator = xtables.OperatorGT
 			//mRateEst.RateestGT = true
 		}
 	}
@@ -4947,13 +7303,13 @@ func (mRateEst *MatchRateEst) Parse(main []byte) (int, bool) {
 	if len(matches[20]) != 0 {
 		switch string(matches[20]) {
 		case "lt":
-			mRateEst.Operator = OperatorLT
+			mRateEst.Operator = xtables.OperatorLT
 			//mRateEst.RateestLT = true
 		case "eq":
-			mRateEst.Operator = OperatorEQ
+			mRateEst.Operator = xtables.OperatorEQ
 			//mRateEst.RateestEQ = true
 		case "gt":
-			mRateEst.Operator = OperatorGT
+			mRateEst.Operator = xtables.OperatorGT
 			//mRateEst.RateestGT = true
 		}
 	}
@@ -4974,6 +7330,12 @@ func (mRateEst *MatchRateEst) Parse(main []byte) (int, bool) {
 			return 0, false
 		}
 		mRateEst.RateestPPS2 = pps
+	}
+	if mRateEst.RateestBPS2 == -1 {
+		mRateEst.RateestBPS = mRateEst.RateestBPS1
+	}
+	if mRateEst.RateestPPS2 == -1 {
+		mRateEst.RateestPPS = mRateEst.RateestPPS1
 	}
 	return len(matches[0]), true
 }
@@ -5007,13 +7369,15 @@ func bitsToBytes(bits string) (int, error) {
 	}
 }
 
-// Takes mostly 2 value, (value) or (value/mask)
+// Takes mostly 2 values, (value) or (value/mask)
 // Matches packets with the given unsigned mark value
-func NewMatchRealm(yes bool, value ...int) (*MatchRealm, error) {
+func newMatchRealm(invert bool, value ...int) (*MatchRealm, error) {
 	mRealm := &MatchRealm{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeRealm,
 		},
+		Value: -1,
+		Mask:  -1,
 	}
 	switch len(value) {
 	case 1:
@@ -5023,7 +7387,7 @@ func NewMatchRealm(yes bool, value ...int) (*MatchRealm, error) {
 		mRealm.Value = value[0]
 		mRealm.Mask = value[1]
 	}
-	mRealm.invert = !yes
+	mRealm.invert = invert
 	return mRealm, nil
 }
 
@@ -5031,9 +7395,38 @@ func NewMatchRealm(yes bool, value ...int) (*MatchRealm, error) {
 // Non-numeric support
 // see http://linux-ip.net/gl/ip-cref/ip-cref-node172.html
 type MatchRealm struct {
-	baseMatch
+	*baseMatch
 	Value int
 	Mask  int
+}
+
+func (mRealm *MatchRealm) Short() string {
+	return strings.Join(mRealm.ShortArgs(), " ")
+}
+
+func (mRealm *MatchRealm) ShortArgs() []string {
+	args := make([]string, 0, 5)
+	args = append(args, "-m", mRealm.matchType.String())
+	if mRealm.Value > -1 {
+		if mRealm.invert {
+			args = append(args, "!")
+		}
+		if mRealm.Mask > -1 {
+			args = append(args, "--realm",
+				strconv.Itoa(mRealm.Value)+"/"+strconv.Itoa(mRealm.Mask))
+		} else {
+			args = append(args, "--realm", strconv.Itoa(mRealm.Value))
+		}
+	}
+	return args
+}
+
+func (mRealm *MatchRealm) Long() string {
+	return mRealm.Short()
+}
+
+func (mRealm *MatchRealm) LongArgs() []string {
+	return mRealm.ShortArgs()
 }
 
 func (mRealm *MatchRealm) Parse(main []byte) (int, bool) {
@@ -5083,36 +7476,36 @@ func WithMatchRecentName(name string) OptionMatchRecent {
 
 // This will add the source address of the packet to the list.
 // If the source address is already in the list, this will update the existing entry.
-func WithMatchRecentSet(yes bool) OptionMatchRecent {
+func WithMatchRecentSet(invert bool) OptionMatchRecent {
 	return func(mRecent *MatchRecent) {
 		mRecent.Set = true
-		mRecent.invert = !yes
+		mRecent.invert = invert
 	}
 }
 
 // Check if the source address of the packet is currently in the list.
-func WithMatchRecentCheck(yes bool) OptionMatchRecent {
+func WithMatchRecentCheck(invert bool) OptionMatchRecent {
 	return func(mRecent *MatchRecent) {
 		mRecent.RCheck = true
-		mRecent.invert = !yes
+		mRecent.invert = invert
 	}
 }
 
 // Like WithMatchRecentCheck, except it will update the "last seen" timestamp if it matches.
-func WithMatchRecentUpdate(yes bool) OptionMatchRecent {
+func WithMatchRecentUpdate(invert bool) OptionMatchRecent {
 	return func(mRecent *MatchRecent) {
 		mRecent.Update = true
-		mRecent.invert = !yes
+		mRecent.invert = invert
 	}
 }
 
 // Check if the source address of the packet is currently in the list and
 // if so that address will be removed from the list and the rule will return true.
 // If the address is not found, false is returned.
-func WithMatchRecentRemove(yes bool) OptionMatchRecent {
+func WithMatchRecentRemove(invert bool) OptionMatchRecent {
 	return func(mRecent *MatchRecent) {
 		mRecent.Remove = true
-		mRecent.invert = !yes
+		mRecent.invert = invert
 	}
 }
 
@@ -5168,20 +7561,21 @@ func WithMatchRecentMask(mask net.IPMask) OptionMatchRecent {
 	}
 }
 
-func NewMatchRecent(opts ...OptionMatchRecent) (*MatchRecent, error) {
+func newMatchRecent(opts ...OptionMatchRecent) (*MatchRecent, error) {
 	match := &MatchRecent{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeRecent,
 		},
 	}
 	for _, opt := range opts {
 		opt(match)
 	}
+	match.setChild(match)
 	return match, nil
 }
 
 type MatchRecent struct {
-	baseMatch
+	*baseMatch
 	Name   string
 	Set    bool
 	RCheck bool
@@ -5195,6 +7589,84 @@ type MatchRecent struct {
 	HitCount int
 	RTTL     bool
 	Mask     net.IPMask
+}
+
+func (mRecent *MatchRecent) Short() string {
+	return strings.Join(mRecent.ShortArgs(), " ")
+}
+
+func (mRecent *MatchRecent) ShortArgs() []string {
+	args := []string{}
+	args = append(args, "-m", mRecent.matchType.String())
+	if mRecent.Name != "" {
+		args = append(args, "--name", mRecent.Name)
+	}
+	if mRecent.Set {
+		if mRecent.invert {
+			args = append(args, "!")
+		}
+		args = append(args, "--set")
+	}
+	if mRecent.RSource {
+		args = append(args, "--resource")
+	}
+	if mRecent.RDest {
+		args = append(args, "--rdest")
+	}
+	if mRecent.Mask != nil {
+		args = append(args, "--mask", mRecent.Mask.String())
+	}
+	if mRecent.RCheck {
+		if mRecent.invert {
+			args = append(args, "!")
+		}
+		args = append(args, "--rcheck")
+	}
+	if mRecent.Update {
+		if mRecent.invert {
+			args = append(args, "!")
+		}
+		args = append(args, "--update")
+	}
+	if mRecent.Remove {
+		if mRecent.invert {
+			args = append(args, "!")
+		}
+		args = append(args, "--remove")
+	}
+	if mRecent.Seconds > -1 {
+		if mRecent.invert {
+			args = append(args, "!")
+		}
+		args = append(args, "--seconds", strconv.Itoa(mRecent.Seconds))
+	}
+	if mRecent.Reap {
+		if mRecent.invert {
+			args = append(args, "!")
+		}
+		args = append(args, "--reap")
+	}
+	if mRecent.HitCount > -1 {
+		if mRecent.invert {
+			args = append(args, "!")
+		}
+		args = append(args, "--hitcount", strconv.Itoa(mRecent.HitCount))
+	}
+	if mRecent.RTTL {
+		if mRecent.invert {
+			args = append(args, "!")
+		}
+		args = append(args, "--rttl")
+	}
+	return args
+}
+
+func (mRecent *MatchRecent) Long() string {
+	return mRecent.Short()
+}
+
+func (mRecent *MatchRecent) LongArgs() []string {
+	return mRecent.ShortArgs()
 }
 
 func (mRecent *MatchRecent) Parse(main []byte) (int, bool) {
@@ -5295,7 +7767,8 @@ func WithMatchRPFilterValidMark() OptionMatchRPFilter {
 	}
 }
 
-//  This will permit packets arriving from the network with a source address
+//	This will permit packets arriving from the network with a source address
+//
 // that is also assigned to the local machine.
 func WithMatchRPFilterAcceptLocal() OptionMatchRPFilter {
 	return func(mRPFilter *MatchRPFilter) {
@@ -5312,24 +7785,55 @@ func WithMatchRPFilterInvert() OptionMatchRPFilter {
 	}
 }
 
-func NewMatchRPFilter(opts ...OptionMatchRPFilter) (*MatchRPFilter, error) {
+func newMatchRPFilter(opts ...OptionMatchRPFilter) (*MatchRPFilter, error) {
 	match := &MatchRPFilter{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeRPFilter,
 		},
 	}
 	for _, opt := range opts {
 		opt(match)
 	}
+	match.setChild(match)
 	return match, nil
 }
 
 type MatchRPFilter struct {
-	baseMatch
+	*baseMatch
 	Loose       bool
 	ValidMark   bool
 	AcceptLocal bool
 	Invert      bool
+}
+
+func (mRPFilter *MatchRPFilter) Short() string {
+	return strings.Join(mRPFilter.ShortArgs(), " ")
+}
+
+func (mRPFilter *MatchRPFilter) ShortArgs() []string {
+	args := make([]string, 0, 6)
+	args = append(args, "-m", mRPFilter.matchType.String())
+	if mRPFilter.Loose {
+		args = append(args, "--loose")
+	}
+	if mRPFilter.ValidMark {
+		args = append(args, "--validmark")
+	}
+	if mRPFilter.AcceptLocal {
+		args = append(args, "--accept-local")
+	}
+	if mRPFilter.invert {
+		args = append(args, "--invert")
+	}
+	return args
+}
+
+func (mRPFilter *MatchRPFilter) Long() string {
+	return mRPFilter.Short()
+}
+
+func (mRPFilter *MatchRPFilter) LongArgs() []string {
+	return mRPFilter.ShortArgs()
 }
 
 func (mRPFilter *MatchRPFilter) Parse(main []byte) (int, bool) {
@@ -5357,16 +7861,16 @@ func (mRPFilter *MatchRPFilter) Parse(main []byte) (int, bool) {
 type OptionMatchRT func(*MatchRT)
 
 // Match the type.
-func WithMatchRTType(yes bool, typ int) OptionMatchRT {
+func WithMatchRTType(invert bool, typ int) OptionMatchRT {
 	return func(mRT *MatchRT) {
-		mRT.Type = typ
-		mRT.TypeInvert = !yes
+		mRT.RTType = typ
+		mRT.TypeInvert = invert
 	}
 }
 
-// Takes mostly 2 value, (min) or (min, max)
+// Takes mostly 2 values, (min) or (min, max)
 // Match the `segments left' field (range).
-func WithMatchRTSegsLeft(yes bool, segsleft ...int) OptionMatchRT {
+func WithMatchRTSegsLeft(invert bool, segsleft ...int) OptionMatchRT {
 	return func(mRT *MatchRT) {
 		switch len(segsleft) {
 		case 1:
@@ -5376,15 +7880,15 @@ func WithMatchRTSegsLeft(yes bool, segsleft ...int) OptionMatchRT {
 			mRT.SegsLeftMin = segsleft[0]
 			mRT.SegsLeftMax = segsleft[1]
 		}
-		mRT.SegsLeftInvert = !yes
+		mRT.SegsLeftInvert = invert
 	}
 }
 
 // Match the length of this header.
-func WithMatchRTLength(yes bool, length int) OptionMatchRT {
+func WithMatchRTLength(invert bool, length int) OptionMatchRT {
 	return func(mRT *MatchRT) {
 		mRT.Length = length
-		mRT.LengthInvert = !yes
+		mRT.LengthInvert = invert
 	}
 }
 
@@ -5396,7 +7900,7 @@ func WithMatchRTReserved() OptionMatchRT {
 }
 
 // Match addresses when type == 0.
-func WithMatchRTAddresses(addrs ...*Address) OptionMatchRT {
+func WithMatchRTAddresses(addrs ...network.Address) OptionMatchRT {
 	return func(mRT *MatchRT) {
 		mRT.Addrs = addrs
 	}
@@ -5409,33 +7913,94 @@ func WithMatchRTNoStrict() OptionMatchRT {
 	}
 }
 
-func NewMatchRT(opts ...OptionMatchRT) (*MatchRT, error) {
+func newMatchRT(opts ...OptionMatchRT) (*MatchRT, error) {
 	match := &MatchRT{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeRT,
 		},
+		RTType:      -1,
+		SegsLeftMin: -1,
+		SegsLeftMax: -1,
+		Length:      -1,
 	}
 	for _, opt := range opts {
 		opt(match)
 	}
+	match.setChild(match)
 	return match, nil
 }
 
 // IPv6 specific
 // Non-numeric unsupport
 type MatchRT struct {
-	baseMatch
-	Type        int
+	*baseMatch
+	RTType      int
 	SegsLeftMin int
 	SegsLeftMax int
 	Length      int
-	Reserved    bool       // type == 0
-	Addrs       []*Address // type == 0
-	NotStrict   bool       // type == 0
+	Reserved    bool              // type == 0
+	Addrs       []network.Address // type == 0
+	NotStrict   bool              // type == 0
 	// invert
 	TypeInvert     bool
 	SegsLeftInvert bool
 	LengthInvert   bool
+}
+
+func (mRT *MatchRT) Short() string {
+	return strings.Join(mRT.ShortArgs(), ",")
+}
+
+func (mRT *MatchRT) ShortArgs() []string {
+	args := make([]string, 0, 15)
+	args = append(args, "-m", mRT.matchType.String())
+	if mRT.RTType > -1 {
+		if mRT.TypeInvert {
+			args = append(args, "!")
+		}
+		args = append(args, "--rt-type", strconv.Itoa(mRT.RTType))
+	}
+	if mRT.SegsLeftMin > -1 {
+		if mRT.SegsLeftInvert {
+			args = append(args, "!")
+		}
+		if mRT.SegsLeftMax > -1 {
+			args = append(args, "--rt-segsleft",
+				strconv.Itoa(mRT.SegsLeftMin)+":"+strconv.Itoa(mRT.SegsLeftMax))
+		} else {
+			args = append(args, "--rt-segsleft", strconv.Itoa(mRT.SegsLeftMin))
+		}
+	}
+	if mRT.Length > -1 {
+		if mRT.LengthInvert {
+			args = append(args, "!")
+		}
+		args = append(args, "--rt-len", strconv.Itoa(mRT.Length))
+	}
+	if mRT.Reserved {
+		args = append(args, "--rt-0-res")
+	}
+	if mRT.Addrs != nil && len(mRT.Addrs) != 0 {
+		addrs := ""
+		sep := ""
+		for _, addr := range mRT.Addrs {
+			addrs += sep + addr.String()
+			sep = ","
+		}
+		args = append(args, "--rt-0-addrs", addrs)
+	}
+	if mRT.NotStrict {
+		args = append(args, "--rt-0-not-strict")
+	}
+	return args
+}
+
+func (mRT *MatchRT) Long() string {
+	return mRT.Short()
+}
+
+func (mRT *MatchRT) LongArgs() []string {
+	return mRT.ShortArgs()
 }
 
 func (mRT *MatchRT) Parse(main []byte) (int, bool) {
@@ -5462,13 +8027,13 @@ func (mRT *MatchRT) Parse(main []byte) (int, bool) {
 	if len(matches) != 19 {
 		return 0, false
 	}
-	mRT.Addrs = []*Address{}
+	mRT.Addrs = []network.Address{}
 	if len(matches[3]) != 0 {
 		typ, err := strconv.Atoi(string(matches[3]))
 		if err != nil {
 			return 0, false
 		}
-		mRT.Type = typ
+		mRT.RTType = typ
 		if len(matches[2]) != 0 {
 			mRT.TypeInvert = true
 		}
@@ -5514,7 +8079,7 @@ func (mRT *MatchRT) Parse(main []byte) (int, bool) {
 	if len(matches[17]) != 0 {
 		elems := strings.Split(string(matches[17]), ",")
 		for _, elem := range elems {
-			addr, err := ParseAddress(elem)
+			addr, err := network.ParseAddress(elem)
 			if err != nil {
 				return 0, false
 			}
@@ -5528,6 +8093,49 @@ func (mRT *MatchRT) Parse(main []byte) (int, bool) {
 }
 
 type SCTPType int
+
+func (sctpType SCTPType) String() string {
+	switch sctpType {
+	case SCTPTypeDATA:
+		return "DATA"
+	case SCTPTypeINIT:
+		return "INIT"
+	case SCTPTypeINITACK:
+		return "INITACK"
+	case SCTPTypeSACK:
+		return "SACK"
+	case SCTPTypeHEARTBEAT:
+		return "HEARTBEAT"
+	case SCTPTypeHEARTBEATACK:
+		return "HEARTBEATACK"
+	case SCTPTypeABORT:
+		return "ABORT"
+	case SCTPTypeSHUTDOWN:
+		return "SHUTDOWN"
+	case SCTPTypeSHUTDOWNACK:
+		return "SHUTDOWNACK"
+	case SCTPTypeERROR:
+		return "ERROR"
+	case SCTPTypeCOOKIEECHO:
+		return "COOKIEECHO"
+	case SCTPTypeCOOKIEACK:
+		return "COOKIEACK"
+	case SCTPTypeECNECNE:
+		return "ECNECNE"
+	case SCTPTypeECNCWR:
+		return "ECNCWR"
+	case SCTPTypeSHUTDOWNCOMPLETE:
+		return "SHUTDOWNCOMPLETE"
+	case SCTPTypeASCONF:
+		return "ASCONF"
+	case SCTPTypeASCONFACK:
+		return "ASCONFACK"
+	case SCTPTypeFORWARDTSN:
+		return "FORWARDTSN"
+	default:
+		return ""
+	}
+}
 
 const (
 	SCTPTypeDATA             SCTPType = 0
@@ -5555,12 +8163,13 @@ var (
 		"DATA":             SCTPTypeDATA,
 		"INIT":             SCTPTypeINIT,
 		"INITACK":          SCTPTypeINITACK,
+		"SACK":             SCTPTypeSACK,
 		"HEARTBEAT":        SCTPTypeHEARTBEAT,
 		"HEARTBEATACK":     SCTPTypeHEARTBEATACK,
 		"ABORT":            SCTPTypeABORT,
+		"ERROR":            SCTPTypeERROR,
 		"SHUTDOWN":         SCTPTypeSHUTDOWN,
 		"SHUTDOWNACK":      SCTPTypeSHUTDOWNACK,
-		"ERROR":            SCTPTypeERROR,
 		"COOKIEECHO":       SCTPTypeCOOKIEECHO,
 		"COOKIEACK":        SCTPTypeCOOKIEACK,
 		"ECNECNE":          SCTPTypeECNECNE,
@@ -5572,10 +8181,45 @@ var (
 	}
 )
 
-type ChuckFlag int
+type ChunkFlag int
+
+func (chunkFlag ChunkFlag) String() string {
+	flag := ""
+	if chunkFlag&CF_I != 0 {
+		flag += "I"
+	}
+	if chunkFlag&CF_U != 0 {
+		flag += "U"
+	}
+	if chunkFlag&CF_B != 0 {
+		flag += "B"
+	}
+	if chunkFlag&CF_E != 0 {
+		flag += "E"
+	}
+	if chunkFlag&CF_i != 0 {
+		flag += "i"
+	}
+	if chunkFlag&CF_u != 0 {
+		flag += "u"
+	}
+	if chunkFlag&CF_b != 0 {
+		flag += "b"
+	}
+	if chunkFlag&CF_e != 0 {
+		flag += "e"
+	}
+	if chunkFlag&CF_T != 0 {
+		flag += "T"
+	}
+	if chunkFlag&CF_t != 0 {
+		flag += "t"
+	}
+	return flag
+}
 
 const (
-	CF_I ChuckFlag = 1 << iota
+	CF_I ChunkFlag = 1 << iota
 	CF_U
 	CF_B
 	CF_E
@@ -5585,17 +8229,40 @@ const (
 	CF_e
 	CF_T
 	CF_t
+	CF_ALL = CF_I | CF_U | CF_B | CF_E | CF_i | CF_u | CF_b | CF_e | CF_T | CF_t
+)
+
+type MatchRange int
+
+func (matchRange MatchRange) String() string {
+	switch matchRange {
+	case ANY:
+		return "any"
+	case ALL:
+		return "all"
+	case ONLY:
+		return "only"
+	default:
+		return ""
+	}
+}
+
+const (
+	_ MatchRange = iota
+	ANY
+	ALL
+	ONLY
 )
 
 type Chunk struct {
 	Type      SCTPType
-	ChuckFlag ChuckFlag
+	ChunkFlag ChunkFlag
 }
 
 type OptionMatchSCTP func(*MatchSCTP)
 
 // This option takes mostly 2 ports, (min) or (min, max)
-func WithMatchSCTPSrcPort(yes bool, port ...int) OptionMatchSCTP {
+func WithMatchSCTPSrcPort(invert bool, port ...int) OptionMatchSCTP {
 	return func(mSCTP *MatchSCTP) {
 		switch len(port) {
 		case 1:
@@ -5605,12 +8272,12 @@ func WithMatchSCTPSrcPort(yes bool, port ...int) OptionMatchSCTP {
 			mSCTP.SrcPortMin = port[0]
 			mSCTP.SrcPortMax = port[1]
 		}
-		mSCTP.SrcPortInvert = !yes
+		mSCTP.SrcPortInvert = invert
 	}
 }
 
 // This option takes mostly 2 ports, (min) or (min, max)
-func WithMatchSCTPDstPort(yes bool, port ...int) OptionMatchSCTP {
+func WithMatchSCTPDstPort(invert bool, port ...int) OptionMatchSCTP {
 	return func(mSCTP *MatchSCTP) {
 		switch len(port) {
 		case 1:
@@ -5620,31 +8287,37 @@ func WithMatchSCTPDstPort(yes bool, port ...int) OptionMatchSCTP {
 			mSCTP.DstPortMin = port[0]
 			mSCTP.DstPortMax = port[1]
 		}
-		mSCTP.DstPortInvert = !yes
+		mSCTP.DstPortInvert = invert
 	}
 }
 
-func WithMatchSCTPChunk(rg MatchRange, chunks ...Chunk) OptionMatchSCTP {
+func WithMatchSCTPChunk(invert bool, rg MatchRange, chunks ...Chunk) OptionMatchSCTP {
 	return func(mSCTP *MatchSCTP) {
+		mSCTP.ChunksInvert = invert
 		mSCTP.Range = rg
 		mSCTP.Chunks = chunks
 	}
 }
 
-func NewMatchSCTP(opts ...OptionMatchSCTP) (*MatchSCTP, error) {
+func newMatchSCTP(opts ...OptionMatchSCTP) (*MatchSCTP, error) {
 	match := &MatchSCTP{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeSCTP,
 		},
+		SrcPortMin: -1,
+		SrcPortMax: -1,
+		DstPortMin: -1,
+		DstPortMax: -1,
 	}
 	for _, opt := range opts {
 		opt(match)
 	}
+	match.setChild(match)
 	return match, nil
 }
 
 type MatchSCTP struct {
-	baseMatch
+	*baseMatch
 	SrcPortMin int
 	SrcPortMax int
 	DstPortMin int
@@ -5654,6 +8327,103 @@ type MatchSCTP struct {
 	// invert
 	SrcPortInvert bool
 	DstPortInvert bool
+	ChunksInvert  bool
+}
+
+func (mSCTP *MatchSCTP) Short() string {
+	return strings.Join(mSCTP.ShortArgs(), " ")
+}
+
+func (mSCTP *MatchSCTP) ShortArgs() []string {
+	args := []string{}
+	args = append(args, "-m", mSCTP.matchType.String())
+	if mSCTP.SrcPortMin > -1 {
+		if mSCTP.SrcPortInvert {
+			args = append(args, "!")
+		}
+		if mSCTP.SrcPortMax > -1 {
+			args = append(args, "--sport",
+				strconv.Itoa(mSCTP.SrcPortMin)+":"+strconv.Itoa(mSCTP.SrcPortMax))
+		} else {
+			args = append(args, "--sport", strconv.Itoa(mSCTP.SrcPortMin))
+		}
+	}
+	if mSCTP.DstPortMin > -1 {
+		if mSCTP.DstPortInvert {
+			args = append(args, "!")
+		}
+		if mSCTP.DstPortMax > -1 {
+			args = append(args, "--dport",
+				strconv.Itoa(mSCTP.DstPortMin)+":"+strconv.Itoa(mSCTP.DstPortMax))
+		} else {
+			args = append(args, "--dport", strconv.Itoa(mSCTP.DstPortMin))
+		}
+	}
+	if mSCTP.Chunks != nil && len(mSCTP.Chunks) > 0 {
+		if mSCTP.ChunksInvert {
+			args = append(args, "!")
+		}
+		args = append(args, "--chunk-types", mSCTP.Range.String())
+		flags := ""
+		sep := ""
+		for _, chunk := range mSCTP.Chunks {
+			flags += sep + chunk.Type.String()
+			if chunk.ChunkFlag.String() != "" {
+				flags += ":" + chunk.ChunkFlag.String()
+			}
+			sep = " "
+		}
+		args = append(args, flags)
+	}
+	return args
+}
+
+func (mSCTP *MatchSCTP) Long() string {
+	return mSCTP.Short()
+}
+
+func (mSCTP *MatchSCTP) LongArgs() []string {
+	args := []string{}
+	args = append(args, "-m", mSCTP.matchType.String())
+	if mSCTP.SrcPortMin > -1 {
+		if mSCTP.SrcPortInvert {
+			args = append(args, "!")
+		}
+		if mSCTP.SrcPortMax > -1 {
+			args = append(args, "--source-port",
+				strconv.Itoa(mSCTP.SrcPortMin)+":"+strconv.Itoa(mSCTP.SrcPortMax))
+		} else {
+			args = append(args, "--source-port", strconv.Itoa(mSCTP.SrcPortMin))
+		}
+	}
+	if mSCTP.DstPortMin > -1 {
+		if mSCTP.DstPortInvert {
+			args = append(args, "!")
+		}
+		if mSCTP.DstPortMax > -1 {
+			args = append(args, "--destination-port",
+				strconv.Itoa(mSCTP.DstPortMin)+":"+strconv.Itoa(mSCTP.DstPortMax))
+		} else {
+			args = append(args, "--destination-port", strconv.Itoa(mSCTP.DstPortMin))
+		}
+	}
+	if mSCTP.Chunks != nil && len(mSCTP.Chunks) > 0 {
+		if mSCTP.ChunksInvert {
+			args = append(args, "!")
+		}
+		args = append(args, "--chunk-types", mSCTP.Range.String())
+		flags := ""
+		sep := ""
+		for _, chunk := range mSCTP.Chunks {
+			flags += sep + chunk.Type.String()
+			if chunk.ChunkFlag.String() != "" {
+				flags += ":" + chunk.ChunkFlag.String()
+			}
+			sep = " "
+		}
+		args = append(args, flags)
+	}
+	return args
 }
 
 func (mSCTP *MatchSCTP) Parse(main []byte) (int, bool) {
@@ -5753,25 +8523,25 @@ func (mSCTP *MatchSCTP) Parse(main []byte) (int, bool) {
 				for _, c := range parts[1] {
 					switch c {
 					case 'I':
-						chunk.ChuckFlag |= CF_I
+						chunk.ChunkFlag |= CF_I
 					case 'U':
-						chunk.ChuckFlag |= CF_U
+						chunk.ChunkFlag |= CF_U
 					case 'B':
-						chunk.ChuckFlag |= CF_B
+						chunk.ChunkFlag |= CF_B
 					case 'E':
-						chunk.ChuckFlag |= CF_E
+						chunk.ChunkFlag |= CF_E
 					case 'i':
-						chunk.ChuckFlag |= CF_i
+						chunk.ChunkFlag |= CF_i
 					case 'u':
-						chunk.ChuckFlag |= CF_u
+						chunk.ChunkFlag |= CF_u
 					case 'b':
-						chunk.ChuckFlag |= CF_b
+						chunk.ChunkFlag |= CF_b
 					case 'e':
-						chunk.ChuckFlag |= CF_e
+						chunk.ChunkFlag |= CF_e
 					case 'T':
-						chunk.ChuckFlag |= CF_T
+						chunk.ChunkFlag |= CF_T
 					case 't':
-						chunk.ChuckFlag |= CF_t
+						chunk.ChunkFlag |= CF_t
 					}
 				}
 			}
@@ -5783,6 +8553,17 @@ func (mSCTP *MatchSCTP) Parse(main []byte) (int, bool) {
 
 type Flag int
 
+func (flag Flag) String() string {
+	switch flag {
+	case FlagSrc:
+		return "src"
+	case FlagDst:
+		return "dst"
+	default:
+		return ""
+	}
+}
+
 const (
 	_ = iota
 	FlagSrc
@@ -5792,10 +8573,10 @@ const (
 type OptionMatchSet func(*MatchSet)
 
 // There can be at least on and no more than six of flags.
-func WithMatchSetName(yes bool, name string, flags ...Flag) OptionMatchSet {
+func WithMatchSetName(invert bool, name string, flags ...Flag) OptionMatchSet {
 	return func(mSet *MatchSet) {
 		mSet.SetName = name
-		mSet.SetNameInvert = !yes
+		mSet.SetNameInvert = invert
 		mSet.Flags = flags
 	}
 }
@@ -5869,9 +8650,9 @@ func WithMatchSetBytesGreaterThan(value int) OptionMatchSet {
 	}
 }
 
-func NewMatchSet(opts ...OptionMatchSet) (*MatchSet, error) {
+func newMatchSet(opts ...OptionMatchSet) (*MatchSet, error) {
 	match := &MatchSet{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeSet,
 		},
 		PacketsEQ: -1,
@@ -5884,11 +8665,12 @@ func NewMatchSet(opts ...OptionMatchSet) (*MatchSet, error) {
 	for _, opt := range opts {
 		opt(match)
 	}
+	match.setChild(match)
 	return match, nil
 }
 
 type MatchSet struct {
-	baseMatch
+	*baseMatch
 	SetName              string
 	Flags                []Flag
 	ReturnNoMatch        bool
@@ -5904,6 +8686,72 @@ type MatchSet struct {
 	SetNameInvert   bool
 	PacketsEQInvert bool
 	BytesEQInvert   bool
+}
+
+func (mSet *MatchSet) Short() string {
+	return strings.Join(mSet.ShortArgs(), " ")
+}
+
+func (mSet *MatchSet) ShortArgs() []string {
+	args := []string{}
+	args = append(args, "-m", mSet.matchType.String())
+	if mSet.SetName != "" {
+		if mSet.SetNameInvert {
+			args = append(args, "!")
+		}
+		args = append(args, "--match-set", mSet.SetName)
+		if mSet.Flags != nil && len(mSet.Flags) != 0 {
+			flags := ""
+			sep := ""
+			for _, flag := range mSet.Flags {
+				flags += sep + flag.String()
+				sep = ","
+			}
+			args = append(args, flags)
+		}
+	}
+	if mSet.ReturnNoMatch {
+		args = append(args, "--return-nomatch")
+	}
+	if mSet.SkipCounterUpdate {
+		args = append(args, "!", "--update-counters")
+	}
+	if mSet.SkipSubCounterUpdate {
+		args = append(args, "!", "--update-subcounters")
+	}
+	if mSet.PacketsEQ > -1 {
+		if mSet.PacketsEQInvert {
+			args = append(args, "!")
+		}
+		args = append(args, "--packets-eq", strconv.Itoa(mSet.PacketsEQ))
+	}
+	if mSet.PacketsLT > -1 {
+		args = append(args, "--packets-lt", strconv.Itoa(mSet.PacketsLT))
+	}
+	if mSet.PacketsGT > -1 {
+		args = append(args, "--packets-gt", strconv.Itoa(mSet.PacketsGT))
+	}
+	if mSet.BytesEQ > -1 {
+		if mSet.BytesEQInvert {
+			args = append(args, "!")
+		}
+		args = append(args, "--bytes-eq", strconv.Itoa(mSet.BytesEQ))
+	}
+	if mSet.BytesLT > -1 {
+		args = append(args, "--bytes-lt", strconv.Itoa(mSet.BytesLT))
+	}
+	if mSet.BytesGT > -1 {
+		args = append(args, "--bytes-gt", strconv.Itoa(mSet.BytesGT))
+	}
+	return args
+}
+
+func (mSet *MatchSet) Long() string {
+	return mSet.Short()
+}
+
+func (mSet *MatchSet) LongArgs() []string {
+	return mSet.ShortArgs()
 }
 
 func (mSet *MatchSet) Parse(main []byte) (int, bool) {
@@ -6048,23 +8896,51 @@ func WithMatchSocketRestoreSKMark() OptionMatchSocket {
 	}
 }
 
-func NewMatchSocket(opts ...OptionMatchSocket) (*MatchSocket, error) {
+func newMatchSocket(opts ...OptionMatchSocket) (*MatchSocket, error) {
 	match := &MatchSocket{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeSocket,
 		},
 	}
 	for _, opt := range opts {
 		opt(match)
 	}
+	match.setChild(match)
 	return match, nil
 }
 
 type MatchSocket struct {
-	baseMatch
+	*baseMatch
 	Transparent   bool
 	NoWildcard    bool
 	RestoreSKMark bool
+}
+
+func (mSocket *MatchSocket) Short() string {
+	return strings.Join(mSocket.ShortArgs(), " ")
+}
+
+func (mSocket *MatchSocket) ShortArgs() []string {
+	args := make([]string, 0, 5)
+	args = append(args, "-m", mSocket.matchType.String())
+	if mSocket.Transparent {
+		args = append(args, "--transparent")
+	}
+	if mSocket.NoWildcard {
+		args = append(args, "--nowildcard")
+	}
+	if mSocket.RestoreSKMark {
+		args = append(args, "--restore-skmark")
+	}
+	return args
+}
+
+func (mSocket *MatchSocket) Long() string {
+	return mSocket.Short()
+}
+
+func (mSocket *MatchSocket) LongArgs() []string {
+	return mSocket.ShortArgs()
 }
 
 func (mSocket *MatchSocket) Parse(main []byte) (int, bool) {
@@ -6090,9 +8966,9 @@ func (mSocket *MatchSocket) Parse(main []byte) (int, bool) {
 	return len(matches[0]), true
 }
 
-func NewMatchState(state ConnTrackState) (*MatchState, error) {
+func newMatchState(state ConnTrackState) (*MatchState, error) {
 	return &MatchState{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeState,
 		},
 		State: state,
@@ -6100,8 +8976,32 @@ func NewMatchState(state ConnTrackState) (*MatchState, error) {
 }
 
 type MatchState struct {
-	baseMatch
+	*baseMatch
 	State ConnTrackState
+}
+
+func (mState *MatchState) Short() string {
+	return strings.Join(mState.ShortArgs(), " ")
+}
+
+func (mState *MatchState) ShortArgs() []string {
+	args := make([]string, 0, 5)
+	args = append(args, "-m", mState.matchType.String())
+	if mState.State > -1 {
+		if mState.invert {
+			args = append(args, "!")
+		}
+		args = append(args, "--state", mState.State.String())
+	}
+	return args
+}
+
+func (mState *MatchState) Long() string {
+	return mState.Short()
+}
+
+func (mState *MatchState) LongArgs() []string {
+	return mState.ShortArgs()
 }
 
 func (mState *MatchState) Parse(main []byte) (int, bool) {
@@ -6138,6 +9038,17 @@ func (mState *MatchState) Parse(main []byte) (int, bool) {
 
 type StatisticMode int
 
+func (statisticMode StatisticMode) String() string {
+	switch statisticMode {
+	case StatisticModeRandom:
+		return "random"
+	case StatisticModeNth:
+		return "nth"
+	default:
+		return ""
+	}
+}
+
 const (
 	_ StatisticMode = iota
 	StatisticModeRandom
@@ -6154,18 +9065,18 @@ func WithMatchStatisticMode(mode StatisticMode) OptionMatchStatistic {
 }
 
 // Set the probability for a packet to be randomly matched.
-func WithMatchStatisticProbability(yes bool, probability float64) OptionMatchStatistic {
+func WithMatchStatisticProbability(invert bool, probability float64) OptionMatchStatistic {
 	return func(mStatistic *MatchStatistic) {
 		mStatistic.Probability = probability
-		mStatistic.ProbabilityInvert = !yes
+		mStatistic.ProbabilityInvert = invert
 	}
 }
 
 // Match one packet every nth packet.
-func WithMatchStatisticEvery(yes bool, every int) OptionMatchStatistic {
+func WithMatchStatisticEvery(invert bool, every int) OptionMatchStatistic {
 	return func(mStatistic *MatchStatistic) {
 		mStatistic.Every = every
-		mStatistic.EveryInvert = !yes
+		mStatistic.EveryInvert = invert
 	}
 }
 
@@ -6176,11 +9087,12 @@ func WithMatchStatisticPacket(packet int) OptionMatchStatistic {
 	}
 }
 
-func NewMatchStatistic(opts ...OptionMatchStatistic) (*MatchStatistic, error) {
+func newMatchStatistic(opts ...OptionMatchStatistic) (*MatchStatistic, error) {
 	match := &MatchStatistic{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeStatistic,
 		},
+		Mode:        -1,
 		Probability: -1,
 		Every:       -1,
 		Packet:      -1,
@@ -6188,11 +9100,12 @@ func NewMatchStatistic(opts ...OptionMatchStatistic) (*MatchStatistic, error) {
 	for _, opt := range opts {
 		opt(match)
 	}
+	match.setChild(match)
 	return match, nil
 }
 
 type MatchStatistic struct {
-	baseMatch
+	*baseMatch
 	Mode        StatisticMode
 	Probability float64
 	Every       int
@@ -6200,6 +9113,43 @@ type MatchStatistic struct {
 	// invert
 	ProbabilityInvert bool
 	EveryInvert       bool
+}
+
+func (mStatis *MatchStatistic) Short() string {
+	return strings.Join(mStatis.ShortArgs(), " ")
+}
+
+func (mStatis *MatchStatistic) ShortArgs() []string {
+	args := make([]string, 0, 12)
+	args = append(args, "-m", mStatis.matchType.String())
+	if mStatis.Mode > -1 {
+		args = append(args, "--mode", mStatis.Mode.String())
+	}
+	if mStatis.Probability > -1 {
+		if mStatis.ProbabilityInvert {
+			args = append(args, "!")
+		}
+		args = append(args, "--probability",
+			strconv.FormatFloat(mStatis.Probability, 'f', 2, 64))
+	}
+	if mStatis.Every > -1 {
+		if mStatis.EveryInvert {
+			args = append(args, "!")
+		}
+		args = append(args, "--every", strconv.Itoa(mStatis.Every))
+	}
+	if mStatis.Packet > -1 {
+		args = append(args, "--packet", strconv.Itoa(mStatis.Packet))
+	}
+	return args
+}
+
+func (mStatis *MatchStatistic) Long() string {
+	return mStatis.Short()
+}
+
+func (mStatis *MatchStatistic) LongArgs() []string {
+	return mStatis.ShortArgs()
 }
 
 func (mStatis *MatchStatistic) Parse(main []byte) (int, bool) {
@@ -6248,6 +9198,17 @@ func (mStatis *MatchStatistic) Parse(main []byte) (int, bool) {
 
 type StringAlgo int
 
+func (stringAlgo StringAlgo) String() string {
+	switch stringAlgo {
+	case StringAlgoBM:
+		return "bm"
+	case StringAlgoKMP:
+		return "kmp"
+	default:
+		return ""
+	}
+}
+
 const (
 	_ StringAlgo = iota
 	StringAlgoBM
@@ -6278,18 +9239,18 @@ func WithMatchStringTo(to int) OptionMatchString {
 }
 
 // Matches the given pattern.
-func WithMatchStringPattern(yes bool, pattern string) OptionMatchString {
+func WithMatchStringPattern(invert bool, pattern string) OptionMatchString {
 	return func(mString *MatchString) {
 		mString.Pattern = pattern
-		mString.PatternInvert = !yes
+		mString.PatternInvert = invert
 	}
 }
 
 // Matches the given pattern in hex notation.
-func WithMatchStringHexPattern(yes bool, hexPattern []byte) OptionMatchString {
+func WithMatchStringHexPattern(invert bool, hexPattern []byte) OptionMatchString {
 	return func(mString *MatchString) {
 		mString.HexPattern = hexPattern
-		mString.HexPatternInvert = !yes
+		mString.HexPatternInvert = invert
 	}
 }
 
@@ -6299,22 +9260,24 @@ func WithMatchStringIgnoreCase() OptionMatchString {
 	}
 }
 
-func NewMatchString(opts ...OptionMatchString) (*MatchString, error) {
+func newMatchString(opts ...OptionMatchString) (*MatchString, error) {
 	match := &MatchString{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeString,
 		},
+		Algo: -1,
 		From: -1,
 		To:   -1,
 	}
 	for _, opt := range opts {
 		opt(match)
 	}
+	match.setChild(match)
 	return match, nil
 }
 
 type MatchString struct {
-	baseMatch
+	*baseMatch
 	Algo       StringAlgo
 	From       int
 	To         int
@@ -6324,6 +9287,48 @@ type MatchString struct {
 	// invert
 	PatternInvert    bool
 	HexPatternInvert bool
+}
+
+func (mString *MatchString) Short() string {
+	return strings.Join(mString.ShortArgs(), " ")
+}
+
+func (mString *MatchString) ShortArgs() []string {
+	args := make([]string, 0, 15)
+	args = append(args, "-m", mString.matchType.String())
+	if mString.Algo > -1 {
+		args = append(args, "--algo", mString.Algo.String())
+	}
+	if mString.From > -1 {
+		args = append(args, "--from", strconv.Itoa(mString.From))
+	}
+	if mString.To > -1 {
+		args = append(args, "--to", strconv.Itoa(mString.To))
+	}
+	if mString.Pattern != "" {
+		if mString.PatternInvert {
+			args = append(args, "!")
+		}
+		args = append(args, "--string", mString.Pattern)
+	}
+	if mString.HexPattern != nil {
+		if mString.HexPatternInvert {
+			args = append(args, "!")
+		}
+		args = append(args, "--hex-string", string(mString.HexPattern))
+	}
+	if mString.IgnoreCase {
+		args = append(args, "--icase")
+	}
+	return args
+}
+
+func (mString *MatchString) Long() string {
+	return mString.Short()
+}
+
+func (mString *MatchString) LongArgs() []string {
+	return mString.ShortArgs()
 }
 
 func (mString *MatchString) Parse(main []byte) (int, bool) {
@@ -6395,7 +9400,7 @@ func (mString *MatchString) Parse(main []byte) (int, bool) {
 type OptionMatchTCP func(*MatchTCP)
 
 // This option takes mostly 2 ports, (min) or (min, max)
-func WithMatchTCPSrcPort(yes bool, port ...int) OptionMatchTCP {
+func WithMatchTCPSrcPort(invert bool, port ...int) OptionMatchTCP {
 	return func(mTCP *MatchTCP) {
 		switch len(port) {
 		case 1:
@@ -6404,12 +9409,12 @@ func WithMatchTCPSrcPort(yes bool, port ...int) OptionMatchTCP {
 			mTCP.SrcPortMin = port[0]
 			mTCP.SrcPortMax = port[1]
 		}
-		mTCP.SrcPortInvert = !yes
+		mTCP.SrcPortInvert = invert
 	}
 }
 
 // This option takes mostly 2 ports, (min) or (min, max)
-func WithMatchTCPDstPort(yes bool, port ...int) OptionMatchTCP {
+func WithMatchTCPDstPort(invert bool, port ...int) OptionMatchTCP {
 	return func(mTCP *MatchTCP) {
 		switch len(port) {
 		case 1:
@@ -6418,50 +9423,63 @@ func WithMatchTCPDstPort(yes bool, port ...int) OptionMatchTCP {
 			mTCP.DstPortMin = port[0]
 			mTCP.DstPortMax = port[1]
 		}
-		mTCP.DstPortInvert = !yes
+		mTCP.DstPortInvert = invert
 	}
 }
 
 // Match when the TCP flags are as specified.
-func WithMatchTCPFlags(yes bool, mask TCPFlag, set TCPFlag) OptionMatchTCP {
+func WithMatchTCPFlags(invert bool, mask network.TCPFlag, set network.TCPFlag) OptionMatchTCP {
 	return func(mTCP *MatchTCP) {
 		mTCP.FlagsMask = mask
 		mTCP.FlagsSet = set
-		mTCP.FlagsInvert = !yes
+		mTCP.FlagsInvert = invert
 	}
 }
 
-func WithMatchTCPOption(yes bool, option uint8) OptionMatchTCP {
+func WithMatchTCPSYN(invert bool) OptionMatchTCP {
+	return func(mTCP *MatchTCP) {
+		mTCP.FlagsMask = mTCP.FlagsMask | network.TCPFlagSYN | network.TCPFlagRST |
+			network.TCPFlagACK | network.TCPFlagFIN
+		mTCP.FlagsSet = network.TCPFlagSYN
+		mTCP.FlagsInvert = invert
+	}
+}
+
+func WithMatchTCPOption(invert bool, option int) OptionMatchTCP {
 	return func(mTCP *MatchTCP) {
 		mTCP.Option = option
 	}
 }
 
-func NewMatchTCP(opts ...OptionMatchTCP) (*MatchTCP, error) {
+func newMatchTCP(opts ...OptionMatchTCP) (*MatchTCP, error) {
 	match := &MatchTCP{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeTCP,
 		},
 		SrcPortMin: -1,
 		SrcPortMax: -1,
 		DstPortMin: -1,
 		DstPortMax: -1,
+		FlagsMask:  0,
+		FlagsSet:   0,
+		Option:     -1,
 	}
 	for _, opt := range opts {
 		opt(match)
 	}
+	match.setChild(match)
 	return match, nil
 }
 
 type MatchTCP struct {
-	baseMatch
+	*baseMatch
 	SrcPortMin int
 	SrcPortMax int
 	DstPortMin int
 	DstPortMax int
-	FlagsMask  TCPFlag
-	FlagsSet   TCPFlag
-	Option     uint8
+	FlagsMask  network.TCPFlag
+	FlagsSet   network.TCPFlag
+	Option     int
 	// invert
 	SrcPortInvert bool
 	DstPortInvert bool
@@ -6469,6 +9487,87 @@ type MatchTCP struct {
 	OptionInvert  bool
 }
 
+func (mTCP *MatchTCP) Short() string {
+	return strings.Join(mTCP.ShortArgs(), " ")
+}
+
+func (mTCP *MatchTCP) ShortArgs() []string {
+	args := make([]string, 0, 17)
+	args = append(args, "-m", mTCP.matchType.String())
+	if mTCP.SrcPortMin > -1 {
+		if mTCP.SrcPortInvert {
+			args = append(args, "!")
+		}
+		args = append(args, "--sport", strconv.Itoa(mTCP.SrcPortMin))
+		if mTCP.SrcPortMax > -1 {
+			args = append(args, ":"+strconv.Itoa(mTCP.SrcPortMax))
+		}
+	}
+	if mTCP.DstPortMin > -1 {
+		if mTCP.DstPortInvert {
+			args = append(args, "!")
+		}
+		args = append(args, "--dport", strconv.Itoa(mTCP.DstPortMin))
+		if mTCP.DstPortMax > -1 {
+			args = append(args, ":"+strconv.Itoa(mTCP.DstPortMax))
+		}
+	}
+	if mTCP.FlagsMask != 0 && mTCP.FlagsSet != 0 {
+		if mTCP.FlagsInvert {
+			args = append(args, "!")
+		}
+		args = append(args, "--tcp-flags", mTCP.FlagsMask.String(), mTCP.FlagsSet.String())
+	}
+	if mTCP.Option > -1 {
+		if mTCP.OptionInvert {
+			args = append(args, "!")
+		}
+		args = append(args, "tcp-option", strconv.Itoa(mTCP.Option))
+	}
+	return args
+}
+
+func (mTCP *MatchTCP) Long() string {
+	return strings.Join(mTCP.LongArgs(), " ")
+}
+
+func (mTCP *MatchTCP) LongArgs() []string {
+	args := make([]string, 0, 17)
+	args = append(args, "-m", mTCP.matchType.String())
+	if mTCP.SrcPortMin > -1 {
+		if mTCP.SrcPortInvert {
+			args = append(args, "!")
+		}
+		args = append(args, "--source-port", strconv.Itoa(mTCP.SrcPortMin))
+		if mTCP.SrcPortMax > -1 {
+			args = append(args, ":"+strconv.Itoa(mTCP.SrcPortMax))
+		}
+	}
+	if mTCP.DstPortMin > -1 {
+		if mTCP.DstPortInvert {
+			args = append(args, "!")
+		}
+		args = append(args, "--destination-port", strconv.Itoa(mTCP.DstPortMin))
+		if mTCP.DstPortMax > -1 {
+			args = append(args, ":"+strconv.Itoa(mTCP.DstPortMax))
+		}
+	}
+	if mTCP.FlagsMask != 0 && mTCP.FlagsSet != 0 {
+		if mTCP.FlagsInvert {
+			args = append(args, "!")
+		}
+		args = append(args, "--tcp-flags", mTCP.FlagsMask.String(), mTCP.FlagsSet.String())
+	}
+	if mTCP.Option > -1 {
+		if mTCP.OptionInvert {
+			args = append(args, "!")
+		}
+		args = append(args, "tcp-option", strconv.Itoa(mTCP.Option))
+	}
+	return args
+}
+
+// TODO support service name
 func (mTCP *MatchTCP) Parse(main []byte) (int, bool) {
 	// 1. "^tcp"
 	// 2. "( spt(:(!)?([0-9]+))?(s:(!)?([0-9]+):([0-9]+))?)?" #1 #2 #3 #4 #5 #6 #7 #8
@@ -6542,7 +9641,7 @@ func (mTCP *MatchTCP) Parse(main []byte) (int, bool) {
 		if err != nil {
 			return 0, false
 		}
-		mTCP.Option = uint8(option)
+		mTCP.Option = option
 		if len(matches[18]) != 0 {
 			mTCP.OptionInvert = true
 		}
@@ -6557,14 +9656,14 @@ func (mTCP *MatchTCP) Parse(main []byte) (int, bool) {
 		if err != nil {
 			return 0, false
 		}
-		mTCP.FlagsMask = TCPFlag(mask)
-		mTCP.FlagsSet = TCPFlag(set)
+		mTCP.FlagsMask = network.TCPFlag(mask)
+		mTCP.FlagsSet = network.TCPFlag(set)
 	}
 	// non-numeric like: SYN,FIN/SYN
 	if len(matches[27]) != 0 {
 		flags := strings.Split(string(matches[27]), ",")
 		for _, flag := range flags {
-			f, ok := TCPFlags[flag]
+			f, ok := network.TCPFlags[flag]
 			if !ok {
 				return 0, false
 			}
@@ -6572,7 +9671,7 @@ func (mTCP *MatchTCP) Parse(main []byte) (int, bool) {
 		}
 		flags = strings.Split(string(matches[28]), ",")
 		for _, flag := range flags {
-			f, ok := TCPFlags[flag]
+			f, ok := network.TCPFlags[flag]
 			if !ok {
 				return 0, false
 			}
@@ -6583,12 +9682,14 @@ func (mTCP *MatchTCP) Parse(main []byte) (int, bool) {
 }
 
 // This option takes mostly 2 mss, (min) or (min, max)
-func NewMatchTCPMSS(yes bool, mss ...int) (*MatchTCPMSS, error) {
+func newMatchTCPMSS(invert bool, mss ...int) (*MatchTCPMSS, error) {
 	match := &MatchTCPMSS{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeTCPMSS,
-			invert:    !yes,
+			invert:    invert,
 		},
+		MSSMin: -1,
+		MSSMax: -1,
 	}
 	switch len(mss) {
 	case 1:
@@ -6597,13 +9698,43 @@ func NewMatchTCPMSS(yes bool, mss ...int) (*MatchTCPMSS, error) {
 		match.MSSMin = mss[0]
 		match.MSSMax = mss[1]
 	}
+	match.setChild(match)
 	return match, nil
 }
 
 type MatchTCPMSS struct {
-	baseMatch
+	*baseMatch
 	MSSMin int
 	MSSMax int
+}
+
+func (mTCPMSS *MatchTCPMSS) Short() string {
+	return strings.Join(mTCPMSS.ShortArgs(), " ")
+}
+
+func (mTCPMSS *MatchTCPMSS) ShortArgs() []string {
+	args := make([]string, 0, 5)
+	args = append(args, "-m", mTCPMSS.matchType.String())
+	if mTCPMSS.MSSMin > -1 {
+		if mTCPMSS.invert {
+			args = append(args, "!")
+		}
+		if mTCPMSS.MSSMax > -1 {
+			args = append(args, "--mss",
+				strconv.Itoa(mTCPMSS.MSSMin)+":"+strconv.Itoa(mTCPMSS.MSSMax))
+		} else {
+			args = append(args, "--mss", strconv.Itoa(mTCPMSS.MSSMin))
+		}
+	}
+	return args
+}
+
+func (mTCPMSS *MatchTCPMSS) Long() string {
+	return mTCPMSS.Short()
+}
+
+func (mTCPMSS *MatchTCPMSS) LongArgs() []string {
+	return mTCPMSS.ShortArgs()
 }
 
 func (mTCPMSS *MatchTCPMSS) Parse(main []byte) (int, bool) {
@@ -6635,41 +9766,57 @@ func (mTCPMSS *MatchTCPMSS) Parse(main []byte) (int, bool) {
 
 type OptionMatchTime func(mTime *MatchTime)
 
-func WithMatchTimeDateStart(start Date) OptionMatchTime {
+func WithMatchTimeDateStart(start *xtables.Date) OptionMatchTime {
 	return func(mTime *MatchTime) {
 		mTime.DateStart = start
 	}
 }
 
-func WithMatchTimeDateTop(top Date) OptionMatchTime {
+func WithMatchTimeDateStop(top *xtables.Date) OptionMatchTime {
 	return func(mTime *MatchTime) {
-		mTime.DateTop = top
+		mTime.DateStop = top
 	}
 }
 
-func WithMatchTimeDaytimeStart(start Daytime) OptionMatchTime {
+func WithMatchTimeDaytimeStart(start *xtables.Daytime) OptionMatchTime {
 	return func(mTime *MatchTime) {
 		mTime.DaytimeStart = start
 	}
 }
 
-func WithMatchTimeDaytimeTop(top Daytime) OptionMatchTime {
+func WithMatchTimeDaytimeStop(top *xtables.Daytime) OptionMatchTime {
 	return func(mTime *MatchTime) {
-		mTime.DaytimeTop = top
+		mTime.DaytimeStop = top
 	}
 }
 
 // Match on the given days of the month.
-func WithMatchTimeMonthdays(monthdays Monthday) OptionMatchTime {
+func WithMatchTimeMonthdays(monthdays xtables.Monthday) OptionMatchTime {
 	return func(mTime *MatchTime) {
 		mTime.Monthdays = monthdays
 	}
 }
 
+// Match not on the given days of the month.
+func WithMatchTimeNotMonthdays(monthdays xtables.Monthday) OptionMatchTime {
+	return func(mTime *MatchTime) {
+		mTime.Monthdays = math.MaxInt32
+		mTime.Monthdays ^= monthdays
+	}
+}
+
 // Match on the given weekdays.
-func WithMatchTimeWeekdays(weekdays Weekday) OptionMatchTime {
+func WithMatchTimeWeekdays(weekdays xtables.Weekday) OptionMatchTime {
 	return func(mTime *MatchTime) {
 		mTime.Weekdays = weekdays
+	}
+}
+
+// Match not on the given weekdays.
+func WithMatchTimeNotWeekdays(weekdays xtables.Weekday) OptionMatchTime {
+	return func(mTime *MatchTime) {
+		mTime.Weekdays = math.MaxInt8
+		mTime.Weekdays ^= weekdays
 	}
 }
 
@@ -6688,28 +9835,61 @@ func WithMatchTimeContiguous() OptionMatchTime {
 	}
 }
 
-func NewMatchTime(opts ...OptionMatchTime) (*MatchTime, error) {
+func newMatchTime(opts ...OptionMatchTime) (*MatchTime, error) {
 	match := &MatchTime{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeTime,
 		},
+		Weekdays:  -1,
+		Monthdays: -1,
 	}
 	for _, opt := range opts {
 		opt(match)
 	}
+	match.setChild(match)
 	return match, nil
 }
 
 type MatchTime struct {
-	baseMatch
-	DaytimeStart Daytime
-	DaytimeTop   Daytime
-	DateStart    Date
-	DateTop      Date
-	Weekdays     Weekday
-	Monthdays    Monthday
+	*baseMatch
+	DaytimeStart *xtables.Daytime
+	DaytimeStop  *xtables.Daytime
+	DateStart    *xtables.Date
+	DateStop     *xtables.Date
+	Weekdays     xtables.Weekday
+	Monthdays    xtables.Monthday
 	KernelTZ     bool
 	Contiguous   bool
+}
+
+// There are bugs in iptables, the inverts of weekdays and monthdays weren't be printed.
+func (mTime *MatchTime) ShortArgs() []string {
+	args := []string{}
+	if mTime.DateStart != nil {
+		args = append(args, "--datestart", mTime.DateStart.String())
+	}
+	if mTime.DateStop != nil {
+		args = append(args, "--datestop", mTime.DateStop.String())
+	}
+	if mTime.DaytimeStart != nil {
+		args = append(args, "--timestart", mTime.DaytimeStart.String())
+	}
+	if mTime.DaytimeStop != nil {
+		args = append(args, "--timestop", mTime.DaytimeStop.String())
+	}
+	if mTime.Monthdays > -1 {
+		args = append(args, "--monthdays", mTime.Monthdays.String())
+	}
+	if mTime.Weekdays > -1 {
+		args = append(args, "--weekdays", mTime.Weekdays.String())
+	}
+	if mTime.KernelTZ {
+		args = append(args, "--kerneltz")
+	}
+	if mTime.Contiguous {
+		args = append(args, "--contiguous")
+	}
+	return args
 }
 
 func (mTime *MatchTime) Parse(main []byte) (int, bool) {
@@ -6731,26 +9911,25 @@ func (mTime *MatchTime) Parse(main []byte) (int, bool) {
 		`( contiguous)?`
 	reg := regexp.MustCompile(pattern)
 	matches := reg.FindSubmatch(main)
-	fmt.Println(len(matches))
 	if len(matches) != 16 {
 		return 0, false
 	}
 	if len(matches[2]) != 0 {
-		start, err := ParseDaytime(string(matches[2]))
+		start, err := xtables.ParseDaytime(string(matches[2]))
 		if err != nil {
 			return 0, false
 		}
-		top, err := ParseDaytime(string(matches[3]))
+		top, err := xtables.ParseDaytime(string(matches[3]))
 		if err != nil {
 			return 0, false
 		}
 		mTime.DaytimeStart = start
-		mTime.DaytimeTop = top
+		mTime.DaytimeStop = top
 	}
 	if len(matches[5]) != 0 {
 		weekdays := strings.Split(string(matches[5]), ",")
 		for _, weekday := range weekdays {
-			wd, ok := Weekdays[weekday]
+			wd, ok := xtables.Weekdays[weekday]
 			if !ok {
 				return 0, false
 			}
@@ -6769,18 +9948,18 @@ func (mTime *MatchTime) Parse(main []byte) (int, bool) {
 		}
 	}
 	if len(matches[11]) != 0 {
-		de, err := ParseDate(string(matches[11]))
+		de, err := xtables.ParseDate(string(matches[11]))
 		if err != nil {
 			return 0, false
 		}
 		mTime.DateStart = de
 	}
 	if len(matches[13]) != 0 {
-		de, err := ParseDate(string(matches[13]))
+		de, err := xtables.ParseDate(string(matches[13]))
 		if err != nil {
 			return 0, false
 		}
-		mTime.DateTop = de
+		mTime.DateStop = de
 	}
 	if len(matches[14]) == 0 {
 		mTime.KernelTZ = true
@@ -6792,11 +9971,13 @@ func (mTime *MatchTime) Parse(main []byte) (int, bool) {
 }
 
 // This option takes mostly 2 tos, (value) or (value/mask)
-func NewMatchTOS(yes bool, tos ...TOS) (*MatchTOS, error) {
+func newMatchTOS(invert bool, tos ...network.TOS) (*MatchTOS, error) {
 	match := &MatchTOS{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeTOS,
 		},
+		Value: -1,
+		Mask:  -1,
 	}
 	switch len(tos) {
 	case 1:
@@ -6805,14 +9986,42 @@ func NewMatchTOS(yes bool, tos ...TOS) (*MatchTOS, error) {
 		match.Value = tos[0]
 		match.Mask = tos[1]
 	}
-	match.invert = !yes
+	match.invert = invert
+	match.setChild(match)
 	return match, nil
 }
 
 type MatchTOS struct {
-	baseMatch
-	Value TOS
-	Mask  TOS
+	*baseMatch
+	Value network.TOS
+	Mask  network.TOS
+}
+
+func (mTOS *MatchTOS) Short() string {
+	return strings.Join(mTOS.ShortArgs(), " ")
+}
+
+func (mTOS *MatchTOS) ShortArgs() []string {
+	args := make([]string, 0, 5)
+	args = append(args, "-m", mTOS.matchType.String())
+	if mTOS.invert {
+		args = append(args, "!")
+	}
+	if mTOS.Mask > -1 {
+		args = append(args, "--tos",
+			strconv.Itoa(int(mTOS.Value))+"/"+strconv.Itoa(int(mTOS.Mask)))
+	} else {
+		args = append(args, "--tos", strconv.Itoa(int(mTOS.Value)))
+	}
+	return args
+}
+
+func (mTOS *MatchTOS) Long() string {
+	return mTOS.Short()
+}
+
+func (mTOS *MatchTOS) LongArgs() []string {
+	return mTOS.ShortArgs()
 }
 
 func (mTOS *MatchTOS) Parse(main []byte) (int, bool) {
@@ -6831,25 +10040,25 @@ func (mTOS *MatchTOS) Parse(main []byte) (int, bool) {
 		mTOS.invert = true
 	}
 	if len(matches[3]) != 0 {
-		tos, ok := TOSMap[string(matches[3])]
+		tos, ok := network.TOSMap[string(matches[3])]
 		if ok {
 			mTOS.Value = tos
 		}
-		mTOS.Mask = TOS(0x3f)
+		mTOS.Mask = network.TOS(0x3f)
 	}
 	if len(matches[5]) != 0 {
 		value, err := strconv.ParseUint(string(matches[5]), 16, 8)
 		if err != nil {
 			return 0, false
 		}
-		mTOS.Value = TOS(value)
+		mTOS.Value = network.TOS(value)
 	}
 	if len(matches[6]) != 0 {
 		mask, err := strconv.ParseUint(string(matches[6]), 16, 8)
 		if err != nil {
 			return 0, false
 		}
-		mTOS.Mask = TOS(mask)
+		mTOS.Mask = network.TOS(mask)
 	}
 	return len(matches[0]), true
 }
@@ -6859,7 +10068,7 @@ type OptionMatchTTL func(*MatchTTL)
 // Matches the given TTL value.
 func WithMatchTTLEqual(ttl int) OptionMatchTTL {
 	return func(mTTL *MatchTTL) {
-		mTTL.Operator = OperatorEQ
+		mTTL.Operator = xtables.OperatorEQ
 		mTTL.Value = ttl
 	}
 }
@@ -6867,7 +10076,7 @@ func WithMatchTTLEqual(ttl int) OptionMatchTTL {
 // Doesn't match the given TTL value.
 func WithMatchTTLNotEqual(ttl int) OptionMatchTTL {
 	return func(mTTL *MatchTTL) {
-		mTTL.Operator = OperatorNE
+		mTTL.Operator = xtables.OperatorNE
 		mTTL.Value = ttl
 	}
 }
@@ -6875,7 +10084,7 @@ func WithMatchTTLNotEqual(ttl int) OptionMatchTTL {
 // Matches if TTL is greater than the given TTL value.
 func WithMatchTTLGreaterThan(ttl int) OptionMatchTTL {
 	return func(mTTL *MatchTTL) {
-		mTTL.Operator = OperatorGT
+		mTTL.Operator = xtables.OperatorGT
 		mTTL.Value = ttl
 	}
 }
@@ -6883,29 +10092,47 @@ func WithMatchTTLGreaterThan(ttl int) OptionMatchTTL {
 // Matches if TTL is less than the given TTL value.
 func WithMatchTTLLessThan(ttl int) OptionMatchTTL {
 	return func(mTTL *MatchTTL) {
-		mTTL.Operator = OperatorLT
+		mTTL.Operator = xtables.OperatorLT
 		mTTL.Value = ttl
 	}
 }
 
-func NewMatchTTL(opts ...OptionMatchTTL) (*MatchTTL, error) {
+func newMatchTTL(opts ...OptionMatchTTL) (*MatchTTL, error) {
 	match := &MatchTTL{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeTTL,
 		},
 	}
 	for _, opt := range opts {
 		opt(match)
 	}
+	match.setChild(match)
 	return match, nil
 }
 
 // IPv4 specific
 // Non-numeric unsupport
 type MatchTTL struct {
-	baseMatch
-	Operator Operator
+	*baseMatch
+	Operator xtables.Operator
 	Value    int
+}
+
+func (mTTL *MatchTTL) ShortArgs() []string {
+	args := []string{}
+	args = append(args, "-m", mTTL.matchType.String())
+	switch mTTL.Operator {
+	case xtables.OperatorEQ:
+		if mTTL.invert {
+			args = append(args, "!")
+		}
+		args = append(args, "--ttl-eq", strconv.Itoa(mTTL.Value))
+	case xtables.OperatorGT:
+		args = append(args, "--ttl-gt", strconv.Itoa(mTTL.Value))
+	case xtables.OperatorLT:
+		args = append(args, "--ttl-lt", strconv.Itoa(mTTL.Value))
+	}
+	return args
 }
 
 func (mTTL *MatchTTL) Parse(main []byte) (int, bool) {
@@ -6917,13 +10144,13 @@ func (mTTL *MatchTTL) Parse(main []byte) (int, bool) {
 	}
 	switch string(matches[1]) {
 	case "==":
-		mTTL.Operator = OperatorEQ
+		mTTL.Operator = xtables.OperatorEQ
 	case "!=":
-		mTTL.Operator = OperatorNE
+		mTTL.Operator = xtables.OperatorNE
 	case "<":
-		mTTL.Operator = OperatorLT
+		mTTL.Operator = xtables.OperatorLT
 	case ">":
-		mTTL.Operator = OperatorGT
+		mTTL.Operator = xtables.OperatorGT
 	default:
 		return 0, false
 	}
@@ -6935,19 +10162,41 @@ func (mTTL *MatchTTL) Parse(main []byte) (int, bool) {
 	return len(matches[0]), true
 }
 
-func NewMatchU32(yes bool, tests string) (*MatchU32, error) {
+func newMatchU32(invert bool, tests string) (*MatchU32, error) {
 	return &MatchU32{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeU32,
-			invert:    !yes,
+			invert:    invert,
 		},
 		Tests: tests,
 	}, nil
 }
 
 type MatchU32 struct {
-	baseMatch
+	*baseMatch
 	Tests string
+}
+
+func (mU32 *MatchU32) Short() string {
+	return strings.Join(mU32.ShortArgs(), " ")
+}
+
+func (mU32 *MatchU32) ShortArgs() []string {
+	args := make([]string, 0, 5)
+	args = append(args, "-m", mU32.matchType.String())
+	if mU32.invert {
+		args = append(args, "!")
+	}
+	args = append(args, "--u32", "\""+mU32.Tests, "\"")
+	return args
+}
+
+func (mU32 *MatchU32) Long() string {
+	return mU32.Short()
+}
+
+func (mU32 *MatchU32) LongArgs() []string {
+	return mU32.ShortArgs()
 }
 
 func (mU32 *MatchU32) Parse(main []byte) (int, bool) {
@@ -6967,7 +10216,7 @@ func (mU32 *MatchU32) Parse(main []byte) (int, bool) {
 type OptionMatchUDP func(*MatchUDP)
 
 // This option takes mostly 2 ports, (min) or (min, max)
-func WithMatchUDPSrcPort(yes bool, port ...int) OptionMatchUDP {
+func WithMatchUDPSrcPort(invert bool, port ...int) OptionMatchUDP {
 	return func(mUDP *MatchUDP) {
 		switch len(port) {
 		case 1:
@@ -6976,12 +10225,12 @@ func WithMatchUDPSrcPort(yes bool, port ...int) OptionMatchUDP {
 			mUDP.SrcPortMin = port[0]
 			mUDP.SrcPortMax = port[1]
 		}
-		mUDP.SrcPortInvert = !yes
+		mUDP.SrcPortInvert = invert
 	}
 }
 
 // This option takes mostly 2 ports, (min) or (min, max)
-func WithMatchUDPDstPort(yes bool, port ...int) OptionMatchUDP {
+func WithMatchUDPDstPort(invert bool, port ...int) OptionMatchUDP {
 	return func(mUDP *MatchUDP) {
 		switch len(port) {
 		case 1:
@@ -6990,24 +10239,25 @@ func WithMatchUDPDstPort(yes bool, port ...int) OptionMatchUDP {
 			mUDP.DstPortMin = port[0]
 			mUDP.DstPortMax = port[1]
 		}
-		mUDP.DstPortInvert = !yes
+		mUDP.DstPortInvert = invert
 	}
 }
 
-func NewMatchUDP(opts ...OptionMatchUDP) (*MatchUDP, error) {
+func newMatchUDP(opts ...OptionMatchUDP) (*MatchUDP, error) {
 	match := &MatchUDP{
-		baseMatch: baseMatch{
+		baseMatch: &baseMatch{
 			matchType: MatchTypeUDP,
 		},
 	}
 	for _, opt := range opts {
 		opt(match)
 	}
+	match.setChild(match)
 	return match, nil
 }
 
 type MatchUDP struct {
-	baseMatch
+	*baseMatch
 	SrcPortMin int
 	SrcPortMax int
 	DstPortMin int
@@ -7015,6 +10265,62 @@ type MatchUDP struct {
 	// invert
 	SrcPortInvert bool
 	DstPortInvert bool
+}
+
+func (mUDP *MatchUDP) Short() string {
+	return strings.Join(mUDP.ShortArgs(), " ")
+}
+
+func (mUDP *MatchUDP) ShortArgs() []string {
+	args := make([]string, 0, 17)
+	args = append(args, "-m", mUDP.matchType.String())
+	if mUDP.SrcPortMin > -1 {
+		if mUDP.SrcPortInvert {
+			args = append(args, "!")
+		}
+		args = append(args, "--sport", strconv.Itoa(mUDP.SrcPortMin))
+		if mUDP.SrcPortMax > -1 {
+			args = append(args, ":"+strconv.Itoa(mUDP.SrcPortMax))
+		}
+	}
+	if mUDP.DstPortMin > -1 {
+		if mUDP.DstPortInvert {
+			args = append(args, "!")
+		}
+		args = append(args, "--dport", strconv.Itoa(mUDP.DstPortMin))
+		if mUDP.DstPortMax > -1 {
+			args = append(args, ":"+strconv.Itoa(mUDP.DstPortMax))
+		}
+	}
+	return args
+}
+
+func (mUDP *MatchUDP) Long() string {
+	return strings.Join(mUDP.LongArgs(), " ")
+}
+
+func (mUDP *MatchUDP) LongArgs() []string {
+	args := make([]string, 0, 17)
+	args = append(args, "-m", mUDP.matchType.String())
+	if mUDP.SrcPortMin > -1 {
+		if mUDP.SrcPortInvert {
+			args = append(args, "!")
+		}
+		args = append(args, "--source-port", strconv.Itoa(mUDP.SrcPortMin))
+		if mUDP.SrcPortMax > -1 {
+			args = append(args, ":"+strconv.Itoa(mUDP.SrcPortMax))
+		}
+	}
+	if mUDP.DstPortMin > -1 {
+		if mUDP.DstPortInvert {
+			args = append(args, "!")
+		}
+		args = append(args, "--destination-port", strconv.Itoa(mUDP.DstPortMin))
+		if mUDP.DstPortMax > -1 {
+			args = append(args, ":"+strconv.Itoa(mUDP.DstPortMax))
+		}
+	}
+	return args
 }
 
 func (mUDP *MatchUDP) Parse(main []byte) (int, bool) {
@@ -7197,36 +10503,43 @@ var (
 		"u32":                  MatchTypeU32,
 		"udp":                  MatchTypeUDP,
 	}
+
+	matchTrie tree.Trie
 )
 
-// see https://git.netfilter.org/iptables/tree/extensions
-func ParseMatch(params []byte) ([]Match, error) {
-	trie := tree.NewTrie()
+func init() {
+	matchTrie = tree.NewTrie()
 	for prefix, typ := range matchPrefixes {
-		ok := trie.Add(prefix, typ)
-		if !ok {
-			return nil, ErrMatchParams
-		}
+		matchTrie.Add(prefix, typ)
 	}
+}
+
+// see https://git.netfilter.org/iptables/tree/extensions
+func (iptables *IPTables) parseMatch(params []byte) ([]Match, int, error) {
+	index := 0
 	matches := []Match{}
 	for len(params) > 0 {
-		node, ok := trie.LPM(string(params))
+		node, ok := matchTrie.LPM(string(params))
 		if !ok {
-			return nil, ErrMatchParams
+			iptables.log.Tracef("longest path mismatched: %s", string(params))
+			break
 		}
 		typ := node.Value().(MatchType)
 		// get match by match type
-		match := MatchFactory(typ)
-		if match != nil {
-			return nil, ErrMatchParams
+		match := matchFactory(typ)
+		if match == nil {
+			iptables.log.Errorf("match: %s unrecognized", typ)
+			return matches, index, xtables.ErrMatchParams
 		}
 		// index meaning the end of this match
-		index, ok := match.Parse(params)
+		offset, ok := match.Parse(params)
 		if !ok {
-			return nil, ErrMatchParams
+			iptables.log.Errorf("match: %s parse: %s failed", match.Type(), string(params))
+			return matches, index, xtables.ErrMatchParams
 		}
+		index += offset
 		matches = append(matches, match)
-		params = params[index:]
+		params = params[offset:]
 	}
-	return matches, nil
+	return matches, index, nil
 }

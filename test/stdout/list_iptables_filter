@@ -5,19 +5,9 @@ ACCEPT     all  --  172.18.0.1           0.0.0.0/0
 ACCEPT     all  --  0.0.0.0/0            0.0.0.0/0
 ACCEPT     udp  --  0.0.0.0/0            0.0.0.0/0            udp dpt:514
 ACCEPT     tcp  --  0.0.0.0/0            0.0.0.0/0            tcp dpt:22
-ACCEPT     tcp  --  0.0.0.0/0            0.0.0.0/0            tcp dpt:9313
-ACCEPT     tcp  --  0.0.0.0/0            0.0.0.0/0            tcp dpt:55009
-ACCEPT     tcp  --  0.0.0.0/0            0.0.0.0/0            tcp dpt:55008
-ACCEPT     tcp  --  0.0.0.0/0            0.0.0.0/0            tcp dpt:5056
-ACCEPT     tcp  --  0.0.0.0/0            0.0.0.0/0            tcp dpt:5055
 ACCEPT     all  --  192.168.0.1          0.0.0.0/0
 ACCEPT     udp  --  0.0.0.0/0            0.0.0.0/0            udp dpt:514
 ACCEPT     tcp  --  0.0.0.0/0            0.0.0.0/0            tcp dpt:22
-ACCEPT     tcp  --  0.0.0.0/0            0.0.0.0/0            tcp dpt:9313
-ACCEPT     tcp  --  0.0.0.0/0            0.0.0.0/0            tcp dpt:55009
-ACCEPT     tcp  --  0.0.0.0/0            0.0.0.0/0            tcp dpt:55008
-ACCEPT     tcp  --  0.0.0.0/0            0.0.0.0/0            tcp dpt:5056
-ACCEPT     tcp  --  0.0.0.0/0            0.0.0.0/0            tcp dpt:5055
 ACCEPT     all  --  172.18.0.0/16        0.0.0.0/0
 ACCEPT     all  --  0.0.0.0/0            0.0.0.0/0
 ACCEPT     tcp  --  0.0.0.0/0            192.168.0.1          tcp dpt:8888

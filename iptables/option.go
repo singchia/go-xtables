@@ -1,9 +1,3 @@
-/*
- * Apache License 2.0
- *
- * Copyright (c) 2022, Austin Zhai
- * All rights reserved.
- */
 package iptables
 
 import (
@@ -23,7 +17,7 @@ func (ot OptionType) Value() string {
 
 const (
 	OptionTypeFragment OptionType = iota
-	OptionTypeSetCounters
+	OptionTypeCounters
 	OptionTypeVerbose
 	OptionTypeWait
 	OptionTypeWaitInterval
@@ -40,251 +34,343 @@ type Option interface {
 	ShortArgs() []string
 	Long() string
 	LongArgs() []string
+	Equal(Option) bool
 }
 
 type baseOption struct {
 	optionType OptionType
+	child      Option
 	invert     bool
 }
 
-func (bo baseOption) Type() OptionType {
+func (bo *baseOption) setChild(child Option) {
+	bo.child = child
+}
+
+func (bo *baseOption) Type() OptionType {
 	return bo.optionType
 }
 
-func (bo baseOption) Short() string {
+func (bo *baseOption) Short() string {
+	if bo.child != nil {
+		return bo.child.Short()
+	}
 	return ""
 }
 
-func (bo baseOption) ShortArgs() []string {
+func (bo *baseOption) ShortArgs() []string {
+	if bo.child != nil {
+		return bo.child.ShortArgs()
+	}
 	return nil
 }
 
-func (bo baseOption) Long() string {
-	return ""
+func (bo *baseOption) Long() string {
+	return bo.Short()
 }
 
-func (bo baseOption) LongArgs() []string {
-	return nil
+func (bo *baseOption) LongArgs() []string {
+	return bo.ShortArgs()
+}
+
+func (bo *baseOption) Equal(opt Option) bool {
+	return bo.Short() == opt.Short()
 }
 
 type OptionFragment struct {
-	baseOption
+	*baseOption
 }
 
-func (oFrag *OptionFragment) Short() string {
-	if oFrag.invert {
+func newOptionFragment(invert bool) (*OptionFragment, error) {
+	option := &OptionFragment{
+		baseOption: &baseOption{
+			optionType: OptionTypeFragment,
+			invert:     invert,
+		},
+	}
+	option.setChild(option)
+	return option, nil
+}
+
+func (opt *OptionFragment) Short() string {
+	if opt.invert {
 		return "! -f"
 	}
 	return "-f"
 }
 
-func (oFrag *OptionFragment) ShortArgs() []string {
-	if oFrag.invert {
+func (opt *OptionFragment) ShortArgs() []string {
+	if opt.invert {
 		return []string{"!", "-f"}
 	}
 	return []string{"-f"}
 }
 
-func (oFrag *OptionFragment) Long() string {
-	if oFrag.invert {
+func (opt *OptionFragment) Long() string {
+	if opt.invert {
 		return "! --fragment"
 	}
 	return "--fragment"
 }
 
-func (oFrag *OptionFragment) LongArgs() []string {
-	if oFrag.invert {
+func (opt *OptionFragment) LongArgs() []string {
+	if opt.invert {
 		return []string{"!", "--fragment"}
 	}
 	return []string{"--fragment"}
 }
 
-type OptionSetCounters struct {
-	baseOption
+func newOptionCounters(packets, bytes uint64) (*OptionCounters, error) {
+	option := &OptionCounters{
+		baseOption: &baseOption{
+			optionType: OptionTypeCounters,
+		},
+		packets: packets,
+		bytes:   bytes,
+	}
+	option.setChild(option)
+	return option, nil
+}
+
+type OptionCounters struct {
+	*baseOption
 	packets uint64
 	bytes   uint64
 }
 
-func (oCounters *OptionSetCounters) Short() string {
-	return fmt.Sprintf("-c %d %d", oCounters.packets, oCounters.bytes)
+func (opt *OptionCounters) Short() string {
+	return fmt.Sprintf("-c %d %d", opt.packets, opt.bytes)
 }
 
-func (oCounters *OptionSetCounters) ShortArgs() []string {
+func (opt *OptionCounters) ShortArgs() []string {
 	return []string{"-c",
-		strconv.FormatUint(oCounters.packets, 10),
-		strconv.FormatUint(oCounters.bytes, 10),
+		strconv.FormatUint(opt.packets, 10),
+		strconv.FormatUint(opt.bytes, 10),
 	}
 }
 
-func (oCounters *OptionSetCounters) Long() string {
-	return fmt.Sprintf("--set-counters %d %d", oCounters.packets, oCounters.bytes)
+func (opt *OptionCounters) Long() string {
+	return fmt.Sprintf("--set-counters %d %d", opt.packets, opt.bytes)
 }
 
-func (oCounters *OptionSetCounters) LongArgs() []string {
+func (opt *OptionCounters) LongArgs() []string {
 	return []string{"--set-counters",
-		strconv.FormatUint(oCounters.packets, 10),
-		strconv.FormatUint(oCounters.bytes, 10),
+		strconv.FormatUint(opt.packets, 10),
+		strconv.FormatUint(opt.bytes, 10),
 	}
+}
+
+func newOptionVerbose() (*OptionVerbose, error) {
+	option := &OptionVerbose{
+		baseOption: &baseOption{
+			optionType: OptionTypeVerbose,
+		},
+	}
+	option.setChild(option)
+	return option, nil
 }
 
 type OptionVerbose struct {
-	baseOption
+	*baseOption
 }
 
-func (oVerbose *OptionVerbose) Short() string {
+func (opt *OptionVerbose) Short() string {
 	return "-v"
 }
 
-func (oVerbose *OptionVerbose) ShortArgs() []string {
+func (opt *OptionVerbose) ShortArgs() []string {
 	return []string{"-v"}
 }
 
-func (oVerbose *OptionVerbose) Long() string {
+func (opt *OptionVerbose) Long() string {
 	return "--verbose"
 }
 
-func (oVerbose *OptionVerbose) LongArgs() []string {
+func (opt *OptionVerbose) LongArgs() []string {
 	return []string{"--verbose"}
 }
 
+func newOptionWait(seconds uint32) (*OptionWait, error) {
+	option := &OptionWait{
+		baseOption: &baseOption{
+			optionType: OptionTypeWait,
+		},
+		seconds: seconds,
+	}
+	option.setChild(option)
+	return option, nil
+}
+
 type OptionWait struct {
-	baseOption
+	*baseOption
 	seconds uint32
 }
 
-func (oWait *OptionWait) Short() string {
-	if oWait.seconds == 0 {
+func (opt *OptionWait) Short() string {
+	if opt.seconds == 0 {
 		// indefinitely
 		return "-w"
 	}
-	return fmt.Sprintf("-w %d", oWait.seconds)
+	return fmt.Sprintf("-w %d", opt.seconds)
 }
 
-func (oWait *OptionWait) ShortArgs() []string {
-	if oWait.seconds == 0 {
+func (opt *OptionWait) ShortArgs() []string {
+	if opt.seconds == 0 {
 		// indefinitely
 		return []string{"-w"}
 	}
-	return []string{"-w", strconv.FormatUint(uint64(oWait.seconds), 10)}
+	return []string{"-w", strconv.FormatUint(uint64(opt.seconds), 10)}
 }
 
-func (oWait *OptionWait) Long() string {
-	if oWait.seconds == 0 {
+func (opt *OptionWait) Long() string {
+	if opt.seconds == 0 {
 		// indefinitely
 		return "--wait"
 	}
-	return fmt.Sprintf("--wait %d", oWait.seconds)
+	return fmt.Sprintf("--wait %d", opt.seconds)
 }
 
-func (oWait *OptionWait) LongArgs() []string {
-	if oWait.seconds == 0 {
+func (opt *OptionWait) LongArgs() []string {
+	if opt.seconds == 0 {
 		// indefinitely
 		return []string{"--wait"}
 	}
-	return []string{"--wait", strconv.FormatUint(uint64(oWait.seconds), 10)}
+	return []string{"--wait", strconv.FormatUint(uint64(opt.seconds), 10)}
+}
+
+func newOptionWaitInterval(microseconds uint64) (*OptionWaitInterval, error) {
+	option := &OptionWaitInterval{
+		baseOption: &baseOption{
+			optionType: OptionTypeWaitInterval,
+		},
+		microseconds: microseconds,
+	}
+	option.setChild(option)
+	return option, nil
 }
 
 type OptionWaitInterval struct {
-	baseOption
+	*baseOption
 	microseconds uint64
 }
 
-func (oWaitInterval *OptionWaitInterval) Short() string {
-	return fmt.Sprintf("-W %d", oWaitInterval.microseconds)
+func (opt *OptionWaitInterval) Short() string {
+	return fmt.Sprintf("-W %d", opt.microseconds)
 }
 
-func (oWaitInterval *OptionWaitInterval) ShortArgs() []string {
-	return []string{"-W", strconv.FormatUint(oWaitInterval.microseconds, 10)}
+func (opt *OptionWaitInterval) ShortArgs() []string {
+	return []string{"-W", strconv.FormatUint(opt.microseconds, 10)}
 }
 
-func (oWaitInterval *OptionWaitInterval) Long() string {
-	return fmt.Sprintf("--wait-interval %d", oWaitInterval.microseconds)
+func (opt *OptionWaitInterval) Long() string {
+	return fmt.Sprintf("--wait-interval %d", opt.microseconds)
 }
 
-func (oWaitInterval *OptionWaitInterval) LongArgs() []string {
-	return []string{"--wait-interval", strconv.FormatUint(oWaitInterval.microseconds, 10)}
+func (opt *OptionWaitInterval) LongArgs() []string {
+	return []string{"--wait-interval", strconv.FormatUint(opt.microseconds, 10)}
 }
 
-type OptionNotNumeric struct{}
+func newOptionNumeric() (*OptionNumeric, error) {
+	option := &OptionNumeric{
+		baseOption: &baseOption{
+			optionType: OptionTypeNumeric,
+		},
+	}
+	option.setChild(option)
+	return option, nil
+}
 
-// by default
 type OptionNumeric struct {
-	baseOption
+	*baseOption
 }
 
-func (oNumeric *OptionNumeric) Short() string {
+func (opt *OptionNumeric) Short() string {
 	return "-n"
 }
 
-func (oNumeric *OptionNumeric) ShortArgs() []string {
+func (opt *OptionNumeric) ShortArgs() []string {
 	return []string{"-n"}
 }
 
-func (oNumeric *OptionNumeric) Long() string {
-	return "-n"
+func newOptionExact() (*OptionExact, error) {
+	option := &OptionExact{
+		baseOption: &baseOption{
+			optionType: OptionTypeExact,
+		},
+	}
+	option.setChild(option)
+	return option, nil
 }
 
-func (oNumeric *OptionNumeric) LongArgs() []string {
-	return []string{"-n"}
-}
-
+// Display the exact value of the packet and byte counters, instead
+// of only the rounded number in K's(multiples of 1000) M's(multiples
+// of 1000K) or G's(multiples of 1000M). this option if only relevant
+// for the List command.
 type OptionExact struct {
-	baseOption
+	*baseOption
 }
 
-func (oExact *OptionExact) Short() string {
+func (opt *OptionExact) Short() string {
 	return "-x"
 }
 
-func (oExact *OptionExact) ShortArgs() []string {
+func (opt *OptionExact) ShortArgs() []string {
 	return []string{"-x"}
 }
 
-func (oExact *OptionExact) Long() string {
+func (opt *OptionExact) Long() string {
 	return "--exact"
 }
 
-func (oExact *OptionExact) LongArgs() []string {
+func (opt *OptionExact) LongArgs() []string {
 	return []string{"--exact"}
 }
 
+func newOptionLineNumbers() (*OptionLineNumbers, error) {
+	option := &OptionLineNumbers{
+		baseOption: &baseOption{
+			optionType: OptionTypeLineNumbers,
+		},
+	}
+	option.setChild(option)
+	return option, nil
+}
+
+// List with line numbers of each rule, corresponding to that rule's
+// position in the chain.
 type OptionLineNumbers struct {
-	baseOption
+	*baseOption
 }
 
-func (oLineNumbers *OptionLineNumbers) Short() string {
+func (opt *OptionLineNumbers) Short() string {
 	return "--line-numbers"
 }
 
-func (oLineNumbers *OptionLineNumbers) ShortArgs() []string {
+func (opt *OptionLineNumbers) ShortArgs() []string {
 	return []string{"--line-numbers"}
 }
 
-func (oLineNumbers *OptionLineNumbers) Long() string {
-	return "--line-numbers"
+func newOptionModprobe(command string) (*OptionModprobe, error) {
+	option := &OptionModprobe{
+		baseOption: &baseOption{
+			optionType: OptionTypeModprobe,
+		},
+		command: command,
+	}
+	return option, nil
 }
 
-func (oLineNumbers *OptionLineNumbers) LongArgs() []string {
-	return []string{"--line-numbers"}
-}
-
+// When adding or inserting rule into a chain, use command to load any
+// necessary modules(targets, match extensions, etc).
 type OptionModprobe struct {
-	baseOption
+	*baseOption
 	command string
 }
 
-func (oModprobe *OptionModprobe) Short() string {
-	return fmt.Sprintf("--modprobe=%s", oModprobe.command)
+func (opt *OptionModprobe) Short() string {
+	return fmt.Sprintf("--modprobe=%s", opt.command)
 }
 
-func (oModprobe *OptionModprobe) ShortArgs() []string {
-	return []string{fmt.Sprintf("--modprobe=%s", oModprobe.command)}
-}
-
-func (oModprobe *OptionModprobe) Long() string {
-	return fmt.Sprintf("--modprobe=%s", oModprobe.command)
-}
-
-func (oModprobe *OptionModprobe) LongArgs() []string {
-	return []string{fmt.Sprintf("--modprobe=%s", oModprobe.command)}
+func (opt *OptionModprobe) ShortArgs() []string {
+	return []string{fmt.Sprintf("--modprobe=%s", opt.command)}
 }

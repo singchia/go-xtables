@@ -1,6 +1,11 @@
 package iptables
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/singchia/go-xtables"
+	"github.com/singchia/go-xtables/pkg/network"
+)
 
 func TestMatchAddrType(t *testing.T) {
 	mains := [][]byte{
@@ -9,7 +14,7 @@ func TestMatchAddrType(t *testing.T) {
 		[]byte("ADDRTYPE match dst-type UNSPEC limit-in"),
 	}
 	for _, main := range mains {
-		mAddrType := &MatchAddrType{}
+		mAddrType, _ := newMatchAddrType()
 		index, ok := mAddrType.Parse(main)
 		if !ok {
 			t.Errorf("not found")
@@ -20,7 +25,7 @@ func TestMatchAddrType(t *testing.T) {
 }
 
 func TestMatchAddrTypeShort(t *testing.T) {
-	mAddrType, err := NewMatchAddrType(
+	mAddrType, err := newMatchAddrType(
 		WithMatchAddrTypeSrcType(true, BLACKHOLE),
 		WithMatchAddrTypeDstType(false, LOCAL),
 		WithMatchAddrLimitIfaceIn(),
@@ -42,7 +47,7 @@ func TestMatchAH(t *testing.T) {
 		[]byte("ah spis:!50:60length:!1800 reserved"),
 	}
 	for _, main := range mains {
-		mAH := &MatchAH{}
+		mAH, _ := newMatchAH()
 		index, ok := mAH.Parse(main)
 		if !ok {
 			t.Errorf("not found")
@@ -58,7 +63,7 @@ func TestMatchBPF(t *testing.T) {
 		[]byte("match bpf pinned /sys/fs/bpf/iptbpf"),
 	}
 	for _, main := range mains {
-		mBPF := &MatchBPF{}
+		mBPF, _ := newMatchBPF()
 		index, ok := mBPF.Parse(main)
 		if !ok {
 			t.Errorf("not found")
@@ -76,7 +81,7 @@ func TestMatchCGroup(t *testing.T) {
 		[]byte("cgroup 1234"),
 	}
 	for _, main := range mains {
-		mCG := &MatchCGroup{}
+		mCG, _ := newMatchCGroup()
 		index, ok := mCG.Parse(main)
 		if !ok {
 			t.Errorf("not found")
@@ -91,7 +96,7 @@ func TestMatchCluster(t *testing.T) {
 		[]byte("cluster node_mask=0x00000001 total_nodes=2 hash_seed=0xdeadbeef"),
 	}
 	for _, main := range mains {
-		mCluster := &MatchCluster{}
+		mCluster, _ := newMatchCluster()
 		index, ok := mCluster.Parse(main)
 		if !ok {
 			t.Errorf("not found")
@@ -106,7 +111,7 @@ func TestMatchComment(t *testing.T) {
 		[]byte("/* Austin added */"),
 	}
 	for _, main := range mains {
-		mComment := &MatchComment{}
+		mComment, _ := newMatchComment("")
 		index, ok := mComment.Parse(main)
 		if !ok {
 			t.Errorf("not found")
@@ -121,7 +126,7 @@ func TestMatchConnBytes(t *testing.T) {
 		[]byte("! connbytes 10000:100000 connbytes mode bytes connbytes direction both"),
 	}
 	for _, main := range mains {
-		mConnBytes := &MatchConnBytes{}
+		mConnBytes, _ := newMatchConnBytes()
 		index, ok := mConnBytes.Parse(main)
 		if !ok {
 			t.Errorf("not found")
@@ -138,7 +143,7 @@ func TestMatchConnLabel(t *testing.T) {
 		[]byte("connlabel 'ftp' set"),
 	}
 	for _, main := range mains {
-		mConnLabel := &MatchConnLabel{}
+		mConnLabel, _ := newMatchConnLabel()
 		index, ok := mConnLabel.Parse(main)
 		if !ok {
 			t.Errorf("not found")
@@ -153,7 +158,7 @@ func TestMatchConnLimit(t *testing.T) {
 		[]byte("#conn src/24 > 16"),
 	}
 	for _, main := range mains {
-		mConnLimit := &MatchConnLimit{}
+		mConnLimit, _ := newMatchConnLimit()
 		index, ok := mConnLimit.Parse(main)
 		if !ok {
 			t.Errorf("not found")
@@ -169,7 +174,7 @@ func TestMatchConnMark(t *testing.T) {
 		[]byte("connmark match ! 0x14"),
 	}
 	for _, main := range mains {
-		mConnMark := &MatchConnMark{}
+		mConnMark, _ := newMatchConnMark(false)
 		index, ok := mConnMark.Parse(main)
 		if !ok {
 			t.Errorf("not found")
@@ -186,7 +191,7 @@ func TestMatchConnTrack(t *testing.T) {
 		[]byte("ctstate NEW ctproto 6 ctorigsrc 192.168.0.0/24 ctorigdstport 80:65535"),
 	}
 	for _, main := range mains {
-		mConnTrack := &MatchConnTrack{}
+		mConnTrack, _ := newMatchConnTrack()
 		index, ok := mConnTrack.Parse(main)
 		if !ok {
 			t.Errorf("not found")
@@ -201,7 +206,7 @@ func TestMatchCPU(t *testing.T) {
 		[]byte("cpu 1"),
 	}
 	for _, main := range mains {
-		mCPU := &MatchCPU{}
+		mCPU, _ := newMatchCPU(false, 0)
 		index, ok := mCPU.Parse(main)
 		if !ok {
 			t.Errorf("not found")
@@ -216,7 +221,7 @@ func TestMatchDCCP(t *testing.T) {
 		[]byte("dccp spt:80 0,1,2,3,4 option=!1"),
 	}
 	for _, main := range mains {
-		mDCCP := &MatchDCCP{}
+		mDCCP, _ := newMatchDCCP()
 		index, ok := mDCCP.Parse(main)
 		if !ok {
 			t.Errorf("not found")
@@ -232,7 +237,7 @@ func TestMatchDevGroup(t *testing.T) {
 		[]byte("! dst-group 0x1"),
 	}
 	for _, main := range mains {
-		mDevGroup := &MatchDevGroup{}
+		mDevGroup, _ := newMatchDevGroup()
 		index, ok := mDevGroup.Parse(main)
 		if !ok {
 			t.Errorf("not found")
@@ -248,7 +253,7 @@ func TestMatchDSCP(t *testing.T) {
 		[]byte("DSCP match !0x00"),
 	}
 	for _, main := range mains {
-		mDSCP := &MatchDSCP{}
+		mDSCP, _ := newMatchDSCP()
 		index, ok := mDSCP.Parse(main)
 		if !ok {
 			t.Errorf("not found")
@@ -264,7 +269,7 @@ func TestMatchDst(t *testing.T) {
 		[]byte("dst length:42 opts 150,12:12,123:12 "),
 	}
 	for _, main := range mains {
-		mDst := &MatchDst{}
+		mDst, _ := newMatchDst()
 		index, ok := mDst.Parse(main)
 		if !ok {
 			t.Errorf("not found")
@@ -279,7 +284,7 @@ func TestMatchECN(t *testing.T) {
 		[]byte("ECN match ECE !ECT=3"),
 	}
 	for _, main := range mains {
-		mECN := &MatchECN{}
+		mECN, _ := newMatchECN()
 		index, ok := mECN.Parse(main)
 		if !ok {
 			t.Errorf("not found")
@@ -298,7 +303,7 @@ func TestMatchESP(t *testing.T) {
 		[]byte("esp spis:!50:60 Unknown invflags: 0xHex"),
 	}
 	for _, main := range mains {
-		mESP := &MatchESP{}
+		mESP, _ := newMatchESP(false)
 		index, ok := mESP.Parse(main)
 		if !ok {
 			t.Errorf("not found")
@@ -313,7 +318,7 @@ func TestMatchEUI64(t *testing.T) {
 		[]byte("eui64"),
 	}
 	for _, main := range mains {
-		mEUI64 := &MatchEUI64{}
+		mEUI64, _ := newMatchEUI64()
 		index, ok := mEUI64.Parse(main)
 		if !ok {
 			t.Errorf("not found")
@@ -328,7 +333,7 @@ func TestMatchFrag(t *testing.T) {
 		[]byte("frag ids:1:42 last"),
 	}
 	for _, main := range mains {
-		mFrag := &MatchFrag{}
+		mFrag, _ := newMatchFrag()
 		index, ok := mFrag.Parse(main)
 		if !ok {
 			t.Errorf("not found")
@@ -344,7 +349,7 @@ func TestMatchHashLimit(t *testing.T) {
 		[]byte("limit: above 512kb/s mode srcip-srcport-dstip-dstport"),
 	}
 	for _, main := range mains {
-		mHashLimit := &MatchHashLimit{}
+		mHashLimit, _ := newMatchHashLimit()
 		index, ok := mHashLimit.Parse(main)
 		if !ok {
 			t.Errorf("not found")
@@ -359,7 +364,7 @@ func TestMatchHBH(t *testing.T) {
 		[]byte("hbh length:!42 opts 1:2,23:42,4:6,8:10,42,23,4:5"),
 	}
 	for _, main := range mains {
-		mHBH := &MatchHBH{}
+		mHBH, _ := newMatchHBH()
 		index, ok := mHBH.Parse(main)
 		if !ok {
 			t.Errorf("not found")
@@ -374,7 +379,7 @@ func TestMatchHelper(t *testing.T) {
 		[]byte("helper match \"ftp-2121\""),
 	}
 	for _, main := range mains {
-		mHelper := &MatchHelper{}
+		mHelper, _ := newMatchHelper("")
 		index, ok := mHelper.Parse(main)
 		if !ok {
 			t.Errorf("not found")
@@ -389,7 +394,7 @@ func TestMatchHL(t *testing.T) {
 		[]byte("HL match HL > 42"),
 	}
 	for _, main := range mains {
-		mHL := &MatchHL{}
+		mHL, _ := newMatchHL(xtables.OperatorNull, -1)
 		index, ok := mHL.Parse(main)
 		if !ok {
 			t.Errorf("not found")
@@ -408,7 +413,7 @@ func TestMatchICMP(t *testing.T) {
 		[]byte("icmp any"),
 	}
 	for _, main := range mains {
-		mICMP := &MatchICMP{}
+		mICMP, _ := newMatchICMP(false, network.ICMPType(network.Any))
 		index, ok := mICMP.Parse(main)
 		if !ok {
 			t.Errorf("not found")
@@ -423,7 +428,7 @@ func TestMatchIPRange(t *testing.T) {
 		[]byte("source IP range 192.168.0.1-192.168.0.255"),
 	}
 	for _, main := range mains {
-		mIPRange := &MatchIPRange{}
+		mIPRange, _ := newMatchIPRange()
 		index, ok := mIPRange.Parse(main)
 		if !ok {
 			t.Errorf("not found")
@@ -441,7 +446,7 @@ func TestMatchIPv6Header(t *testing.T) {
 		[]byte("ipv6header flags:ipv6-opts,esp"),
 	}
 	for _, main := range mains {
-		mIPv6Header := &MatchIPv6Header{}
+		mIPv6Header, _ := newMatchIPv6Header()
 		index, ok := mIPv6Header.Parse(main)
 		if !ok {
 			t.Errorf("not found")
@@ -457,7 +462,7 @@ func TestMatchIPVS(t *testing.T) {
 		[]byte("! ipvs"),
 	}
 	for _, main := range mains {
-		mIPVS := &MatchIPVS{}
+		mIPVS, _ := newMatchIPVS()
 		index, ok := mIPVS.Parse(main)
 		if !ok {
 			t.Errorf("not found")
@@ -472,7 +477,7 @@ func TestMatchLength(t *testing.T) {
 		[]byte("length 0:60"),
 	}
 	for _, main := range mains {
-		mLength := &MatchLength{}
+		mLength, _ := newMatchLength(false)
 		index, ok := mLength.Parse(main)
 		if !ok {
 			t.Errorf("not found")
@@ -487,7 +492,7 @@ func TestMatchLimit(t *testing.T) {
 		[]byte("limit: avg 3/hour burst 5"),
 	}
 	for _, main := range mains {
-		mLimit := &MatchLimit{}
+		mLimit, _ := newMatchLimit()
 		index, ok := mLimit.Parse(main)
 		if !ok {
 			t.Errorf("not found")
@@ -503,7 +508,7 @@ func TestMatchMAC(t *testing.T) {
 		[]byte("MAC !aa:bb:cc:dd:ee:ff"),
 	}
 	for _, main := range mains {
-		mMAC := &MatchMAC{}
+		mMAC, _ := newMatchMAC(false, nil)
 		index, ok := mMAC.Parse(main)
 		if !ok {
 			t.Errorf("not found")
@@ -518,7 +523,7 @@ func TestMatchMark(t *testing.T) {
 		[]byte("mark match 0x1/0x3"),
 	}
 	for _, main := range mains {
-		mMark := &MatchMark{}
+		mMark, _ := newMatchMark(false)
 		index, ok := mMark.Parse(main)
 		if !ok {
 			t.Errorf("not found")
@@ -537,7 +542,7 @@ func TestMatchMH(t *testing.T) {
 		[]byte("mh !careof-test:binding-error"),
 	}
 	for _, main := range mains {
-		mMH := &MatchMH{}
+		mMH, _ := newMatchMH(false)
 		index, ok := mMH.Parse(main)
 		if !ok {
 			t.Errorf("not found")
@@ -552,7 +557,7 @@ func TestMatchMultiPort(t *testing.T) {
 		[]byte("multiport sports 50:51"),
 	}
 	for _, main := range mains {
-		mMultiPort := &MatchMultiPort{}
+		mMultiPort, _ := newMatchMultiPort()
 		index, ok := mMultiPort.Parse(main)
 		if !ok {
 			t.Errorf("not found")
@@ -567,7 +572,7 @@ func TestMatchNFAcct(t *testing.T) {
 		[]byte("nfacct-name  http-traffic"),
 	}
 	for _, main := range mains {
-		mNFAcct := &MatchNFAcct{}
+		mNFAcct, _ := newMatchNFAcct("")
 		index, ok := mNFAcct.Parse(main)
 		if !ok {
 			t.Errorf("not found")
@@ -582,7 +587,7 @@ func TestMatchOSF(t *testing.T) {
 		[]byte("OS fingerprint match Linux"),
 	}
 	for _, main := range mains {
-		mOSF := &MatchOSF{}
+		mOSF, _ := newMatchOSF()
 		index, ok := mOSF.Parse(main)
 		if !ok {
 			t.Errorf("not found")
@@ -597,9 +602,10 @@ func TestMatchOwner(t *testing.T) {
 		[]byte("owner socket exists owner UID match 0 owner GID match 0 incl. suppl. groups"),
 		[]byte("owner socket exists owner UID match root owner GID match root incl. suppl. groups"),
 		[]byte("owner UID match 0"),
+		[]byte("owner UID match 1-999"),
 	}
 	for _, main := range mains {
-		mOwner := &MatchOwner{}
+		mOwner, _ := newMatchOwner()
 		index, ok := mOwner.Parse(main)
 		if !ok {
 			t.Errorf("not found")
@@ -614,7 +620,7 @@ func TestMatchPhysDev(t *testing.T) {
 		[]byte("PHYSDEV match ! --physdev-in enp0s3 --physdev-out docker0 ! --physdev-is-bridged"),
 	}
 	for _, main := range mains {
-		mPhysDev := &MatchPhysDev{}
+		mPhysDev, _ := newMatchPhysDev()
 		index, ok := mPhysDev.Parse(main)
 		if !ok {
 			t.Errorf("not found")
@@ -629,7 +635,7 @@ func TestMatchPktType(t *testing.T) {
 		[]byte("PKTTYPE = unicast"),
 	}
 	for _, main := range mains {
-		mPktType := &MatchPktType{}
+		mPktType, _ := newMatchPktType(false, Unicast)
 		index, ok := mPktType.Parse(main)
 		if !ok {
 			t.Errorf("not found")
@@ -645,7 +651,7 @@ func TestMatchPolicy(t *testing.T) {
 		[]byte("policy match dir in pol ipsec strict [0] reqid 1 spi 0x1 proto ipcomp mode tunnel tunnel-dst 10.0.0.0/8 tunnel-src 10.0.0.0/8 [1] reqid 2 foo"),
 	}
 	for _, main := range mains {
-		mPolicy := &MatchPolicy{}
+		mPolicy, _ := newMatchPolicy()
 		index, ok := mPolicy.Parse(main)
 		if !ok {
 			t.Errorf("not found")
@@ -663,7 +669,7 @@ func TestMatchQuota(t *testing.T) {
 		[]byte("quota: 50 bytes"),
 	}
 	for _, main := range mains {
-		mQuota := &MatchQuota{}
+		mQuota, _ := newMatchQuota(false, 0)
 		index, ok := mQuota.Parse(main)
 		if !ok {
 			t.Errorf("not found")
@@ -679,7 +685,7 @@ func TestMatchRateEst(t *testing.T) {
 		[]byte("rateest match RE1 delta bps 16bit 0bit gt"),
 	}
 	for _, main := range mains {
-		mRateEst := &MatchRateEst{}
+		mRateEst, _ := newMatchRateEst()
 		index, ok := mRateEst.Parse(main)
 		if !ok {
 			t.Errorf("not found")
@@ -695,7 +701,7 @@ func TestMatchRealm(t *testing.T) {
 		[]byte("realm cosmos"),
 	}
 	for _, main := range mains {
-		mRealm := &MatchRealm{}
+		mRealm, _ := newMatchRealm(false)
 		index, ok := mRealm.Parse(main)
 		if !ok {
 			t.Errorf("not found")
@@ -710,7 +716,7 @@ func TestMatchRecent(t *testing.T) {
 		[]byte("recent: UPDATE seconds: 300 hit_count: 3 name: SSH side: source mask: 255.255.255.255"),
 	}
 	for _, main := range mains {
-		mRecent := &MatchRecent{}
+		mRecent, _ := newMatchRecent()
 		index, ok := mRecent.Parse(main)
 		if !ok {
 			t.Errorf("not found")
@@ -726,7 +732,7 @@ func TestMatchRPFilter(t *testing.T) {
 		[]byte("rpfilter loose validmark accept-local invert"),
 	}
 	for _, main := range mains {
-		mRPFilter := &MatchRPFilter{}
+		mRPFilter, _ := newMatchRPFilter()
 		index, ok := mRPFilter.Parse(main)
 		if !ok {
 			t.Errorf("not found")
@@ -742,7 +748,7 @@ func TestMatchRT(t *testing.T) {
 		[]byte("rt type:0 segslefts:!1:23 length:!42 reserved 0-addrs 2001:db8:85a3::8a2e:370:7334,2001:db8:85a3::8a2e:370:7339"),
 	}
 	for _, main := range mains {
-		mRT := &MatchRT{}
+		mRT, _ := newMatchRT()
 		index, ok := mRT.Parse(main)
 		if !ok {
 			t.Errorf("not found")
@@ -759,7 +765,7 @@ func TestMatchSCTP(t *testing.T) {
 		[]byte("sctp spts:2603:2610 any 0x0000:Be,0x0001"),
 	}
 	for _, main := range mains {
-		mSCTP := &MatchSCTP{}
+		mSCTP, _ := newMatchSCTP()
 		index, ok := mSCTP.Parse(main)
 		if !ok {
 			t.Errorf("not found")
@@ -775,7 +781,7 @@ func TestMatchSet(t *testing.T) {
 		[]byte("match-set foo src,src return-nomatch bytes-lt 1000"),
 	}
 	for _, main := range mains {
-		mSet := &MatchSet{}
+		mSet, _ := newMatchSet()
 		index, ok := mSet.Parse(main)
 		if !ok {
 			t.Errorf("not found")
@@ -790,7 +796,7 @@ func TestMatchSocket(t *testing.T) {
 		[]byte("socket --transparent --restore-skmark"),
 	}
 	for _, main := range mains {
-		mSocket := &MatchSocket{}
+		mSocket, _ := newMatchSocket()
 		index, ok := mSocket.Parse(main)
 		if !ok {
 			t.Errorf("not found")
@@ -805,7 +811,7 @@ func TestMatchState(t *testing.T) {
 		[]byte("! state INVALID,NEW"),
 	}
 	for _, main := range mains {
-		mState := &MatchState{}
+		mState, _ := newMatchState(INVALID)
 		index, ok := mState.Parse(main)
 		if !ok {
 			t.Errorf("not found")
@@ -821,7 +827,7 @@ func TestMatchStatis(t *testing.T) {
 		[]byte("statistic mode nth every 2 packet 1"),
 	}
 	for _, main := range mains {
-		mStatis := &MatchStatistic{}
+		mStatis, _ := newMatchStatistic()
 		index, ok := mStatis.Parse(main)
 		if !ok {
 			t.Errorf("not found")
@@ -837,7 +843,7 @@ func TestMatchString(t *testing.T) {
 		[]byte(`STRING match  "|03|www|09|netfilter|03|org|00|\\1\"" ALGO name bm FROM 40 TO 57`),
 	}
 	for _, main := range mains {
-		mString := &MatchString{}
+		mString, _ := newMatchString()
 		index, ok := mString.Parse(main)
 		if !ok {
 			t.Errorf("not found")
@@ -854,7 +860,7 @@ func TestMatchTCP(t *testing.T) {
 		[]byte(`tcp spt:1234 dpt:!80 option=8 flags:!FIN,SYN,RST,ACK,URG/SYN,URG`),
 	}
 	for _, main := range mains {
-		mTCP := &MatchTCP{}
+		mTCP, _ := newMatchTCP()
 		index, ok := mTCP.Parse(main)
 		if !ok {
 			t.Errorf("not found")
@@ -870,7 +876,7 @@ func TestMatchTCPMSS(t *testing.T) {
 		[]byte(`tcpmss match !64:1200`),
 	}
 	for _, main := range mains {
-		mTCPMSS := &MatchTCPMSS{}
+		mTCPMSS, _ := newMatchTCPMSS(false)
 		index, ok := mTCPMSS.Parse(main)
 		if !ok {
 			t.Errorf("not found")
@@ -885,7 +891,7 @@ func TestMatchTime(t *testing.T) {
 		[]byte(`TIME on Mon,Sun on 1st,3rd,5th starting from 2007-01-01 00:00:00 until date 2009-01-01 00:00:00`),
 	}
 	for _, main := range mains {
-		mTime := &MatchTime{}
+		mTime, _ := newMatchTime()
 		index, ok := mTime.Parse(main)
 		if !ok {
 			t.Errorf("not found")
@@ -901,7 +907,7 @@ func TestMatchTOS(t *testing.T) {
 		[]byte(`tos match0x18/0x3f`),
 	}
 	for _, main := range mains {
-		mTOS := &MatchTOS{}
+		mTOS, _ := newMatchTOS(false)
 		index, ok := mTOS.Parse(main)
 		if !ok {
 			t.Errorf("not found")
@@ -916,7 +922,7 @@ func TestMatchTTL(t *testing.T) {
 		[]byte("TTL match TTL == 255"),
 	}
 	for _, main := range mains {
-		mTTL := &MatchTTL{}
+		mTTL, _ := newMatchTTL()
 		index, ok := mTTL.Parse(main)
 		if !ok {
 			t.Errorf("not found")
@@ -932,7 +938,7 @@ func TestMatchU32(t *testing.T) {
 		[]byte(`u32 ! "0x0=0x0&&0x0=0x1"`),
 	}
 	for _, main := range mains {
-		mU32 := &MatchU32{}
+		mU32, _ := newMatchU32(false, "")
 		index, ok := mU32.Parse(main)
 		if !ok {
 			t.Errorf("not found")
@@ -947,7 +953,7 @@ func TestMatchUDP(t *testing.T) {
 		[]byte(`udp spts:50:8000`),
 	}
 	for _, main := range mains {
-		mUDP := &MatchUDP{}
+		mUDP, _ := newMatchUDP()
 		index, ok := mUDP.Parse(main)
 		if !ok {
 			t.Errorf("not found")

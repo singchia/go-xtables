@@ -1,15 +1,11 @@
-/*
- * Apache License 2.0
- *
- * Copyright (c) 2022, Austin Zhai
- * All rights reserved.
- */
 package iptables
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
+
+	"github.com/singchia/go-xtables"
+	"github.com/singchia/go-xtables/pkg/constraint"
 )
 
 type Statement struct {
@@ -22,17 +18,18 @@ type Statement struct {
 	target           Target
 	command          Command
 	dump             bool
-	constraints      *constraints
+
+	// TODO
+	constraints *constraint.Constraints
 }
 
 func NewStatement() *Statement {
 	state := &Statement{
-		table:       TableTypeFilter,
+		table:       TableTypeNull,
 		matches:     make(map[MatchType]Match),
 		options:     make(map[OptionType]Option),
-		constraints: newConstraints(),
+		constraints: constraint.NewConstraints(),
 	}
-	state.addOption(&OptionNumeric{})
 	return state
 }
 
@@ -48,8 +45,10 @@ func (statement *Statement) Elems() ([]string, error) {
 	// table
 	elems := []string{}
 	elems = append(elems, "-t")
-	tableName, chainName := "filter", ""
+	tableName := ""
 	switch statement.table {
+	case TableTypeFilter:
+		tableName = "filter"
 	case TableTypeNat:
 		tableName = "nat"
 	case TableTypeMangle:
@@ -63,45 +62,57 @@ func (statement *Statement) Elems() ([]string, error) {
 
 	// command
 	if statement.command == nil {
-		return nil, ErrCommandRequired
+		return nil, xtables.ErrCommandRequired
 	}
-	elems = append(elems, statement.command.Short())
 
 	// chain
-	switch statement.chain {
-	case ChainTypePREROUTING:
-		chainName = "PREROUTING"
-	case ChainTypeINPUT:
-		chainName = "INPUT"
-	case ChainTypeFORWARD:
-		chainName = "FORWARD"
-	case ChainTypeOUTPUT:
-		chainName = "OUTPUT"
-	case ChainTypePOSTROUTING:
-		chainName = "POSTROUTING"
-	case ChainTypeUserDefined:
-		chainName = statement.userDefinedChain
-	}
-	if chainName == "" {
-		return nil, ErrChainRequired
-	}
+	statement.command.SetChainType(statement.chain)
+	elems = append(elems, statement.command.ShortArgs()...)
 
-	elems = append(elems, chainName)
-
-	// rulenum
-	hasRulenum, ok := statement.command.(HasRulenum)
-	if ok && hasRulenum.Rulenum() != 0 {
-		elems = append(elems, strconv.Itoa(int(hasRulenum.Rulenum())))
+	// coammnd tails
+	switch statement.command.Type() {
+	case CommandTypeList, CommandTypeListChains, CommandTypeListRules, CommandTypeFind:
+		// default with -n --line-numbers -x -v
+		numeric, ok := statement.options[OptionTypeNumeric]
+		if ok {
+			elems = append(elems, numeric.ShortArgs()...)
+			delete(statement.options, OptionTypeNumeric)
+		}
+		ln, ok := statement.options[OptionTypeLineNumbers]
+		if ok {
+			elems = append(elems, ln.ShortArgs()...)
+			delete(statement.options, OptionTypeLineNumbers)
+		}
+		exact, ok := statement.options[OptionTypeExact]
+		if ok {
+			elems = append(elems, exact.ShortArgs()...)
+			delete(statement.options, OptionTypeExact)
+		}
+		verbose, ok := statement.options[OptionTypeVerbose]
+		if ok {
+			elems = append(elems, verbose.ShortArgs()...)
+			delete(statement.options, OptionTypeVerbose)
+		}
+	case CommandTypeDumpRules:
+		verbose, ok := statement.options[OptionTypeVerbose]
+		if ok {
+			elems = append(elems, verbose.ShortArgs()...)
+			delete(statement.options, OptionTypeVerbose)
+		}
 	}
 
 	// options
 	for _, option := range statement.options {
 		args := option.ShortArgs()
 		if args != nil {
-			elems = append(elems, args...)
+			if option.Type() != OptionTypeNumeric ||
+				(option.Type() == OptionTypeNumeric &&
+					statement.command.Type() == CommandTypeListRules) {
+				elems = append(elems, args...)
+			}
 		}
 		if option.Type() == OptionTypeNotNumeric {
-			delete(statement.options, OptionTypeNotNumeric)
+			delete(statement.options, OptionTypeNumeric)
 		}
 	}
 
@@ -134,7 +145,7 @@ func (statement *Statement) String() (string, error) {
 func (statement *Statement) Conflict() error {
 	constraints := statement.constraints
 	// table-chain
-	conflict := constraints.conflict(
+	conflict := constraints.Conflict(
 		statement.table.Type(),
 		statement.table.Value(),
 		statement.chain.Type(),

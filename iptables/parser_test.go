@@ -5,6 +5,8 @@ import (
 	"bytes"
 	"io/ioutil"
 	"testing"
+
+	"github.com/singchia/go-xtables/internal/xutil"
 )
 
 func TestUnfoldDecimal(t *testing.T) {
@@ -18,7 +20,7 @@ func TestUnfoldDecimal(t *testing.T) {
 		"1112Z",
 	}
 	for _, elem := range test {
-		num, err := unfoldDecimal(elem)
+		num, err := xutil.UnfoldDecimal(elem)
 		if err != nil {
 			t.Error(err)
 			return
@@ -31,7 +33,7 @@ func TestUnfoldDecimal(t *testing.T) {
 		"foo",
 	}
 	for _, elem := range test {
-		num, err := unfoldDecimal(elem)
+		num, err := xutil.UnfoldDecimal(elem)
 		if err == nil {
 			t.Error("err")
 			return
@@ -48,16 +50,17 @@ func TestParseChain(t *testing.T) {
 	}
 	buf := bytes.NewBuffer(data)
 	scanner := bufio.NewScanner(buf)
+	iptables := NewIPTables()
 
 	for scanner.Scan() {
 		line := scanner.Bytes()
 		if bytes.HasPrefix(line, []byte("Chain")) {
-			chain, err := ParseChain(line)
+			chain, err := iptables.parseChain(line)
 			if err != nil {
 				t.Error(err)
 				return
 			}
-			t.Log(chain.chainType, chain.userDefined, chain.name,
+			t.Log(chain.chainType.chainType, chain.chainType.name,
 				chain.references, chain.policy, chain.packets, chain.bytes)
 		}
 	}

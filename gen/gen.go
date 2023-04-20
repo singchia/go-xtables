@@ -8,18 +8,29 @@ package main
 
 import (
 	"bufio"
+	"flag"
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"strings"
+
+	"github.com/singchia/go-xtables/pkg/cmd"
+)
+
+var (
+	protocolLowerMaps = flag.Bool("proto_lower_maps", false, "gen protocol lower maps")
+	serviceDefine     = flag.Bool("service_define", true, "whether service define")
+	serviceTypeMaps   = flag.Bool("service_maps", false, "gen service maps")
 )
 
 const (
 	linuxProtocolFile = "protocols"
+	linuxServiceFile  = "services"
 )
 
-func iterate(cb func(row []string) error) ([][]string, error) {
-	fs, err := os.Open(linuxProtocolFile)
+func iterate(file string, cb func(row []string) error) ([][]string, error) {
+	fs, err := os.Open(file)
 	if err != nil {
 		return nil, err
 	}
@@ -52,22 +63,48 @@ func iterate(cb func(row []string) error) ([][]string, error) {
 }
 
 const (
-	outProtocol = "./protocol.go"
+	outProtocol = "../pkg/network/protocol.go"
+	outService  = "../pkg/network/service.go"
 )
 
 func main() {
-	arrays, err := iterate(nil)
+	flag.Parse()
+	// protocols
+	arrays, err := iterate(linuxProtocolFile, nil)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 
-	fd, err := os.OpenFile(outProtocol, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0755)
+	fdProtocol, err := os.OpenFile(outProtocol, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0755)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
-	defer fd.Close()
+	defer fdProtocol.Close()
 
-	genProtocols(arrays, fd)
+	genProtocols(arrays, fdProtocol)
+
+	// services
+	arrays, err = iterate(linuxServiceFile, nil)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	fdService, err := os.OpenFile(outService, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0755)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	defer fdService.Close()
+
+	genServices(arrays, fdService)
+
+	// format
+	gofmt, err := exec.LookPath("gofmt")
+	if err == nil {
+		cmd.Cmd(gofmt, "-s", "-w", outProtocol)
+		cmd.Cmd(gofmt, "-s", "-w", outService)
+	}
 }

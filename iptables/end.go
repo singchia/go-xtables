@@ -1,40 +1,49 @@
 package iptables
 
-import "fmt"
+import (
+	"bufio"
+	"bytes"
+	"errors"
+	"strings"
 
-func (iptables *IPTables) Chain(chain ChainType) (*Chain, error) {
-	if iptables.statement.err != nil {
-		return nil, iptables.statement.err
-	}
-	// set command
-	command := &Find{
-		List: List{
-			baseCommand: baseCommand{
-				commandType: CommandTypeFind,
-			},
-		},
-	}
-	iptables.statement.command = command
-	data, err := iptables.exec()
+	"github.com/singchia/go-xtables"
+	"github.com/singchia/go-xtables/pkg/cmd"
+)
+
+func (iptables *IPTables) exec() ([]byte, error) {
+	elems, err := iptables.statement.Elems()
 	if err != nil {
 		return nil, err
 	}
-	fmt.Println(string(data))
-	return nil, nil
+	infoO, infoE, err := cmd.Cmd(iptables.cmdName, elems...)
+	if err != nil {
+		return infoE, err
+	}
+	return infoO, nil
 }
 
-func (iptables *IPTables) Find() error {
-	if iptables.statement.err != nil {
-		return iptables.statement.err
+func (iptables *IPTables) dryrun() error {
+	if iptables.drWriter == nil {
+		return errors.New("nil dryrun writer")
 	}
-	command := &Find{
-		List: List{
-			baseCommand: baseCommand{
-				commandType: CommandTypeFind,
-			},
-		},
+	elems, err := iptables.statement.Elems()
+	if err != nil {
+		return err
 	}
-	iptables.statement.command = command
+	str := iptables.cmdName + " " + strings.Join(elems, " ") + "\n"
+	data := []byte(str)
+	length := len(data)
+	pos := 0
+	for {
+		m, err := iptables.drWriter.Write(data[pos:length])
+		if err != nil {
+			return err
+		}
+		pos += m
+		if pos == length {
+			break
+		}
+	}
 	return nil
 }
 
@@ -42,12 +51,16 @@ func (iptables *IPTables) Append() error {
 	if iptables.statement.err != nil {
 		return iptables.statement.err
 	}
-	command := &Append{
-		baseCommand: baseCommand{
-			commandType: CommandTypeAppend,
-		},
+	newiptables := iptables.dump()
+	command := newAppend(ChainTypeNull)
+	newiptables.statement.command = command
+	if newiptables.dr {
+		return newiptables.dryrun()
 	}
-	iptables.statement.command = command
+	data, err := newiptables.exec()
+	if err != nil {
+		return xtables.ErrAndStdErr(err, data)
+	}
 	return nil
 }
 
@@ -55,171 +68,455 @@ func (iptables *IPTables) Check() (bool, error) {
 	if iptables.statement.err != nil {
 		return false, iptables.statement.err
 	}
-	command := &Check{
-		baseCommand: baseCommand{
-			commandType: CommandTypeCheck,
-		},
+	newiptables := iptables.dump()
+	command := newCheck(ChainTypeNull)
+	newiptables.statement.command = command
+	if newiptables.dr {
+		return false, newiptables.dryrun()
 	}
-	iptables.statement.command = command
-	return false, nil
+	data, err := newiptables.exec()
+	if err != nil {
+		if strings.Contains(string(data), "does a matching rule exist in that chain?") {
+			return false, nil
+		}
+		return false, xtables.ErrAndStdErr(err, data)
+	}
+	return true, nil
 }
 
 // 0 means ignoring
-func (iptables *IPTables) Delete(rulenum uint32) error {
+func (iptables *IPTables) Delete(opts ...OptionCommandDelete) error {
 	if iptables.statement.err != nil {
 		return iptables.statement.err
 	}
-	command := &Delete{
-		baseCommand: baseCommand{
-			commandType: CommandTypeDelete,
-		},
-		rnum: rulenum,
+	newiptables := iptables.dump()
+	command := newDelete(ChainTypeNull, opts...)
+	newiptables.statement.command = command
+	if newiptables.dr {
+		return newiptables.dryrun()
 	}
-	iptables.statement.command = command
+	data, err := newiptables.exec()
+	if err != nil {
+		if strings.Contains(string(data), "Illegal option `-j' with this command") {
+			newiptables.statement.target = nil
+			data, err = newiptables.exec()
+			if err == nil {
+				return nil
+			}
+		}
+		return xtables.ErrAndStdErr(err, data)
+	}
+	return nil
+}
+
+func (iptables *IPTables) DeleteAll(opts ...OptionCommandDelete) error {
+	if iptables.statement.err != nil {
+		return iptables.statement.err
+	}
+	newiptables := iptables.dump()
+	command := newDelete(ChainTypeNull, opts...)
+	newiptables.statement.command = command
+	if newiptables.dr {
+		return newiptables.dryrun()
+	}
+	for {
+		data, err := newiptables.exec()
+		if err == nil {
+			continue
+		}
+		if strings.Contains(string(data), "Illegal option `-j' with this command") {
+			newiptables.statement.target = nil
+			data, err = newiptables.exec()
+			if err == nil {
+				continue
+			}
+		}
+		ce := xtables.ErrAndStdErr(err, data)
+		if ce.(*xtables.CommandError).IsRuleNotExistError() {
+			break
+		}
+		return err
+	}
 	return nil
 }
 
 // 0 means ignoring
-func (iptables *IPTables) Insert(rulenum uint32) error {
+func (iptables *IPTables) Insert(opts ...OptionCommandInsert) error {
 	if iptables.statement.err != nil {
 		return iptables.statement.err
 	}
-	command := &Insert{
-		baseCommand: baseCommand{
-			commandType: CommandTypeInsert,
-		},
-		rnum: rulenum,
+	newiptables := iptables.dump()
+	command := newInsert(ChainTypeNull, opts...)
+	newiptables.statement.command = command
+	if newiptables.dr {
+		return newiptables.dryrun()
 	}
-	iptables.statement.command = command
+	data, err := newiptables.exec()
+	if err != nil {
+		return xtables.ErrAndStdErr(err, data)
+	}
 	return nil
 }
 
-// rulenum mustn't be 0
-func (iptables *IPTables) Replace(rulenum uint32) error {
+// rulenum is required
+func (iptables *IPTables) Replace(rulenum int) error {
 	if iptables.statement.err != nil {
 		return iptables.statement.err
 	}
 	if rulenum == 0 {
-		return ErrRulenumMustnot0
+		return xtables.ErrRulenumMustNot0
 	}
-	command := &Replace{
-		baseCommand: baseCommand{
-			commandType: CommandTypeReplace,
-		},
+	newiptables := iptables.dump()
+	command := newReplace(ChainTypeNull, rulenum)
+	newiptables.statement.command = command
+	if newiptables.dr {
+		return newiptables.dryrun()
 	}
-	iptables.statement.command = command
-	return nil
-}
-
-func (iptables *IPTables) List() error {
-	if iptables.statement.err != nil {
-		return iptables.statement.err
-	}
-	command := &List{
-		baseCommand: baseCommand{
-			commandType: CommandTypeList,
-		},
-	}
-	iptables.statement.command = command
-	data, err := iptables.exec()
+	data, err := newiptables.exec()
 	if err != nil {
-		fmt.Println(string(data))
-		return err
+		return xtables.ErrAndStdErr(err, data)
 	}
-	fmt.Println(string(data))
 	return nil
 }
 
-func (iptables *IPTables) ListRules() error {
+// ListRules can't be chained with matched, options and targets.
+func (iptables *IPTables) ListRules() ([]*Rule, error) {
 	if iptables.statement.err != nil {
-		return iptables.statement.err
+		return nil, iptables.statement.err
 	}
-	command := &ListRules{
-		baseCommand: baseCommand{
-			commandType: CommandTypeListRules,
-		},
+	newiptables := iptables.dump()
+	_, ok := newiptables.statement.options[OptionTypeNumeric]
+	if !ok {
+		newiptables.statement.options[OptionTypeNumeric], _ = newOptionNumeric()
 	}
-	iptables.statement.command = command
-	iptables.statement.dump = true
-	return nil
+	command := newListRules(ChainTypeNull)
+	newiptables.statement.command = command
+	if newiptables.dr {
+		return nil, newiptables.dryrun()
+	}
+	data, err := newiptables.exec()
+	if err != nil {
+		return nil, xtables.ErrAndStdErr(err, data)
+	}
+	_, rules, err := iptables.parse(data,
+		iptables.statement.table, iptables.parseChain, iptables.parseRule)
+	return rules, err
 }
 
+// ListChains can't be chained with matched, options and targets.
+func (iptables *IPTables) ListChains() ([]*Chain, error) {
+	if iptables.statement.err != nil {
+		return nil, iptables.statement.err
+	}
+	newiptables := iptables.dump()
+	command := newListChains(ChainTypeNull)
+	newiptables.statement.command = command
+	if newiptables.dr {
+		return nil, newiptables.dryrun()
+	}
+	data, err := newiptables.exec()
+	if err != nil {
+		return nil, xtables.ErrAndStdErr(err, data)
+	}
+	chains, _, err := iptables.parse(data, iptables.statement.table,
+		iptables.parseChain, nil)
+	return chains, err
+}
+
+// -S
+func (iptables *IPTables) DumpRules() ([]string, error) {
+	if iptables.statement.err != nil {
+		return nil, iptables.statement.err
+	}
+	newiptables := iptables.dump()
+	command := newDumpRules(ChainTypeNull)
+	newiptables.statement.command = command
+	newiptables.statement.dump = true
+	if newiptables.dr {
+		return nil, newiptables.dryrun()
+	}
+	data, err := newiptables.exec()
+	if err != nil {
+		return nil, xtables.ErrAndStdErr(err, data)
+	}
+	lines := []string{}
+	buf := bytes.NewBuffer(data)
+	scanner := bufio.NewScanner(buf)
+	for scanner.Scan() {
+		line := scanner.Text()
+		lines = append(lines, line)
+	}
+	return lines, err
+}
+
+// if no table specified, the flush will be applied to all tables.
+// if no chain specified, the flush will be applied to all chains.
 func (iptables *IPTables) Flush() error {
 	if iptables.statement.err != nil {
 		return iptables.statement.err
 	}
-	command := &Flush{
-		baseCommand: baseCommand{
-			commandType: CommandTypeFlush,
-		},
+	newiptables := iptables.dump()
+	var tables []TableType
+	if newiptables.statement.table == TableTypeNull {
+		tables = []TableType{TableTypeFilter, TableTypeNat,
+			TableTypeMangle, TableTypeRaw, TableTypeSecurity}
+	} else {
+		tables = []TableType{newiptables.statement.table}
 	}
-	iptables.statement.command = command
+
+	for _, table := range tables {
+		tmp := newiptables.Table(table)
+		command := newFlush()
+		tmp.statement.command = command
+		if tmp.dr {
+			tmp.dryrun()
+			continue
+		}
+		data, err := tmp.exec()
+		if err != nil {
+			return xtables.ErrAndStdErr(err, data)
+		}
+	}
 	return nil
 }
 
 // 0 means ignoring
-func (iptables *IPTables) Zero(rulenum uint32) error {
+func (iptables *IPTables) Zero(opts ...OptionCommandZero) error {
 	if iptables.statement.err != nil {
 		return iptables.statement.err
 	}
-	command := &Zero{
-		baseCommand: baseCommand{
-			commandType: CommandTypeZero,
-		},
-		rnum: rulenum,
+	newiptables := iptables.dump()
+	command := newZero(ChainTypeNull, opts...)
+	newiptables.statement.command = command
+	if newiptables.dr {
+		return newiptables.dryrun()
 	}
-	iptables.statement.command = command
+	data, err := newiptables.exec()
+	if err != nil {
+		return xtables.ErrAndStdErr(err, data)
+	}
 	return nil
 }
 
-func (iptables *IPTables) NewChain() error {
+func (iptables *IPTables) NewChain(newName string) error {
 	if iptables.statement.err != nil {
 		return iptables.statement.err
 	}
-	command := &NewChain{
-		baseCommand: baseCommand{
-			commandType: CommandTypeNewChain,
-		},
+	newiptables := iptables.dump()
+	command := newNewChain(newName)
+	newiptables.statement.command = command
+	if newiptables.dr {
+		return newiptables.dryrun()
 	}
-	iptables.statement.command = command
+	data, err := newiptables.exec()
+	if err != nil {
+		return xtables.ErrAndStdErr(err, data)
+	}
 	return nil
 }
 
+// If no table specified, the delete-chain will be applied to all tables
 func (iptables *IPTables) DeleteChain() error {
 	if iptables.statement.err != nil {
 		return iptables.statement.err
 	}
-	command := &DeleteChain{
-		baseCommand: baseCommand{
-			commandType: CommandTypeDeleteChain,
-		},
+	newiptables := iptables.dump()
+	var tables []TableType
+	if newiptables.statement.table == TableTypeNull {
+		tables = []TableType{TableTypeFilter, TableTypeNat,
+			TableTypeMangle, TableTypeRaw, TableTypeSecurity}
+	} else {
+		tables = []TableType{newiptables.statement.table}
 	}
-	iptables.statement.command = command
+
+	for _, table := range tables {
+		tmp := newiptables.Table(table)
+		command := newDeleteChain(ChainTypeNull)
+		tmp.statement.command = command
+		if tmp.dr {
+			tmp.dryrun()
+			continue
+		}
+		data, err := tmp.exec()
+		if err != nil {
+			return xtables.ErrAndStdErr(err, data)
+		}
+	}
 	return nil
 }
 
-func (iptables *IPTables) Policy() error {
+// If no table specified, the delete-chain will be applied to all tables
+// If no chain specified, the policy will be applied to all build-in chains.
+func (iptables *IPTables) Policy(target TargetType) error {
 	if iptables.statement.err != nil {
 		return iptables.statement.err
 	}
-	command := &Policy{
-		baseCommand: baseCommand{
-			commandType: CommandTypePolicy,
-		},
+	if target != TargetTypeAccept &&
+		target != TargetTypeDrop &&
+		target != TargetTypeReturn {
+		return xtables.ErrIllegalTargetType
 	}
-	iptables.statement.command = command
+	newiptables := iptables.dump()
+	var tables []TableType
+	if newiptables.statement.table == TableTypeNull {
+		tables = []TableType{TableTypeFilter, TableTypeNat,
+			TableTypeMangle, TableTypeRaw, TableTypeSecurity}
+	} else {
+		tables = []TableType{newiptables.statement.table}
+	}
+
+	if newiptables.statement.chain == ChainTypeNull {
+		for _, table := range tables {
+			for _, chain := range TableChains[table] {
+				newiptables := newiptables.Table(table).Chain(chain)
+				command := newPolicy(ChainTypeNull, target)
+				newiptables.statement.command = command
+				if newiptables.dr {
+					newiptables.dryrun()
+					continue
+				}
+				data, err := newiptables.exec()
+				if err != nil {
+					return xtables.ErrAndStdErr(err, data)
+				}
+			}
+		}
+		return nil
+	} else {
+		for _, table := range tables {
+			tmp := newiptables.Table(table)
+			command := newPolicy(ChainTypeNull, target)
+			tmp.statement.command = command
+			if tmp.dr {
+				tmp.dryrun()
+				continue
+			}
+			data, err := tmp.exec()
+			if err != nil {
+				return xtables.ErrAndStdErr(err, data)
+			}
+		}
+		return nil
+	}
+}
+
+func (iptables *IPTables) RenameChain(newChain string) error {
+	if iptables.statement.err != nil {
+		return iptables.statement.err
+	}
+	newiptables := iptables.dump()
+	command := newRenameChain(ChainTypeNull, newChain)
+	newiptables.statement.command = command
+	if newiptables.dr {
+		return newiptables.dryrun()
+	}
+	data, err := newiptables.exec()
+	if err != nil {
+		return xtables.ErrAndStdErr(err, data)
+	}
 	return nil
 }
 
-func (iptables *IPTables) RenameChain() error {
+func (iptables *IPTables) FindChains() ([]*Chain, error) {
 	if iptables.statement.err != nil {
-		return iptables.statement.err
+		return nil, iptables.statement.err
 	}
-	command := &RenameChain{
-		baseCommand: baseCommand{
-			commandType: CommandTypeRenameChain,
-		},
+	newiptables := iptables.dump()
+	chainType := newiptables.statement.chain
+	newiptables.statement.chain = ChainTypeNull
+
+	command := newListChains(ChainTypeNull)
+	newiptables.statement.command = command
+	if newiptables.dr {
+		return nil, newiptables.dryrun()
 	}
-	iptables.statement.command = command
-	return nil
+	data, err := newiptables.exec()
+	if err != nil {
+		return nil, xtables.ErrAndStdErr(err, data)
+	}
+
+	chains, _, err := iptables.parse(data, newiptables.statement.table,
+		iptables.parseChain, nil)
+	if err != nil {
+		return nil, err
+	}
+	foundChains := []*Chain{}
+	for _, chain := range chains {
+		if chain.chainType.chainType == chainTypeUserDefined &&
+			chain.chainType.name != chainType.name {
+			continue
+		}
+		if chain.chainType.chainType == chainTypeUserDefined &&
+			chain.chainType.name == chainType.name {
+			foundChains = append(foundChains, chain)
+			continue
+		}
+		if chain.chainType == chainType {
+			foundChains = append(foundChains, chain)
+		}
+	}
+	return foundChains, nil
+}
+
+func (iptables *IPTables) FindRules() ([]*Rule, error) {
+	if iptables.statement.err != nil {
+		return nil, iptables.statement.err
+	}
+	newiptables := iptables.dump()
+	optionsMap := newiptables.statement.options
+	matchesMap := newiptables.statement.matches
+	target := newiptables.statement.target
+
+	newiptables.statement.options = make(map[OptionType]Option)
+	newiptables.statement.matches = make(map[MatchType]Match)
+	{
+		// special case for ipv4 or ipv6
+		mth, ok := matchesMap[MatchTypeIPv4]
+		if ok {
+			newiptables.statement.matches[MatchTypeIPv4] = mth
+		}
+		mth, ok = matchesMap[MatchTypeIPv6]
+		if ok {
+			newiptables.statement.matches[MatchTypeIPv6] = mth
+		}
+		delete(matchesMap, MatchTypeIPv4)
+		delete(matchesMap, MatchTypeIPv6)
+	}
+	newiptables.statement.target = nil
+
+	// search with table or chain
+	command := newFind(ChainTypeNull)
+	newiptables.statement.command = command
+	newiptables.statement.options[OptionTypeLineNumbers], _ = newOptionLineNumbers()
+	newiptables.statement.options[OptionTypeNumeric], _ = newOptionNumeric()
+	newiptables.statement.options[OptionTypeVerbose], _ = newOptionVerbose()
+	if newiptables.dr {
+		return nil, newiptables.dryrun()
+	}
+	data, err := newiptables.exec()
+	if err != nil {
+		return nil, xtables.ErrAndStdErr(err, data)
+	}
+	_, rules, err := iptables.parse(data, iptables.statement.table,
+		iptables.parseChain, iptables.parseRule)
+	if err != nil {
+		return nil, err
+	}
+	foundRules := []*Rule{}
+	for _, rule := range rules {
+		yes := rule.HasAllOptions(optionsMap)
+		if !yes {
+			continue
+		}
+		yes = rule.HasAllMatches(matchesMap)
+		if !yes {
+			continue
+		}
+		yes = rule.HasTarget(target)
+		if !yes {
+			continue
+		}
+		foundRules = append(foundRules, rule)
+	}
+	return foundRules, nil
 }
