@@ -7,7 +7,7 @@ import (
 	"github.com/singchia/go-xtables/pkg/network"
 )
 
-func main() {
+func AllowDPortAccept() {
 	set()
 	defer unset()
 

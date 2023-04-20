@@ -6,7 +6,7 @@ import (
 	"github.com/singchia/go-xtables/ebtables"
 )
 
-func main() {
+func RejectSMAC() {
 	set()
 	defer unset()
 
