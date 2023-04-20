@@ -6,7 +6,7 @@ import (
 	"github.com/singchia/go-xtables/pkg/network"
 )
 
-func main() {
+func AntiDDOS() {
 	set()
 	defer unset()
 

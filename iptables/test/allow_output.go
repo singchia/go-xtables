@@ -5,7 +5,7 @@ import (
 	"github.com/singchia/go-xtables/pkg/network"
 )
 
-func main() {
+func AllowOutput() {
 	set()
 	defer unset()
 

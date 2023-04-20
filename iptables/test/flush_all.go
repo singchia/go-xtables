@@ -6,7 +6,7 @@ import (
 	"github.com/singchia/go-xtables/iptables"
 )
 
-func main() {
+func FlushALL() {
 	set()
 	defer unset()
 
