@@ -41,7 +41,6 @@ iptables.NewIPTables().
 	MatchSource(false, "192.168.1.100").
 	TargetAccept().
 	Append()
-
 ```
 #### 查找相关的规则
 ```
@@ -55,7 +54,6 @@ rules, err := iptables.NewIPTables().
 #### 删除所有表的所有规则
 ```
 iptables.NewIPTables().Flush()
-
 ```
 #### 允许每分钟10个连接进入80端口
 ```
@@ -115,7 +113,6 @@ ipt.Chain(userDefined).
 ipt.Chain(userDefined).
 	TargetDrop().
 	Append()
-
 ```
 #### 禁PING
 ```
