@@ -504,7 +504,7 @@ func (ta *TargetDrop) Short() string {
 }
 
 func (ta *TargetDrop) ShortArgs() []string {
-	return []string{"-j", "ACCEPT"}
+	return []string{"-j", "DROP"}
 }
 
 func (ta *TargetDrop) Long() string {
@@ -4560,7 +4560,8 @@ func WithTargetSYNProxySockPerm() OptionTargetSYNProxy {
 	}
 }
 
-//  Pass client timestamp option to backend (will be disabled if not present,
+//	Pass client timestamp option to backend (will be disabled if not present,
+//
 // also needed for selective acknowledgement and window scaling).
 func WithTargetSYNProxyTimestamp() OptionTargetSYNProxy {
 	return func(tSYNProxy *TargetSYNProxy) {

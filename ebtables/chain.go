@@ -19,7 +19,7 @@ type ChainType struct {
 	name        string
 }
 
-func (ct ChainType) SetName(name string) {
+func (ct *ChainType) SetName(name string) {
 	ct.name = name
 }
 

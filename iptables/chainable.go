@@ -1076,7 +1076,7 @@ func (iptables *IPTables) TargetReturn() *IPTables {
 		return iptables
 	}
 	newiptables := iptables.dump()
-	target := newTargetAccept()
+	target := newTargetReturn()
 	newiptables.statement.target = target
 	return newiptables
 }
@@ -1354,7 +1354,7 @@ func (iptables *IPTables) TargetMasquerade(opts ...OptionTargetMasquerade) *IPTa
 	return newiptables
 }
 
-func (iptables *IPTables) TargetNetMap(opts ...OptionTargetNetmap) *IPTables {
+func (iptables *IPTables) TargetNetmap(opts ...OptionTargetNetmap) *IPTables {
 	if iptables.statement.err != nil {
 		return iptables
 	}

@@ -18,7 +18,7 @@ type ICMP4Type ICMPType
 
 const (
 	Any                    ICMP4Type = 255
-	EchoReqply             ICMP4Type = 0
+	EchoReply              ICMP4Type = 0
 	Pong                   ICMP4Type = 0
 	DestinationUnreachable ICMP4Type = 3
 	SourceQuench           ICMP4Type = 4
@@ -39,7 +39,7 @@ const (
 var (
 	ICMP4Types = map[string]ICMP4Type{
 		"any":                     Any,
-		"echo-reply":              EchoReqply,
+		"echo-reply":              EchoReply,
 		"pong":                    Pong,
 		"destination-unreachable": DestinationUnreachable,
 		"source-quench":           SourceQuench,

@@ -32,8 +32,6 @@ func (rate Rate) String() string {
 		unit = "hour"
 	case Day:
 		unit = "day"
-	default:
-		return ""
 	}
 	return strconv.Itoa(rate.Rate) + "/" + unit
 }
@@ -52,8 +50,6 @@ func (rateFloat RateFloat) Sting() string {
 		unit = "ms"
 	case Second:
 		unit = "s"
-	default:
-		return ""
 	}
 	return strconv.FormatFloat(rateFloat.Rate, 'f', 2, 64) + unit
 }

@@ -76,17 +76,26 @@ func (ebtables *EBTables) MatchARP(opts ...OptionMatchARP) *EBTables {
 	return newebtables
 }
 
-func (ebtables *EBTables) MatchDestination(invert bool, addr network.Address) *EBTables {
+// address takes:
+// 1. string for mac
+// 2. net.HardwareAddr
+func (ebtables *EBTables) MatchDestination(invert bool, address interface{}) *EBTables {
 	if ebtables.statement.err != nil {
 		return ebtables
 	}
-	match, err := newMatchDestination(invert, addr)
+	newebtables := ebtables.dump()
+	ads, err := network.ParseAddress(address)
 	if err != nil {
-		ebtables.statement.err = err
+		newebtables.statement.err = err
+		return newebtables
+	}
+	match, err := newMatchDestination(invert, ads)
+	if err != nil {
+		newebtables.statement.err = err
 		return ebtables
 	}
-	ebtables.statement.addMatch(match)
-	return ebtables
+	newebtables.statement.addMatch(match)
+	return newebtables
 }
 
 func (ebtables *EBTables) MatchInInterface(invert bool, name string) *EBTables {
@@ -229,12 +238,20 @@ func (ebtables *EBTables) MatchProtocol(invert bool, protocol network.EthernetTy
 	return newebtables
 }
 
-func (ebtables *EBTables) MatchSource(invert bool, addr network.Address) *EBTables {
+// address takes:
+// 1. string for mac
+// 2. net.HardwareAddr
+func (ebtables *EBTables) MatchSource(invert bool, address interface{}) *EBTables {
 	if ebtables.statement.err != nil {
 		return ebtables
 	}
 	newebtables := ebtables.dump()
-	match, err := newMatchSource(invert, addr)
+	ads, err := network.ParseAddress(address)
+	if err != nil {
+		newebtables.statement.err = err
+		return newebtables
+	}
+	match, err := newMatchSource(invert, ads)
 	if err != nil {
 		newebtables.statement.err = err
 		return newebtables

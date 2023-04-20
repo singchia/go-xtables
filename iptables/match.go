@@ -2070,21 +2070,15 @@ func (mConnMark *MatchConnMark) Parse(main []byte) (int, bool) {
 type ConnTrackState int
 
 func (connTrackState ConnTrackState) String() string {
-	switch connTrackState {
-	case INVALID:
-		return CTStateINVALID
-	case NEW:
-		return CTStateNEW
-	case ESTABLISHED:
-		return CTStateESTABLISHED
-	case UNTRACKED:
-		return CTStateUNTRACKED
-	case SNAT:
-		return CTStateSNAT
-	case DNAT:
-		return CTStateDNAT
+	states := []string{}
+	ctstates := []ConnTrackState{INVALID, NEW, ESTABLISHED, RELATED, UNTRACKED, SNAT, DNAT}
+	ctstatestrs := []string{"INVALID", "NEW", "ESTABLISHED", "RELATED", "UNTRACKED", "SNAT", "DNAT"}
+	for i, ctstate := range ctstates {
+		if connTrackState&ctstate != 0 {
+			states = append(states, ctstatestrs[i])
+		}
 	}
-	return ""
+	return strings.Join(states, ",")
 }
 
 const (
@@ -9444,7 +9438,7 @@ func WithMatchTCPFlags(invert bool, mask network.TCPFlag, set network.TCPFlag) O
 
 func WithMatchTCPSYN(invert bool) OptionMatchTCP {
 	return func(mTCP *MatchTCP) {
-		mTCP.FlagsMask |= network.TCPFlagSYN | network.TCPFlagRST |
+		mTCP.FlagsMask = mTCP.FlagsMask | network.TCPFlagSYN | network.TCPFlagRST |
 			network.TCPFlagACK | network.TCPFlagFIN
 		mTCP.FlagsSet = network.TCPFlagSYN
 		mTCP.FlagsInvert = invert
@@ -9466,8 +9460,8 @@ func newMatchTCP(opts ...OptionMatchTCP) (*MatchTCP, error) {
 		SrcPortMax: -1,
 		DstPortMin: -1,
 		DstPortMax: -1,
-		FlagsMask:  -1,
-		FlagsSet:   -1,
+		FlagsMask:  0,
+		FlagsSet:   0,
 		Option:     -1,
 	}
 	for _, opt := range opts {
@@ -9518,7 +9512,7 @@ func (mTCP *MatchTCP) ShortArgs() []string {
 			args = append(args, ":"+strconv.Itoa(mTCP.DstPortMax))
 		}
 	}
-	if mTCP.FlagsMask > -1 && mTCP.FlagsSet > -1 {
+	if mTCP.FlagsMask != 0 && mTCP.FlagsSet != 0 {
 		if mTCP.FlagsInvert {
 			args = append(args, "!")
 		}
@@ -9558,7 +9552,7 @@ func (mTCP *MatchTCP) LongArgs() []string {
 			args = append(args, ":"+strconv.Itoa(mTCP.DstPortMax))
 		}
 	}
-	if mTCP.FlagsMask > -1 && mTCP.FlagsSet > -1 {
+	if mTCP.FlagsMask != 0 && mTCP.FlagsSet != 0 {
 		if mTCP.FlagsInvert {
 			args = append(args, "!")
 		}
