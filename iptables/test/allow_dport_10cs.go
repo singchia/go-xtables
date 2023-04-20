@@ -17,7 +17,7 @@ func AllowDPort10CS() {
 		Chain(iptables.ChainTypeINPUT).
 		MatchProtocol(false, network.ProtocolTCP).
 		MatchTCP(iptables.WithMatchTCPDstPort(false, 80)).
-		MatchLimit(iptables.WithMatchLimit(xtables.Rate{10, xtables.Minute})).
+		MatchLimit(iptables.WithMatchLimit(xtables.Rate{Rate: 10, Unit: xtables.Minute})).
 		TargetAccept().
 		Append()
 	fmt.Println(err)

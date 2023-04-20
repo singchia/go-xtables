@@ -6,7 +6,7 @@ import (
 	"github.com/singchia/go-xtables/pkg/network"
 )
 
-func AntiDDOS() {
+func main() {
 	set()
 	defer unset()
 
@@ -21,7 +21,7 @@ func AntiDDOS() {
 
 	userDefined := iptables.ChainTypeUserDefined
 	userDefined.SetName(custom)
-	rate := xtables.Rate{1, xtables.Second}
+	rate := xtables.Rate{Rate: 1, Unit: xtables.Second}
 	ipt.Chain(userDefined).
 		MatchLimit(
 			iptables.WithMatchLimit(rate),
