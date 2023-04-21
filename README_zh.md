@@ -179,5 +179,5 @@ ipt.Chain(iptables.ChainTypeOUTPUT).Policy(iptables.TargetTypeAccept)
 
 © Austin Zhai, 2022-2025
 
-Released under the [Apache License 2.0](https://github.com/singchia/go-xtables/blob/main/License)
+Released under the [Apache License 2.0](https://github.com/singchia/go-xtables/blob/main/LICENSE)
 
