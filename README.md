@@ -9,7 +9,7 @@
 
 ## Overview
 ### Background
-Netfilter allows packets to be filtered, transformed, and modified across multiple tables and chains. In kernel mode, Netfilter provides multiple socket options for setsockopt and getsockopt to allow upper-layer applications to add, delete, modify, and query rules. However, these socket options are not directly exposed to developers due to the lack of standard definition. For C/C++ developers, the ```libiptc``` library can be used to interact with Netfilter. But according to the Netfilter official description, ```libiptc``` does not mean that it is open to the public. So, for Go developers, using system call to wrap socket or using cgo to wrap libiptc is not the best choice. According to the Netfilter instructions, it is recommended that developers use the iptables, ebtables, and arptables tools to operate on packets.
+The Netfilter allows packets to be filtered, transformed, and modified across multiple tables and chains. In kernel, Netfilter provides multiple socket options for setsockopt and getsockopt to allow upper-layer applications to add, delete, modify, and query rules. However, these socket options are not directly exposed to developers due to the lack of standard definition. For C/C++ developers, the ```libiptc``` library can be used to interact with Netfilter. But according to the official description, ```libiptc``` does not mean that it is open to the public. So, for Go developers, using system call to wrap socket or using cgo to wrap libiptc is not a good choice. According to the Netfilter instructions, it is recommended that developers use the iptables, ebtables, and arptables tools to operate on packets.
 
 Go-xtables is a wrapper for the iptables, ebtables, and arptables tools. Compared to other libraries, it provides additional capabilities for ebtables and arptables, full feature support (wrapping all extension capabilities mentioned in the man pages), and offers chain and option modes for external use. It fully inherits several abstractions for users from the tables, making it very convenient to use.
 
@@ -180,5 +180,5 @@ And after code review, it will be merged into the project.
 
 © Austin Zhai, 2022-2025
 
-Released under the [Apache License 2.0](https://github.com/singchia/go-xtables/blob/main/License)
+Released under the [Apache License 2.0](https://github.com/singchia/go-xtables/blob/main/LICENSE)
 
