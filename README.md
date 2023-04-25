@@ -181,5 +181,3 @@ And after code review, it will be merged into the project.
 © Austin Zhai, 2022-2025
 
 Released under the [Apache License 2.0](https://github.com/singchia/go-xtables/blob/main/LICENSE)
-
->>>>>>> 249c85d (feat: update readme for some mistakes)
