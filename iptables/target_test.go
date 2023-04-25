@@ -222,7 +222,7 @@ func TestTargetLOG(t *testing.T) {
 		[]byte(`LOG level debug prefix "test: "`),
 	}
 	for _, main := range mains {
-		tLOG := &TargetLOG{}
+		tLOG := &TargetLog{}
 		index, ok := tLOG.Parse(main)
 		if !ok {
 			t.Errorf("not found")
@@ -551,7 +551,7 @@ func TestTargetULOG(t *testing.T) {
 		[]byte(`ULOG copy_range 1 nlgroup 2 queue_threshold 11`),
 	}
 	for _, main := range mains {
-		tULOG := &TargetULOG{}
+		tULOG := &TargetULog{}
 		index, ok := tULOG.Parse(main)
 		if !ok {
 			t.Errorf("not found")

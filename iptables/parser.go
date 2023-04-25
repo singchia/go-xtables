@@ -5,12 +5,18 @@ import (
 	"bytes"
 	"strconv"
 	"strings"
+
+	"github.com/singchia/go-xtables"
+	"github.com/singchia/go-xtables/internal/xutil"
+	"github.com/singchia/go-xtables/pkg/network"
 )
 
-type OnChainLine func(line []byte) (*Chain, error)
-type OnRuleLine func(rule []byte, head []string, chain *Chain) (*Rule, error)
+type onChainLine func(line []byte) (*Chain, error)
+type onRuleLine func(rule []byte, head []string, chain *Chain) (*Rule, error)
 
-func Parse(data []byte, onChainLine OnChainLine, onRuleLine OnRuleLine) ([]*Chain, []*Rule, error) {
+func (iptables *IPTables) parse(data []byte, table TableType, onChainLine onChainLine, onRuleLine onRuleLine) (
+	[]*Chain, []*Rule, error) {
+
 	chains := []*Chain{}
 	rules := []*Rule{}
 
@@ -27,10 +33,15 @@ func Parse(data []byte, onChainLine OnChainLine, onRuleLine OnRuleLine) ([]*Chai
 		if index == 0 {
 			if bytes.HasPrefix(line, []byte("Chain")) {
 				// chain
+				if onChainLine == nil {
+					continue
+				}
 				chain, err = onChainLine(line)
 				if err != nil {
+					iptables.log.Errorf("parse chain line err: %s", err)
 					return nil, nil, err
 				}
+				chain.tableType = table
 				chains = append(chains, chain)
 			}
 		} else if index == 1 {
@@ -42,10 +53,15 @@ func Parse(data []byte, onChainLine OnChainLine, onRuleLine OnRuleLine) ([]*Chai
 				index = 0
 				continue
 			}
+			if onRuleLine == nil {
+				continue
+			}
 			rule, err := onRuleLine(line, head, chain)
 			if err != nil {
+				iptables.log.Errorf("parse rule line err: %s", err)
 				return nil, nil, err
 			}
+			rule.tableType = table
 			rules = append(rules, rule)
 		}
 		index++
@@ -53,114 +69,143 @@ func Parse(data []byte, onChainLine OnChainLine, onRuleLine OnRuleLine) ([]*Chai
 	return chains, rules, nil
 }
 
-func ParseRule(line []byte, head []string, chain *Chain) (*Rule, error) {
+func (iptables *IPTables) parseRule(line []byte, head []string, chain *Chain) (*Rule, error) {
 	rule := &Rule{
-		chain:   chain,
-		packets: -1,
-		bytes:   -1,
+		chain:      chain,
+		lineNumber: -1,
+		packets:    -1,
+		bytes:      -1,
+		matches:    []Match{},
+		options:    []Option{},
+		matchMap:   map[MatchType]Match{},
+		optionMap:  map[OptionType]Option{},
 	}
-	fields, index := NFields(line, len(head))
+	fields, index := xutil.NFields(line, len(head))
 	for i, name := range head {
 		field := string(fields[i])
 		switch name {
-		case "pkts":
-			num, err := unfoldDecimal(field)
+		case "num":
+			field = strings.TrimSpace(field)
+			num, err := strconv.Atoi(field)
 			if err != nil {
+				iptables.log.Errorf("num field convert: %s to int err: %s", field, err)
+				return nil, err
+			}
+			rule.lineNumber = num
+
+		case "pkts":
+			num, err := xutil.UnfoldDecimal(field)
+			if err != nil {
+				iptables.log.Errorf("pkts unfold decimal: %s err: %s", field, err)
 				return nil, err
 			}
 			rule.packets = num
 		case "bytes":
-			num, err := unfoldDecimal(field)
+			num, err := xutil.UnfoldDecimal(field)
 			if err != nil {
+				iptables.log.Errorf("bytes unfold decimal: %s err: %s", field, err)
 				return nil, err
 			}
 			rule.bytes = num
 		case "target":
-			value, ok := TargetValueType[field]
+			value, ok := targetValueType[field]
 			if !ok {
 				// user defined chain, wait to see concrete details
-				target, err := NewTarget(TargetTypeUnknown, field)
+				target, err := targetFactory(TargetTypeNull, field)
 				if err != nil {
 					return nil, err
 				}
 				rule.target = target
 			} else {
-				target, err := NewTarget(value, field)
+				target, err := targetFactory(value)
 				if err != nil {
 					return nil, err
 				}
 				rule.target = target
 			}
 		case "prot":
-			prot, ok := ProtocolUpperNameType[field]
-			if ok {
-				rule.prot = prot
+			field = strings.ToUpper(field)
+			invert := false
+			if len(field) > 1 && field[0] == '!' {
+				invert = true
+				field = field[1:]
+			}
+			prot := network.GetProtocolByName(strings.ToUpper(field))
+			if prot != network.ProtocolUnknown {
+				match := newMatchProtocol(invert, prot)
+				rule.matches = append(rule.matches, match)
+				rule.matchMap[MatchTypeProtocol] = match
 			} else {
 				id, err := strconv.Atoi(field)
 				if err != nil {
+					iptables.log.Errorf("proto field convert: %s to int err: %s", field, err)
 					return nil, err
 				}
-				rule.prot = Protocol(id)
+				match := newMatchProtocol(invert, network.Protocol(id))
+				rule.matches = append(rule.matches, match)
+				rule.matchMap[MatchTypeProtocol] = match
 			}
 		case "opt":
 			rule.opt = field
 		case "in":
-			yes := true
+			invert := false
 			iface := field
-			if field[0] == '!' {
-				yes = false
+			if len(field) > 1 && field[0] == '!' {
+				invert = true
 				iface = field[1:]
 			}
-			match, err := NewMatch(MatchTypeInInterface, yes, iface)
+			match, err := newMatchInInterface(invert, iface)
 			if err != nil {
 				return nil, err
 			}
 			rule.matches = append(rule.matches, match)
 			rule.matchMap[MatchTypeInInterface] = match
 		case "out":
-			yes := true
+			invert := false
 			iface := field
-			if field[0] == '!' {
-				yes = false
+			if len(field) > 1 && field[0] == '!' {
+				invert = false
 				iface = field[1:]
 			}
-			match, err := NewMatch(MatchTypeOutInterface, yes, iface)
+			match, err := newMatchOutInterface(invert, iface)
 			if err != nil {
 				return nil, err
 			}
 			rule.matches = append(rule.matches, match)
 			rule.matchMap[MatchTypeOutInterface] = match
 		case "source":
-			yes := true
+			invert := false
 			source := field
-			if field[0] == '!' {
-				yes = false
+			if len(field) > 1 && field[0] == '!' {
+				invert = true
 				source = field[1:]
 			}
 
-			ads, err := ParseAddress(source)
+			ads, err := network.ParseAddress(source)
 			if err != nil {
+				iptables.log.Errorf("parse source: %s address err: %s", source, err)
 				return nil, err
 			}
-			match, err := NewMatch(MatchTypeSource, yes, ads)
+			match, err := newMatchSource(invert, ads)
 			if err != nil {
 				return nil, err
 			}
 			rule.matches = append(rule.matches, match)
 			rule.matchMap[MatchTypeSource] = match
 		case "destination":
-			yes := true
+			invert := false
 			destination := field
-			if field[0] == '!' {
-				yes = false
+			if len(field) > 1 && field[0] == '!' {
+				invert = true
 				destination = field[1:]
 			}
 
-			ads, err := ParseAddress(destination)
+			ads, err := network.ParseAddress(destination)
 			if err != nil {
+				iptables.log.Errorf("parse destination: %s address err: %s", destination, err)
 				return nil, err
 			}
-			match, err := NewMatch(MatchTypeDestination, yes, ads)
+			match, err := newMatchDestination(invert, ads)
 			if err != nil {
 				return nil, err
 			}
@@ -168,29 +213,32 @@ func ParseRule(line []byte, head []string, chain *Chain) (*Rule, error) {
 			rule.matchMap[MatchTypeDestination] = match
 		}
 	}
+	if rule.bytes != -1 || rule.packets != -1 {
+		rule.optionMap[OptionTypeCounters], _ = newOptionCounters(uint64(rule.packets), uint64(rule.bytes))
+	}
 	jump := true
 	// matches or target params
 	params := line[index:]
 	if len(params) > 0 {
 		// see https://git.netfilter.org/iptables/tree/iptables/iptables.c
 		// the [goto] clause should be before matches
-		p0, next := NFields(params, 1)
+		p0, next := xutil.NFields(params, 1)
 		if bytes.Compare(p0[0], []byte("[goto]")) == 0 {
 			jump = false
 			params = params[next:]
 		}
 	}
 
-	if rule.target.Type() == TargetTypeUnknown {
+	if rule.target.Type() == TargetTypeNull {
 		if jump {
-			target, err := NewTarget(TargetTypeJumpChain,
+			target, err := targetFactory(TargetTypeJumpChain,
 				rule.target.(*TargetUnknown).Unknown())
 			if err != nil {
 				return nil, err
 			}
 			rule.target = target
 		} else {
-			target, err := NewTarget(TargetTypeGotoChain,
+			target, err := targetFactory(TargetTypeGotoChain,
 				rule.target.(*TargetUnknown).Unknown())
 			if err != nil {
 				return nil, err
@@ -200,63 +248,70 @@ func ParseRule(line []byte, head []string, chain *Chain) (*Rule, error) {
 	}
 
 	// then matches
-	matches, err := ParseMatch(params)
+	matches, index, err := iptables.parseMatch(params)
 	if err != nil {
+		iptables.log.Errorf("parse match: %s err: %s", string(params), err)
 		return nil, err
 	}
 	rule.matches = append(rule.matches, matches...)
 	for _, match := range matches {
 		rule.matchMap[match.Type()] = match
 	}
+	params = params[index:]
 
 	// then target
+	params = bytes.TrimSpace(params)
+	_, ok := rule.target.Parse(params)
+	if !ok {
+		iptables.log.Errorf("parse target: %s err: %s", string(params), err)
+		return nil, xtables.ErrTargetParseFailed
+	}
 	return rule, nil
 }
 
-func ParseChain(line []byte) (*Chain, error) {
+func (iptables *IPTables) parseChain(line []byte) (*Chain, error) {
 	chain := &Chain{
 		references: -1,
 	}
 	buf := bytes.NewBuffer(line)
 	_, err := buf.ReadString(' ')
 	if err != nil {
+		iptables.log.Errorf("parse chain read to first space err: %s", err)
 		return nil, err
 	}
 
-	chain.name, err = buf.ReadString(' ')
+	chain.chainType.name, err = buf.ReadString(' ')
 	if err != nil {
+		iptables.log.Errorf("parse chain read to second space err: %s", err)
 		return nil, err
 	}
-	chain.name = chain.name[:len(chain.name)-1]
-	switch chain.name {
+
+	chain.chainType.name = strings.TrimSpace(chain.chainType.name[:len(chain.chainType.name)-1])
+	switch chain.chainType.name {
 	case "INPUT":
-		chain.userDefined = false
 		chain.chainType = ChainTypeINPUT
 	case "FORWARD":
-		chain.userDefined = false
 		chain.chainType = ChainTypeFORWARD
 	case "OUTPUT":
-		chain.userDefined = false
 		chain.chainType = ChainTypeOUTPUT
 	case "PREROUTING":
-		chain.userDefined = false
 		chain.chainType = ChainTypePREROUTING
 	case "POSTROUTING":
-		chain.userDefined = false
 		chain.chainType = ChainTypePOSTROUTING
 	default:
-		chain.userDefined = true
-		chain.chainType = ChainTypeUserDefined
+		userDefined := ChainTypeUserDefined
+		userDefined.name = chain.chainType.name
+		chain.chainType = userDefined
 	}
 
 	rest := buf.Bytes()
 	if len(rest) < 2 {
-		return nil, ErrChainLineTooShort
+		return nil, xtables.ErrChainLineTooShort
 	}
 	rest = rest[1 : len(rest)-1]
 	attrs := bytes.Fields(rest)
 	if len(attrs)%2 != 0 {
-		return nil, ErrChainAttrsNotRecognized
+		return nil, xtables.ErrChainAttrsNotRecognized
 	}
 
 	pairs := len(attrs) / 2
@@ -269,24 +324,19 @@ func ParseChain(line []byte) (*Chain, error) {
 		if bytes.HasPrefix(first, []byte("policy")) {
 			switch string(second) {
 			case "ACCEPT":
-				chain.policy = &TargetAccept{
-					baseTarget: baseTarget{
-						targetType: TargetTypeAccept,
-					},
-				}
+				chain.policy = newTargetAccept()
 			case "DROP":
-				chain.policy = &TargetDrop{
-					baseTarget: baseTarget{
-						targetType: TargetTypeDrop,
-					},
-				}
+				chain.policy = newTargetDrop()
+			case "RETURN":
+				chain.policy = newTargetReturn()
 			}
 		}
 
 		// packets
 		if bytes.HasPrefix(second, []byte("packets")) {
-			num, err := unfoldDecimal(string(first))
+			num, err := xutil.UnfoldDecimal(string(first))
 			if err != nil {
+				iptables.log.Errorf("packets unfold decimal: %s in chain err: %s", string(first), err)
 				return nil, err
 			}
 			chain.packets = num
@@ -294,8 +344,9 @@ func ParseChain(line []byte) (*Chain, error) {
 
 		// bytes
 		if bytes.HasPrefix(second, []byte("bytes")) {
-			num, err := unfoldDecimal(string(first))
+			num, err := xutil.UnfoldDecimal(string(first))
 			if err != nil {
+				iptables.log.Errorf("bytes unfold decimal: %s in chain err: %s", string(first), err)
 				return nil, err
 			}
 			chain.bytes = num
@@ -303,56 +354,13 @@ func ParseChain(line []byte) (*Chain, error) {
 
 		// references
 		if bytes.HasPrefix(second, []byte("references")) {
-			num, err := unfoldDecimal(string(first))
+			num, err := xutil.UnfoldDecimal(string(first))
 			if err != nil {
+				iptables.log.Errorf("references unfold decimal: %s in chain err: %s", string(first), err)
 				return nil, err
 			}
 			chain.references = int(num)
 		}
 	}
 	return chain, nil
-}
-
-func unfoldDecimal(decimal string) (int64, error) {
-	lastPart := decimal[len(decimal)-1]
-	numPart := decimal[0 : len(decimal)-1]
-	switch lastPart {
-	case 'k', 'K':
-		num, err := strconv.ParseInt(numPart, 10, 64)
-		if err != nil {
-			return num, err
-		}
-		return num * 1024, nil
-	case 'm', 'M':
-		num, err := strconv.ParseInt(numPart, 10, 64)
-		if err != nil {
-			return num, err
-		}
-		return num * 1024 * 1024, nil
-	case 'g', 'G':
-		num, err := strconv.ParseInt(numPart, 10, 64)
-		if err != nil {
-			return num, err
-		}
-		return num * 1024 * 1024 * 1024, nil
-	case 't', 'T':
-		num, err := strconv.ParseInt(numPart, 10, 64)
-		if err != nil {
-			return num, err
-		}
-		return num * 1024 * 1024 * 1024 * 1024, nil
-	case 'p', 'P':
-		num, err := strconv.ParseInt(numPart, 10, 64)
-		if err != nil {
-			return num, err
-		}
-		return num * 1024 * 1024 * 1024 * 1024 * 1024, nil
-	case 'z', 'Z':
-		num, err := strconv.ParseInt(numPart, 10, 64)
-		if err != nil {
-			return num, err
-		}
-		return num * 1024 * 1024 * 1024 * 1024 * 1024 * 1024, nil
-	}
-	return strconv.ParseInt(decimal, 10, 64)
 }

@@ -13,10 +13,41 @@ func (tt TableType) Value() string {
 }
 
 const (
-	_                 TableType = iota
+	TableTypeNull     TableType = iota
 	TableTypeFilter             // filter
 	TableTypeNat                // nat
 	TableTypeMangle             // mangle
 	TableTypeRaw                // raw
 	TableTypeSecurity           // security
+)
+
+var (
+	TableChains = map[TableType][]ChainType{
+		TableTypeFilter: {
+			ChainTypeINPUT,
+			ChainTypeOUTPUT,
+			ChainTypeFORWARD,
+		},
+		TableTypeNat: {
+			ChainTypeOUTPUT,
+			ChainTypePREROUTING,
+			ChainTypePOSTROUTING,
+		},
+		TableTypeMangle: {
+			ChainTypeINPUT,
+			ChainTypeOUTPUT,
+			ChainTypeFORWARD,
+			ChainTypePREROUTING,
+			ChainTypePOSTROUTING,
+		},
+		TableTypeRaw: {
+			ChainTypeOUTPUT,
+			ChainTypePREROUTING,
+		},
+		TableTypeSecurity: {
+			ChainTypeINPUT,
+			ChainTypeOUTPUT,
+			ChainTypeFORWARD,
+		},
+	}
 )

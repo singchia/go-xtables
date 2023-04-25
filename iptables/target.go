@@ -6,20 +6,15 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+
+	"github.com/singchia/go-xtables"
+	"github.com/singchia/go-xtables/pkg/network"
 )
 
 type TargetType int
 
-func (tt TargetType) Type() string {
-	return "TargetType"
-}
-
-func (tt TargetType) Value() string {
-	return strconv.Itoa(int(tt))
-}
-
 const (
-	TargetTypeUnknown TargetType = iota
+	TargetTypeNull TargetType = iota
 	TargetTypeAccept
 	TargetTypeDrop
 	TargetTypeReturn
@@ -40,13 +35,14 @@ const (
 	TargetTypeHMark
 	TargetTypeIdleTimer
 	TargetTypeLED
-	TargetTypeLOG
+	TargetTypeLog
 	TargetTypeMark
 	TargetTypeMasquerade
+	TargetTypeMirror // unsupport
 	TargetTypeNetmap
 	TargetTypeNFLog
 	TargetTypeNFQueue
-	//TargetTypeNoTrack
+	TargetTypeNoTrack // unsupport
 	TargetTypeRateEst
 	TargetTypeRedirect
 	TargetTypeReject
@@ -63,11 +59,12 @@ const (
 	TargetTypeTProxy
 	TargetTypeTrace
 	TargetTypeTTL
-	TargetTypeULOG
+	TargetTypeULog
+	TargetTypeEmpty
 )
 
 var (
-	TargetTypeValue = map[TargetType]string{
+	targetTypeValue = map[TargetType]string{
 		TargetTypeAccept:      "ACCEPT",
 		TargetTypeDrop:        "DROP",
 		TargetTypeReturn:      "RETURN",
@@ -88,7 +85,7 @@ var (
 		TargetTypeHMark:       "HMARK",
 		TargetTypeIdleTimer:   "IDLETIMER",
 		TargetTypeLED:         "LED",
-		TargetTypeLOG:         "LOG",
+		TargetTypeLog:         "LOG",
 		TargetTypeMark:        "MARK",
 		TargetTypeMasquerade:  "MASQUDERDE",
 		TargetTypeNetmap:      "NETMAP",
@@ -110,10 +107,10 @@ var (
 		TargetTypeTProxy:      "TPROXY",
 		TargetTypeTrace:       "TRACE",
 		TargetTypeTTL:         "TTL",
-		TargetTypeULOG:        "ULOG",
+		TargetTypeULog:        "ULOG",
 	}
 
-	TargetValueType = map[string]TargetType{
+	targetValueType = map[string]TargetType{
 		"ACCEPT":      TargetTypeAccept,
 		"DROP":        TargetTypeDrop,
 		"RETURN":      TargetTypeReturn,
@@ -134,7 +131,7 @@ var (
 		"HMARK":       TargetTypeHMark,
 		"IDLETIMER":   TargetTypeIdleTimer,
 		"LED":         TargetTypeLED,
-		"LOG":         TargetTypeLOG,
+		"LOG":         TargetTypeLog,
 		"MARK":        TargetTypeMark,
 		"MASQUDERDE":  TargetTypeMasquerade,
 		"NETMAP":      TargetTypeNetmap,
@@ -156,9 +153,106 @@ var (
 		"TPROXY":      TargetTypeTProxy,
 		"TRACE":       TargetTypeTrace,
 		"TTL":         TargetTypeTTL,
-		"ULOG":        TargetTypeULOG,
+		"ULOG":        TargetTypeULog,
 	}
 )
+
+func (tt TargetType) Type() string {
+	return "TargetType"
+}
+
+func (tt TargetType) Value() string {
+	return strconv.Itoa(int(tt))
+}
+
+func (tt TargetType) String() string {
+	switch tt {
+	case TargetTypeAccept:
+		return "ACCEPT"
+	case TargetTypeDrop:
+		return "DROP"
+	case TargetTypeReturn:
+		return "RETURN"
+	case TargetTypeAudit:
+		return "AUDIT"
+	case TargetTypeCheckSum:
+		return "CHECKSUM"
+	case TargetTypeClassify:
+		return "CLASSIFY"
+	case TargetTypeClusterIP:
+		return "CLUSTERIP"
+	case TargetTypeConnMark:
+		return "CONNMARK"
+	case TargetTypeConnSecMark:
+		return "CONNSECMARK"
+	case TargetTypeCT:
+		return "CT"
+	case TargetTypeDNAT:
+		return "DNAT"
+	case TargetTypeDNPT:
+		return "DNPT"
+	case TargetTypeDSCP:
+		return "DSCP"
+	case TargetTypeECN:
+		return "ECN"
+	case TargetTypeHL:
+		return "HL"
+	case TargetTypeHMark:
+		return "HMARK"
+	case TargetTypeIdleTimer:
+		return "IDLETIMER"
+	case TargetTypeLED:
+		return "LED"
+	case TargetTypeLog:
+		return "LOG"
+	case TargetTypeMark:
+		return "MARK"
+	case TargetTypeMasquerade:
+		return "MASQUDERDE"
+	case TargetTypeNetmap:
+		return "NETMAP"
+	case TargetTypeNFLog:
+		return "NFLOG"
+	case TargetTypeNFQueue:
+		return "NFQUEUE"
+	case TargetTypeRateEst:
+		return "RATEEST"
+	case TargetTypeRedirect:
+		return "REDIRECT"
+	case TargetTypeReject:
+		return "REJECT"
+	case TargetTypeSame:
+		return "SAME"
+	case TargetTypeSecMark:
+		return "SECMARK"
+	case TargetTypeSet:
+		return "SET"
+	case TargetTypeSNAT:
+		return "SNAT"
+	case TargetTypeSNPT:
+		return "SNPT"
+	case TargetTypeSYNProxy:
+		return "SYNPROXY"
+	case TargetTypeTCPMSS:
+		return "TCPMSS"
+	case TargetTypeTCPOptStrip:
+		return "TCPOPTSTRIP"
+	case TargetTypeTEE:
+		return "TEE"
+	case TargetTypeTOS:
+		return "TOS"
+	case TargetTypeTProxy:
+		return "TPROXY"
+	case TargetTypeTrace:
+		return "TRACE"
+	case TargetTypeTTL:
+		return "TTL"
+	case TargetTypeULog:
+		return "ULOG"
+	default:
+		return ""
+	}
+}
 
 type Target interface {
 	Type() TargetType
@@ -167,11 +261,12 @@ type Target interface {
 	ShortArgs() []string
 	LongArgs() []string
 	Parse([]byte) (int, bool)
+	Equal(Target) bool
 }
 
-func NewTarget(targetType TargetType, args ...interface{}) (Target, error) {
+func targetFactory(targetType TargetType, args ...interface{}) (Target, error) {
 	switch targetType {
-	case TargetTypeUnknown:
+	case TargetTypeNull:
 		if len(args) != 1 {
 			goto Err
 		}
@@ -179,7 +274,13 @@ func NewTarget(targetType TargetType, args ...interface{}) (Target, error) {
 		if !ok {
 			goto Err
 		}
-		return NewTargetUnknown(name), nil
+		return newTargetUnknown(name), nil
+	case TargetTypeAccept:
+		return newTargetAccept(), nil
+	case TargetTypeDrop:
+		return newTargetDrop(), nil
+	case TargetTypeReturn:
+		return newTargetReturn(), nil
 	case TargetTypeJumpChain:
 		if len(args) != 1 {
 			goto Err
@@ -188,7 +289,7 @@ func NewTarget(targetType TargetType, args ...interface{}) (Target, error) {
 		if !ok {
 			goto Err
 		}
-		return NewTargetJumpChain(chain), nil
+		return newTargetJumpChain(chain), nil
 	case TargetTypeGotoChain:
 		if len(args) != 1 {
 			goto Err
@@ -197,50 +298,154 @@ func NewTarget(targetType TargetType, args ...interface{}) (Target, error) {
 		if !ok {
 			goto Err
 		}
-		return NewTargetGotoChain(chain), nil
+		return newTargetGotoChain(chain), nil
+	case TargetTypeAudit:
+		return newTargetAudit(-1)
+	case TargetTypeCheckSum:
+		return newTargetCheckSum()
+	case TargetTypeClassify:
+		return newTargetClassify(-1, -1)
+	case TargetTypeClusterIP:
+		return newTargetClusterIP()
+	case TargetTypeConnMark:
+		return newTargetConnMark()
+	case TargetTypeConnSecMark:
+		return newTargetConnSecMark(-1)
+	case TargetTypeCT:
+		return newTargetCT()
+	case TargetTypeDNAT:
+		return newTargetDNAT()
+	case TargetTypeDNPT:
+		return newTargetDNPT()
+	case TargetTypeDSCP:
+		return newTargetDSCP()
+	case TargetTypeECN:
+		return newTargetECN()
+	case TargetTypeHL:
+		return newTargetHL()
+	case TargetTypeHMark:
+		return newTargetHMark()
+	case TargetTypeIdleTimer:
+		return newTargetIdleTimer()
+	case TargetTypeLED:
+		return newTargetLED()
+	case TargetTypeLog:
+		return newTargetLog()
+	case TargetTypeMark:
+		return newTargetMark()
+	case TargetTypeMasquerade:
+		return newTargetMasquerade()
+	case TargetTypeNetmap:
+		return newTargetNetmap()
+	case TargetTypeNFLog:
+		return newTargetNFLog()
+	case TargetTypeNFQueue:
+		return newTargetNFQueue()
+	case TargetTypeRateEst:
+		return newTargetRateEst()
+	case TargetTypeRedirect:
+		return newTargetRedirect()
+	case TargetTypeReject:
+		return newTargetReject()
+	case TargetTypeSame:
+		return newTargetSame()
+	case TargetTypeSecMark:
+		return newTargetSecMark()
+	case TargetTypeSet:
+		return newTargetSet()
+	case TargetTypeSNAT:
+		return newTargetSNAT()
+	case TargetTypeSNPT:
+		return newTargetSNPT()
+	case TargetTypeSYNProxy:
+		return newTargetSYNProxy()
+	case TargetTypeTCPMSS:
+		return newTargetTCPMSS()
+	case TargetTypeTCPOptStrip:
+		return newTargetTCPOptStrip()
+	case TargetTypeTEE:
+		return newTargetTEE(nil)
+	case TargetTypeTOS:
+		return newTargetTOS()
+	case TargetTypeTProxy:
+		return newTargetTProxy()
+	case TargetTypeTrace:
+		return newTargetTrace()
+	case TargetTypeTTL:
+		return newTargetTTL()
+	case TargetTypeULog:
+		return newTargetULog()
+	default:
+		return newTargetEmpty()
 	}
 
 Err:
-	return nil, ErrArgs
+	return nil, xtables.ErrArgs
 }
 
 type baseTarget struct {
 	targetType TargetType
+	child      Target
 }
 
-func (bt baseTarget) Type() TargetType {
+func (bt *baseTarget) setChild(child Target) {
+	bt.child = child
+}
+func (bt *baseTarget) Type() TargetType {
 	return bt.targetType
 }
 
-func (bt baseTarget) Short() string {
+func (bt *baseTarget) Short() string {
+	if bt.child != nil {
+		return bt.child.Short()
+	}
 	return ""
 }
 
-func (bt baseTarget) Long() string {
-	return ""
-}
-
-func (bt baseTarget) ShortArgs() []string {
+func (bt *baseTarget) ShortArgs() []string {
+	if bt.child != nil {
+		return bt.child.ShortArgs()
+	}
 	return nil
 }
 
-func (bt baseTarget) LongArgs() []string {
-	return nil
+func (bt *baseTarget) Long() string {
+	return bt.Short()
 }
 
-func (bt baseTarget) Parse([]byte) (int, bool) {
-	return 0, false
+func (bt *baseTarget) LongArgs() []string {
+	return bt.ShortArgs()
+}
+
+func (bt *baseTarget) Parse([]byte) (int, bool) {
+	return 0, true
+}
+
+func (bt *baseTarget) Equal(tgt Target) bool {
+	return bt.Short() == tgt.Short()
+}
+
+type TargetEmpty struct {
+	*baseTarget
+}
+
+func newTargetEmpty() (*TargetEmpty, error) {
+	return &TargetEmpty{
+		baseTarget: &baseTarget{
+			targetType: TargetTypeEmpty,
+		},
+	}, nil
 }
 
 type TargetUnknown struct {
-	baseTarget
+	*baseTarget
 	unknown string
 }
 
-func NewTargetUnknown(unknown string) *TargetUnknown {
+func newTargetUnknown(unknown string) *TargetUnknown {
 	return &TargetUnknown{
-		baseTarget: baseTarget{
-			targetType: TargetTypeUnknown,
+		baseTarget: &baseTarget{
+			targetType: TargetTypeNull,
 		},
 		unknown: unknown,
 	}
@@ -251,7 +456,17 @@ func (tu *TargetUnknown) Unknown() string {
 }
 
 type TargetAccept struct {
-	baseTarget
+	*baseTarget
+}
+
+func newTargetAccept() *TargetAccept {
+	target := &TargetAccept{
+		baseTarget: &baseTarget{
+			targetType: TargetTypeAccept,
+		},
+	}
+	target.setChild(target)
+	return target
 }
 
 func (ta *TargetAccept) Short() string {
@@ -262,8 +477,26 @@ func (ta *TargetAccept) ShortArgs() []string {
 	return []string{"-j", "ACCEPT"}
 }
 
+func (ta *TargetAccept) Long() string {
+	return ta.Short()
+}
+
+func (ta *TargetAccept) LongArgs() []string {
+	return ta.ShortArgs()
+}
+
 type TargetDrop struct {
-	baseTarget
+	*baseTarget
+}
+
+func newTargetDrop() *TargetDrop {
+	target := &TargetDrop{
+		baseTarget: &baseTarget{
+			targetType: TargetTypeDrop,
+		},
+	}
+	target.setChild(target)
+	return target
 }
 
 func (ta *TargetDrop) Short() string {
@@ -271,11 +504,29 @@ func (ta *TargetDrop) Short() string {
 }
 
 func (ta *TargetDrop) ShortArgs() []string {
-	return []string{"-j", "ACCEPT"}
+	return []string{"-j", "DROP"}
+}
+
+func (ta *TargetDrop) Long() string {
+	return ta.Short()
+}
+
+func (ta *TargetDrop) LongArgs() []string {
+	return ta.ShortArgs()
 }
 
 type TargetReturn struct {
-	baseTarget
+	*baseTarget
+}
+
+func newTargetReturn() *TargetReturn {
+	target := &TargetReturn{
+		baseTarget: &baseTarget{
+			targetType: TargetTypeReturn,
+		},
+	}
+	target.setChild(target)
+	return target
 }
 
 func (ta *TargetReturn) Short() string {
@@ -286,18 +537,28 @@ func (ta *TargetReturn) ShortArgs() []string {
 	return []string{"-j", "RETURN"}
 }
 
+func (ta *TargetReturn) Long() string {
+	return ta.Short()
+}
+
+func (ta *TargetReturn) LongArgs() []string {
+	return ta.ShortArgs()
+}
+
 type TargetJumpChain struct {
-	baseTarget
+	*baseTarget
 	chain string
 }
 
-func NewTargetJumpChain(chain string) *TargetJumpChain {
-	return &TargetJumpChain{
-		baseTarget: baseTarget{
+func newTargetJumpChain(chain string) *TargetJumpChain {
+	target := &TargetJumpChain{
+		baseTarget: &baseTarget{
 			targetType: TargetTypeJumpChain,
 		},
 		chain: chain,
 	}
+	target.setChild(target)
+	return target
 }
 
 func (ta *TargetJumpChain) Short() string {
@@ -308,18 +569,28 @@ func (ta *TargetJumpChain) ShortArgs() []string {
 	return []string{"-j", ta.chain}
 }
 
+func (ta *TargetJumpChain) Long() string {
+	return ta.Short()
+}
+
+func (ta *TargetJumpChain) LongArgs() []string {
+	return ta.ShortArgs()
+}
+
 type TargetGotoChain struct {
-	baseTarget
+	*baseTarget
 	chain string
 }
 
-func NewTargetGotoChain(chain string) *TargetGotoChain {
-	return &TargetGotoChain{
-		baseTarget: baseTarget{
+func newTargetGotoChain(chain string) *TargetGotoChain {
+	target := &TargetGotoChain{
+		baseTarget: &baseTarget{
 			targetType: TargetTypeGotoChain,
 		},
 		chain: chain,
 	}
+	target.setChild(target)
+	return target
 }
 
 func (ta *TargetGotoChain) Short() string {
@@ -330,7 +601,28 @@ func (ta *TargetGotoChain) ShortArgs() []string {
 	return []string{"-g", ta.chain}
 }
 
-type AuditType uint8
+func (ta *TargetGotoChain) Long() string {
+	return ta.Short()
+}
+
+func (ta *TargetGotoChain) LongArgs() []string {
+	return ta.ShortArgs()
+}
+
+type AuditType int8
+
+func (auditType AuditType) String() string {
+	switch auditType {
+	case AuditAccept:
+		return "accetp"
+	case AuditDrop:
+		return "drop"
+	case AuditReject:
+		return "reject"
+	default:
+		return ""
+	}
+}
 
 const (
 	_ AuditType = iota
@@ -340,22 +632,39 @@ const (
 )
 
 // Set type of audit record.
-func NewTargetAudit(typ AuditType) (*TargetAudit, error) {
-	return &TargetAudit{
-		baseTarget: baseTarget{
+func newTargetAudit(typ AuditType) (*TargetAudit, error) {
+	target := &TargetAudit{
+		baseTarget: &baseTarget{
 			targetType: TargetTypeAudit,
 		},
-		Type: typ,
-	}, nil
+		AuditType: typ,
+	}
+	target.setChild(target)
+	return target, nil
 }
 
 type TargetAudit struct {
-	baseTarget
-	Type AuditType
+	*baseTarget
+	AuditType AuditType
 }
 
 func (tAudit *TargetAudit) Short() string {
-	return fmt.Sprintf("%v", tAudit.Type)
+	return strings.Join(tAudit.ShortArgs(), " ")
+}
+
+func (tAudit *TargetAudit) ShortArgs() []string {
+	args := make([]string, 0, 4)
+	args = append(args, "-j", tAudit.targetType.String())
+	args = append(args, "--type", tAudit.AuditType.String())
+	return args
+}
+
+func (tAudit *TargetAudit) Long() string {
+	return tAudit.Short()
+}
+
+func (tAudit *TargetAudit) LongArgs() []string {
+	return tAudit.ShortArgs()
 }
 
 func (tAudit *TargetAudit) Parse(main []byte) (int, bool) {
@@ -370,11 +679,11 @@ func (tAudit *TargetAudit) Parse(main []byte) (int, bool) {
 	if len(matches[1]) != 0 {
 		switch string(matches[1]) {
 		case "accept":
-			tAudit.Type = AuditAccept
+			tAudit.AuditType = AuditAccept
 		case "drop":
-			tAudit.Type = AuditDrop
+			tAudit.AuditType = AuditDrop
 		case "reject":
-			tAudit.Type = AuditReject
+			tAudit.AuditType = AuditReject
 		}
 	}
 	return len(matches[0]), true
@@ -382,19 +691,39 @@ func (tAudit *TargetAudit) Parse(main []byte) (int, bool) {
 
 // This target allows to selectively work around broken/old applications.
 // Compute and fill in the checksum in a packet that lacks a checksum.
-func NewTargetCheckSum() (*TargetChecksum, error) {
+func newTargetCheckSum() (*TargetChecksum, error) {
 	target := &TargetChecksum{
-		baseTarget: baseTarget{
+		baseTarget: &baseTarget{
 			targetType: TargetTypeCheckSum,
 		},
 		Fill: true,
 	}
+	target.setChild(target)
 	return target, nil
 }
 
 type TargetChecksum struct {
-	baseTarget
+	*baseTarget
 	Fill bool
+}
+
+func (tChecksum *TargetChecksum) Short() string {
+	return strings.Join(tChecksum.ShortArgs(), " ")
+}
+
+func (tChecksum *TargetChecksum) ShortArgs() []string {
+	args := make([]string, 0, 3)
+	args = append(args, "-j", tChecksum.targetType.String())
+	args = append(args, "--checksum-fill")
+	return args
+}
+
+func (tChecksum *TargetChecksum) Long() string {
+	return tChecksum.Short()
+}
+
+func (tChecksum *TargetChecksum) LongArgs() []string {
+	return tChecksum.ShortArgs()
 }
 
 func (tChecksum *TargetChecksum) Parse(main []byte) (int, bool) {
@@ -411,20 +740,42 @@ func (tChecksum *TargetChecksum) Parse(main []byte) (int, bool) {
 }
 
 // This option takes major and minor of class value
-func NewTargetClassify(major, minor int) (*TargetClassify, error) {
-	return &TargetClassify{
-		baseTarget: baseTarget{
+func newTargetClassify(major, minor int) (*TargetClassify, error) {
+	target := &TargetClassify{
+		baseTarget: &baseTarget{
 			targetType: TargetTypeClassify,
 		},
 		Major: major,
 		Minor: minor,
-	}, nil
+	}
+	target.setChild(target)
+	return target, nil
 }
 
 type TargetClassify struct {
-	baseTarget
+	*baseTarget
 	Major int
 	Minor int
+}
+
+func (tClassify *TargetClassify) Short() string {
+	return strings.Join(tClassify.ShortArgs(), " ")
+}
+
+func (tClassify *TargetClassify) ShortArgs() []string {
+	args := make([]string, 0, 4)
+	args = append(args, "-j", tClassify.targetType.String())
+	args = append(args, "--set-class",
+		strconv.Itoa(tClassify.Minor)+":"+strconv.Itoa(tClassify.Major))
+	return args
+}
+
+func (tClassify *TargetClassify) Long() string {
+	return tClassify.Short()
+}
+
+func (tClassify *TargetClassify) LongArgs() []string {
+	return tClassify.ShortArgs()
 }
 
 func (tClassify *TargetClassify) Parse(main []byte) (int, bool) {
@@ -450,7 +801,20 @@ func (tClassify *TargetClassify) Parse(main []byte) (int, bool) {
 	return len(matches[0]), true
 }
 
-type ClusterIPHashMode uint8
+type ClusterIPHashMode int8
+
+func (clusterIPHashMode ClusterIPHashMode) String() string {
+	switch clusterIPHashMode {
+	case ClusterIPHashModeSrcIP:
+		return "sourceip"
+	case ClusterIPHashModeSrcIPSrcPort:
+		return "sourceip-sourceport"
+	case ClusterIPHashModeSrcIPSrcPortDstPort:
+		return "sourceip-sourceport-destport"
+	default:
+		return ""
+	}
+}
 
 const (
 	_ ClusterIPHashMode = iota
@@ -503,11 +867,12 @@ func WithTargetClusterIPHashInit(hashInit int) OptionTargetClusterIP {
 	}
 }
 
-func NewTargetClusterIP(opts ...OptionTargetClusterIP) (*TargetClusterIP, error) {
+func newTargetClusterIP(opts ...OptionTargetClusterIP) (*TargetClusterIP, error) {
 	target := &TargetClusterIP{
-		baseTarget: baseTarget{
+		baseTarget: &baseTarget{
 			targetType: TargetTypeClusterIP,
 		},
+		HashMode:   -1,
 		TotalNodes: -1,
 		LocalNode:  -1,
 		HashInit:   -1,
@@ -515,18 +880,58 @@ func NewTargetClusterIP(opts ...OptionTargetClusterIP) (*TargetClusterIP, error)
 	for _, opt := range opts {
 		opt(target)
 	}
+	target.setChild(target)
 	return target, nil
 }
 
 // IPv4 specific
 type TargetClusterIP struct {
-	baseTarget
+	*baseTarget
 	New        bool
 	HashMode   ClusterIPHashMode
 	Mac        net.HardwareAddr
 	TotalNodes int
 	LocalNode  int
 	HashInit   int // randon seed
+}
+
+func (tClusterIP *TargetClusterIP) Short() string {
+	return strings.Join(tClusterIP.ShortArgs(), " ")
+}
+
+func (tClusterIP *TargetClusterIP) ShortArgs() []string {
+	args := make([]string, 0, 13)
+	args = append(args, "-j", tClusterIP.targetType.String())
+	if tClusterIP.New {
+		args = append(args, "--new")
+	}
+	if tClusterIP.HashMode > -1 {
+		args = append(args, "--hashmode", tClusterIP.HashMode.String())
+	}
+	if tClusterIP.Mac != nil {
+		args = append(args, "--clustermac", tClusterIP.Mac.String())
+	}
+	if tClusterIP.TotalNodes > -1 {
+		args = append(args, "--total-nodes",
+			strconv.Itoa(tClusterIP.TotalNodes))
+	}
+	if tClusterIP.LocalNode > -1 {
+		args = append(args, "--local-node",
+			strconv.Itoa(tClusterIP.LocalNode))
+	}
+	if tClusterIP.HashInit > -1 {
+		args = append(args, "--hash-init",
+			strconv.Itoa(tClusterIP.HashInit))
+	}
+	return args
+}
+
+func (tClusterIP *TargetClusterIP) Long() string {
+	return tClusterIP.Short()
+}
+
+func (tClusterIP *TargetClusterIP) LongArgs() []string {
+	return tClusterIP.ShortArgs()
 }
 
 func (tClusterIP *TargetClusterIP) Parse(main []byte) (int, bool) {
@@ -586,7 +991,7 @@ func (tClusterIP *TargetClusterIP) Parse(main []byte) (int, bool) {
 	return len(matches[0]), true
 }
 
-type TargetConnMarkMode uint8
+type TargetConnMarkMode int8
 
 const (
 	_ TargetConnMarkMode = iota
@@ -686,11 +1091,12 @@ func WithTargetConnMarkXor(mark int) OptionTargetConnMark {
 	}
 }
 
-func NewTargetConnMark(opts ...OptionTargetConnMark) (*TargetConnMark, error) {
+func newTargetConnMark(opts ...OptionTargetConnMark) (*TargetConnMark, error) {
 	target := &TargetConnMark{
-		baseTarget: baseTarget{
+		baseTarget: &baseTarget{
 			targetType: TargetTypeConnMark,
 		},
+		Mode:   -1,
 		CTMark: -1,
 		CTMask: -1,
 		NFMask: -1,
@@ -698,15 +1104,72 @@ func NewTargetConnMark(opts ...OptionTargetConnMark) (*TargetConnMark, error) {
 	for _, opt := range opts {
 		opt(target)
 	}
+	target.setChild(target)
 	return target, nil
 }
 
 type TargetConnMark struct {
-	baseTarget
+	*baseTarget
 	Mode   TargetConnMarkMode
 	CTMark int
 	CTMask int
 	NFMask int
+}
+
+func (tConnMark *TargetConnMark) Short() string {
+	return strings.Join(tConnMark.ShortArgs(), " ")
+}
+
+func (tConnMark *TargetConnMark) ShortArgs() []string {
+	args := make([]string, 0, 8)
+	args = append(args, "-j", tConnMark.targetType.String())
+	switch tConnMark.Mode {
+	case TargetConnMarkModeXSET:
+		if tConnMark.CTMask > -1 {
+			args = append(args, "--set-xmark",
+				strconv.Itoa(tConnMark.CTMark)+"/"+strconv.Itoa(tConnMark.CTMask))
+		} else {
+			args = append(args, "--set-xmark", strconv.Itoa(tConnMark.CTMark))
+		}
+	case TargetConnMarkModeSAVE:
+		args = append(args, "--save-mark")
+		if tConnMark.NFMask > -1 && tConnMark.CTMask > -1 {
+			args = append(args, "--nfmask", strconv.Itoa(tConnMark.NFMask))
+			args = append(args, "--ctmask", strconv.Itoa(tConnMark.CTMask))
+		} else if tConnMark.CTMask > -1 {
+			args = append(args, "--mask", strconv.Itoa(tConnMark.CTMask))
+		}
+	case TargetConnMarkModeRESTORE:
+		args = append(args, "--restore-mark")
+		if tConnMark.NFMask > -1 && tConnMark.CTMask > -1 {
+			args = append(args, "--nfmask", strconv.Itoa(tConnMark.NFMask))
+			args = append(args, "--ctmask", strconv.Itoa(tConnMark.CTMask))
+		} else if tConnMark.CTMask > -1 {
+			args = append(args, "--mask", strconv.Itoa(tConnMark.CTMask))
+		}
+	case TargetConnMarkModeAND:
+		args = append(args, "--and-mark", strconv.Itoa(tConnMark.CTMark))
+	case TargetConnMarkModeOR:
+		args = append(args, "--or-mark", strconv.Itoa(tConnMark.CTMark))
+	case TargetConnMarkModeXOR:
+		args = append(args, "--xor-mark", strconv.Itoa(tConnMark.CTMark))
+	case TargetConnMarkModeSET:
+		if tConnMark.CTMask > -1 {
+			args = append(args, "--set-mark",
+				strconv.Itoa(tConnMark.CTMark)+"/"+strconv.Itoa(tConnMark.CTMask))
+		} else {
+			args = append(args, "--set-mark", strconv.Itoa(tConnMark.CTMark))
+		}
+	}
+	return args
+}
+
+func (tConnMark *TargetConnMark) Long() string {
+	return tConnMark.Short()
+}
+
+func (tConnMark *TargetConnMark) LongArgs() []string {
+	return tConnMark.ShortArgs()
 }
 
 func (tConnMark *TargetConnMark) Parse(main []byte) (int, bool) {
@@ -837,7 +1300,7 @@ func (tConnMark *TargetConnMark) Parse(main []byte) (int, bool) {
 	return len(matches[0]), true
 }
 
-type TargetConnSecMarkMode uint8
+type TargetConnSecMarkMode int8
 
 const (
 	_ TargetConnSecMarkMode = iota
@@ -845,19 +1308,44 @@ const (
 	TargetConnSecMarkModeRESTORE
 )
 
-func NewTargetConnSecMark(mode TargetConnSecMarkMode) (*TargetConnSecMark, error) {
+func newTargetConnSecMark(mode TargetConnSecMarkMode) (*TargetConnSecMark, error) {
 	target := &TargetConnSecMark{
-		baseTarget: baseTarget{
+		baseTarget: &baseTarget{
 			targetType: TargetTypeConnSecMark,
 		},
 		Mode: mode,
 	}
+	target.setChild(target)
 	return target, nil
 }
 
 type TargetConnSecMark struct {
-	baseTarget
+	*baseTarget
 	Mode TargetConnSecMarkMode
+}
+
+func (tConnSecMark *TargetConnSecMark) Short() string {
+	return strings.Join(tConnSecMark.ShortArgs(), " ")
+}
+
+func (tConnSecMark *TargetConnSecMark) ShortArgs() []string {
+	args := make([]string, 0, 4)
+	args = append(args, "-j", tConnSecMark.targetType.String())
+	switch tConnSecMark.Mode {
+	case TargetConnSecMarkModeSAVE:
+		args = append(args, "--save")
+	case TargetConnSecMarkModeRESTORE:
+		args = append(args, "--restore")
+	}
+	return args
+}
+
+func (tConnSecMark *TargetConnSecMark) Long() string {
+	return tConnSecMark.Short()
+}
+
+func (tConnSecMark *TargetConnSecMark) LongArgs() []string {
+	return tConnSecMark.ShortArgs()
 }
 
 func (tConnSecMark *TargetConnSecMark) Parse(main []byte) (int, bool) {
@@ -878,6 +1366,37 @@ func (tConnSecMark *TargetConnSecMark) Parse(main []byte) (int, bool) {
 
 type CTEvent uint8
 
+func (ctEvent CTEvent) String() string {
+	switch ctEvent {
+	case CTEventNEW:
+		return "new"
+	case CTEventRELATED:
+		return "related"
+	case CTEventDESTROY:
+		return "destroy"
+	case CTEventREPLY:
+		return "reply"
+	case CTEventASSURED:
+		return "assured"
+	case CTEventPROTOINFO:
+		return "protoinfo"
+	case CTEventHELPER:
+		return "helper"
+	case CTEventMARK:
+		return "mark"
+	case CTEventSEQADJ:
+		return "natseqinfo"
+	case CTEventSECMARK:
+		return "secmark"
+	case CTEventLABEL:
+		return "label"
+	case CTEventSYNPROXY:
+		return "synproxy"
+	default:
+		return ""
+	}
+}
+
 const (
 	CTEventNEW CTEvent = iota
 	CTEventRELATED
@@ -896,12 +1415,23 @@ const (
 
 type CTExpectEvent uint8
 
+func (ctExpectEvent CTExpectEvent) String() string {
+	switch ctExpectEvent {
+	case CTExpectEventNEW:
+		return "new"
+	case CTExpectEventDESTORY:
+		return "destroy"
+	default:
+		return ""
+	}
+}
+
 const (
 	CTExpectEventNEW CTExpectEvent = iota
 	CTExpectEventDESTORY
 )
 
-type CTZone uint8
+type CTZone int8
 
 const (
 	CTZoneOrig CTZone = 1 << iota
@@ -912,9 +1442,9 @@ const (
 type OptionTargetCT func(*TargetCT)
 
 // Disables connection tracking for this packet.
-func WithTargetCT(yes bool) OptionTargetCT {
+func WithTargetCTNoTrack() OptionTargetCT {
 	return func(tCT *TargetCT) {
-		tCT.NoTrack = !yes
+		tCT.NoTrack = true
 	}
 }
 
@@ -994,20 +1524,22 @@ func WithTargetCTTimeout(timeout string) OptionTargetCT {
 	}
 }
 
-func NewTargetCT(opts ...OptionTargetCT) (*TargetCT, error) {
+func newTargetCT(opts ...OptionTargetCT) (*TargetCT, error) {
 	target := &TargetCT{
-		baseTarget: baseTarget{
+		baseTarget: &baseTarget{
 			targetType: TargetTypeCT,
 		},
+		ZoneID: -1,
 	}
 	for _, opt := range opts {
 		opt(target)
 	}
+	target.setChild(target)
 	return target, nil
 }
 
 type TargetCT struct {
-	baseTarget
+	*baseTarget
 	NoTrack      bool
 	Helper       string
 	Timeout      string
@@ -1016,6 +1548,65 @@ type TargetCT struct {
 	Zone         CTZone
 	ZoneID       int
 	Mark         bool
+}
+
+func (tCT *TargetCT) Short() string {
+	return strings.Join(tCT.ShortArgs(), " ")
+}
+
+func (tCT *TargetCT) ShortArgs() []string {
+	args := make([]string, 0, 17)
+	args = append(args, "-j", tCT.targetType.String())
+	if tCT.NoTrack {
+		args = append(args, "--notrack")
+	}
+	if tCT.Helper != "" {
+		args = append(args, "--helper", tCT.Helper)
+	}
+	if tCT.Events != nil && len(tCT.Events) > 0 {
+		events := ""
+		sep := ""
+		for _, event := range tCT.Events {
+			events += sep + event.String()
+			sep = ","
+		}
+		args = append(args, "--ctevents", events)
+	}
+	if tCT.ExpectEvents != nil && len(tCT.ExpectEvents) > 0 {
+		events := ""
+		sep := ""
+		for _, event := range tCT.ExpectEvents {
+			events += sep + event.String()
+			sep = ","
+		}
+		args = append(args, "--expevents", events)
+	}
+	switch tCT.Zone {
+	case CTZoneOrig:
+		if tCT.Mark {
+			args = append(args, "--zone-orig", "mark")
+		} else {
+			args = append(args, "--zone-orig", strconv.Itoa(tCT.ZoneID))
+		}
+	case CTZoneReply:
+		if tCT.Mark {
+			args = append(args, "--zone-reply", "mark")
+		} else {
+			args = append(args, "--zone-reply", strconv.Itoa(tCT.ZoneID))
+		}
+	}
+	if tCT.Timeout != "" {
+		args = append(args, "--timeout", tCT.Timeout)
+	}
+	return args
+}
+
+func (tCT *TargetCT) Long() string {
+	return tCT.Short()
+}
+
+func (tCT *TargetCT) LongArgs() []string {
+	return tCT.ShortArgs()
 }
 
 func (tCT *TargetCT) Parse(main []byte) (int, bool) {
@@ -1114,8 +1705,17 @@ func (tCT *TargetCT) Parse(main []byte) (int, bool) {
 
 type OptionTargetDNAT func(*TargetDNAT)
 
+func WithTargetDNATToAddr(addr network.Address, port int) OptionTargetDNAT {
+	return func(tDNAT *TargetDNAT) {
+		tDNAT.AddrMin = addr
+		tDNAT.AddrMax = nil
+		tDNAT.PortMin = port
+		tDNAT.PortMax = -1
+	}
+}
+
 // To set addr nil or port -1 means empty.
-func WithTargetDNATToAddr(addrMin, addrMax *Address, portMin, portMax int) OptionTargetDNAT {
+func WithTargetDNATToAddrs(addrMin, addrMax network.Address, portMin, portMax int) OptionTargetDNAT {
 	return func(tDNAT *TargetDNAT) {
 		tDNAT.AddrMin = addrMin
 		tDNAT.AddrMax = addrMax
@@ -1136,9 +1736,9 @@ func WithTargetDNATPersistent() OptionTargetDNAT {
 	}
 }
 
-func NewTargetDNAT(opts ...OptionTargetDNAT) (*TargetDNAT, error) {
+func newTargetDNAT(opts ...OptionTargetDNAT) (*TargetDNAT, error) {
 	target := &TargetDNAT{
-		baseTarget: baseTarget{
+		baseTarget: &baseTarget{
 			targetType: TargetTypeDNAT,
 		},
 		PortMin:  -1,
@@ -1148,18 +1748,56 @@ func NewTargetDNAT(opts ...OptionTargetDNAT) (*TargetDNAT, error) {
 	for _, opt := range opts {
 		opt(target)
 	}
+	target.setChild(target)
 	return target, nil
 }
 
 type TargetDNAT struct {
-	baseTarget
-	AddrMin    *Address
-	AddrMax    *Address
+	*baseTarget
+	AddrMin    network.Address
+	AddrMax    network.Address
 	PortMin    int
 	PortMax    int
 	PortBase   int
 	Random     bool
 	Persistent bool
+}
+
+func (tDNAT *TargetDNAT) Short() string {
+	return strings.Join(tDNAT.ShortArgs(), " ")
+}
+
+func (tDNAT *TargetDNAT) ShortArgs() []string {
+	args := make([]string, 0, 6)
+	args = append(args, "-j", tDNAT.targetType.String())
+	if tDNAT.AddrMin != nil {
+		dst := tDNAT.AddrMin.String()
+		if tDNAT.AddrMax != nil {
+			dst += "-" + tDNAT.AddrMax.String()
+		}
+		if tDNAT.PortMin > -1 {
+			dst += ":" + strconv.Itoa(tDNAT.PortMin)
+		}
+		if tDNAT.PortMax > -1 {
+			dst += "-" + strconv.Itoa(tDNAT.PortMax)
+		}
+		args = append(args, "--to-destination", dst)
+	}
+	if tDNAT.Random {
+		args = append(args, "--random")
+	}
+	if tDNAT.Persistent {
+		args = append(args, "--persistent")
+	}
+	return args
+}
+
+func (tDNAT *TargetDNAT) Long() string {
+	return tDNAT.Short()
+}
+
+func (tDNAT *TargetDNAT) LongArgs() []string {
+	return tDNAT.ShortArgs()
 }
 
 func (tDNAT *TargetDNAT) Parse(main []byte) (int, bool) {
@@ -1179,14 +1817,14 @@ func (tDNAT *TargetDNAT) Parse(main []byte) (int, bool) {
 		return 0, false
 	}
 	if len(matches[2]) != 0 {
-		addr, err := ParseAddress(string(matches[2]))
+		addr, err := network.ParseAddress(string(matches[2]))
 		if err != nil {
 			return 0, false
 		}
 		tDNAT.AddrMin = addr
 	}
 	if len(matches[5]) != 0 {
-		addr, err := ParseAddress(string(matches[5]))
+		addr, err := network.ParseAddress(string(matches[5]))
 		if err != nil {
 			return 0, false
 		}
@@ -1236,23 +1874,48 @@ func WithTargetDNPTDstPrefix(prefix *net.IPNet) OptionTargetDNPT {
 	}
 }
 
-func NewTargetDNPT(opts ...OptionTargetDNPT) (*TargetDNPT, error) {
+func newTargetDNPT(opts ...OptionTargetDNPT) (*TargetDNPT, error) {
 	target := &TargetDNPT{
-		baseTarget: baseTarget{
+		baseTarget: &baseTarget{
 			targetType: TargetTypeDNPT,
 		},
 	}
 	for _, opt := range opts {
 		opt(target)
 	}
+	target.setChild(target)
 	return target, nil
 }
 
 // IPv6 specific
 type TargetDNPT struct {
-	baseTarget
+	*baseTarget
 	SrcPrefix *net.IPNet
 	DstPrefix *net.IPNet
+}
+
+func (tDNPT *TargetDNPT) Short() string {
+	return strings.Join(tDNPT.ShortArgs(), " ")
+}
+
+func (tDNPT *TargetDNPT) ShortArgs() []string {
+	args := make([]string, 0, 6)
+	args = append(args, "-j", tDNPT.targetType.String())
+	if tDNPT.SrcPrefix != nil {
+		args = append(args, "--src-pfx", tDNPT.SrcPrefix.String())
+	}
+	if tDNPT.DstPrefix != nil {
+		args = append(args, "--dst-pfx", tDNPT.DstPrefix.String())
+	}
+	return args
+}
+
+func (tDNPT *TargetDNPT) Long() string {
+	return tDNPT.Short()
+}
+
+func (tDNPT *TargetDNPT) LongArgs() []string {
+	return tDNPT.ShortArgs()
 }
 
 func (tDNPT *TargetDNPT) Parse(main []byte) (int, bool) {
@@ -1285,33 +1948,53 @@ func (tDNPT *TargetDNPT) Parse(main []byte) (int, bool) {
 type OptionTargetDSCP func(*TargetDSCP)
 
 // Target against a numeric value [0-63].
-func WithTargetDSCPValue(yes bool, value int) OptionTargetDSCP {
+func WithTargetDSCPValue(value int) OptionTargetDSCP {
 	return func(mDSCP *TargetDSCP) {
 		mDSCP.Value = value
 	}
 }
 
-func WithTargetDSCPClass(yes bool, class DSCPClass) OptionTargetDSCP {
+func WithTargetDSCPClass(class DSCPClass) OptionTargetDSCP {
 	return func(mDSCP *TargetDSCP) {
 		mDSCP.Value = int(class)
 	}
 }
 
-func NewTargetDSCP(opts ...OptionTargetDSCP) (*TargetDSCP, error) {
+func newTargetDSCP(opts ...OptionTargetDSCP) (*TargetDSCP, error) {
 	target := &TargetDSCP{
-		baseTarget: baseTarget{
+		baseTarget: &baseTarget{
 			targetType: TargetTypeDSCP,
 		},
 	}
 	for _, opt := range opts {
 		opt(target)
 	}
+	target.setChild(target)
 	return target, nil
 }
 
 type TargetDSCP struct {
-	baseTarget
+	*baseTarget
 	Value int
+}
+
+func (tDSCP *TargetDSCP) Short() string {
+	return strings.Join(tDSCP.ShortArgs(), " ")
+}
+
+func (tDSCP *TargetDSCP) ShortArgs() []string {
+	args := make([]string, 0, 4)
+	args = append(args, "-j", tDSCP.targetType.String())
+	args = append(args, "--set-dscp", strconv.Itoa(tDSCP.Value))
+	return args
+}
+
+func (tDSCP *TargetDSCP) Long() string {
+	return tDSCP.Short()
+}
+
+func (tDSCP *TargetDSCP) LongArgs() []string {
+	return tDSCP.ShortArgs()
 }
 
 func (tDSCP *TargetDSCP) Parse(main []byte) (int, bool) {
@@ -1339,22 +2022,44 @@ func WithTargetECNRemove() OptionTargetECN {
 	}
 }
 
-func NewTargetECN(opts ...OptionTargetECN) (*TargetECN, error) {
+func newTargetECN(opts ...OptionTargetECN) (*TargetECN, error) {
 	target := &TargetECN{
-		baseTarget: baseTarget{
+		baseTarget: &baseTarget{
 			targetType: TargetTypeECN,
 		},
 	}
 	for _, opt := range opts {
 		opt(target)
 	}
+	target.setChild(target)
 	return target, nil
 }
 
 // IPv4 specific
 type TargetECN struct {
-	baseTarget
+	*baseTarget
 	TCPRemove bool
+}
+
+func (tECN *TargetECN) Short() string {
+	return strings.Join(tECN.ShortArgs(), " ")
+}
+
+func (tECN *TargetECN) ShortArgs() []string {
+	args := make([]string, 0, 3)
+	args = append(args, "-j", tECN.targetType.String())
+	if tECN.TCPRemove {
+		args = append(args, "--ecn-tcp-remove")
+	}
+	return args
+}
+
+func (tECN *TargetECN) Long() string {
+	return tECN.Short()
+}
+
+func (tECN *TargetECN) LongArgs() []string {
+	return tECN.ShortArgs()
 }
 
 func (tECN *TargetECN) Parse(main []byte) (int, bool) {
@@ -1375,42 +2080,69 @@ type OptionTargetHL func(*TargetHL)
 
 func WithTargetHLSet(value int) OptionTargetHL {
 	return func(tHL *TargetHL) {
-		tHL.Operator = OperatorSET
+		tHL.Operator = xtables.OperatorSET
 		tHL.Value = value
 	}
 }
 
 func WithTargetHLDec(value int) OptionTargetHL {
 	return func(tHL *TargetHL) {
-		tHL.Operator = OperatorDEC
+		tHL.Operator = xtables.OperatorDEC
 		tHL.Value = value
 	}
 }
 
 func WithTargetHLInc(value int) OptionTargetHL {
 	return func(tHL *TargetHL) {
-		tHL.Operator = OperatorINC
+		tHL.Operator = xtables.OperatorINC
 		tHL.Value = value
 	}
 }
 
-func NewTargetHL(opts ...OptionTargetHL) (*TargetHL, error) {
+func newTargetHL(opts ...OptionTargetHL) (*TargetHL, error) {
 	target := &TargetHL{
-		baseTarget: baseTarget{
+		baseTarget: &baseTarget{
 			targetType: TargetTypeHL,
 		},
 	}
 	for _, opt := range opts {
 		opt(target)
 	}
+	target.setChild(target)
 	return target, nil
 }
 
 // IPv6 specific
 type TargetHL struct {
-	baseTarget
-	Operator Operator
+	*baseTarget
+	Operator xtables.Operator
 	Value    int
+}
+
+func (tHL *TargetHL) Short() string {
+	return strings.Join(tHL.ShortArgs(), " ")
+}
+
+func (tHL *TargetHL) ShortArgs() []string {
+	args := make([]string, 0, 4)
+	args = append(args, "-j", tHL.targetType.String())
+	switch tHL.Operator {
+	case xtables.OperatorSET:
+		args = append(args, "--hl-set", strconv.Itoa(tHL.Value))
+	case xtables.OperatorDEC:
+		args = append(args, "--hl-dec", strconv.Itoa(tHL.Value))
+	case xtables.OperatorINC:
+		args = append(args, "--hl-inc", strconv.Itoa(tHL.Value))
+	}
+	return args
+}
+
+func (tHL *TargetHL) Long() string {
+	return tHL.Short()
+}
+
+func (tHL *TargetHL) LongArgs() []string {
+	return tHL.ShortArgs()
 }
 
 func (tHL *TargetHL) Parse(main []byte) (int, bool) {
@@ -1425,13 +2157,13 @@ func (tHL *TargetHL) Parse(main []byte) (int, bool) {
 		return 0, false
 	}
 	if len(matches[1]) != 0 {
-		tHL.Operator = OperatorSET
+		tHL.Operator = xtables.OperatorSET
 	}
 	if len(matches[2]) != 0 {
-		tHL.Operator = OperatorDEC
+		tHL.Operator = xtables.OperatorDEC
 	}
 	if len(matches[3]) != 0 {
-		tHL.Operator = OperatorINC
+		tHL.Operator = xtables.OperatorINC
 	}
 	value, err := strconv.Atoi(string(matches[4]))
 	if err != nil {
@@ -1441,7 +2173,26 @@ func (tHL *TargetHL) Parse(main []byte) (int, bool) {
 	return len(matches[0]), true
 }
 
-type HMarkTuple uint8
+type HMarkTuple int8
+
+func (tuple HMarkTuple) String() string {
+	switch tuple {
+	case HMarkTupleSrc:
+		return "src"
+	case HMarkTupleDst:
+		return "dst"
+	case HMarkTupleSport:
+		return "sport"
+	case HMarkTupleDport:
+		return "dport"
+	case HMarkTupleSPI:
+		return "spi"
+	case HMarkTupleCT:
+		return "ct"
+	default:
+		return ""
+	}
+}
 
 const (
 	HMarkTupleSrc HMarkTuple = 1 << iota
@@ -1523,13 +2274,14 @@ func WithTargetHMarkRandom(rnd int) OptionTargetHMark {
 	}
 }
 
-func NewTargetHMark(opts ...OptionTargetHMark) (*TargetHMark, error) {
+func newTargetHMark(opts ...OptionTargetHMark) (*TargetHMark, error) {
 	target := &TargetHMark{
-		baseTarget: baseTarget{
+		baseTarget: &baseTarget{
 			targetType: TargetTypeHMark,
 		},
 		Modulus:     -1,
 		Offset:      -1,
+		Tuple:       -1,
 		SrcPrefix:   -1,
 		DstPrefix:   -1,
 		SrcPortMask: -1,
@@ -1544,11 +2296,12 @@ func NewTargetHMark(opts ...OptionTargetHMark) (*TargetHMark, error) {
 	for _, opt := range opts {
 		opt(target)
 	}
+	target.setChild(target)
 	return target, nil
 }
 
 type TargetHMark struct {
-	baseTarget
+	*baseTarget
 	Modulus     int
 	Offset      int
 	Tuple       HMarkTuple
@@ -1562,6 +2315,54 @@ type TargetHMark struct {
 	SPI         int
 	ProtoMask   int
 	Random      int
+}
+
+func (tHMark *TargetHMark) Short() string {
+	return strings.Join(tHMark.ShortArgs(), " ")
+}
+
+func (tHMark *TargetHMark) ShortArgs() []string {
+	args := make([]string, 0, 22)
+	args = append(args, "-j", tHMark.targetType.String())
+	if tHMark.Tuple > -1 {
+		args = append(args, "--hmark-tuple", tHMark.Tuple.String())
+	}
+	if tHMark.Modulus > -1 {
+		args = append(args, "--hmark-mod", strconv.Itoa(tHMark.Modulus))
+	}
+	if tHMark.Offset > -1 {
+		args = append(args, "--hmark-offset", strconv.Itoa(tHMark.Offset))
+	}
+	if tHMark.SrcPrefix > -1 {
+		args = append(args, "--hmark-src-prefix", strconv.Itoa(tHMark.SrcPrefix))
+	}
+	if tHMark.DstPrefix > -1 {
+		args = append(args, "--hmark-dst-prefix", strconv.Itoa(tHMark.DstPrefix))
+	}
+	if tHMark.SrcPortMask > -1 {
+		args = append(args, "--hmark-sport-mask", strconv.Itoa(tHMark.SrcPortMask))
+	}
+	if tHMark.DstPortMask > -1 {
+		args = append(args, "--hmark-dport-mask", strconv.Itoa(tHMark.DstPortMask))
+	}
+	if tHMark.SPI > -1 {
+		args = append(args, "--hmark-spi-mask", strconv.Itoa(tHMark.SPI))
+	}
+	if tHMark.ProtoMask > -1 {
+		args = append(args, "--hmark-proto-mask", strconv.Itoa(tHMark.ProtoMask))
+	}
+	if tHMark.Random > -1 {
+		args = append(args, "--hmark-proto-mask", strconv.Itoa(tHMark.ProtoMask))
+	}
+	return args
+}
+
+func (tHMark *TargetHMark) Long() string {
+	return tHMark.Short()
+}
+
+func (tHMark *TargetHMark) LongArgs() []string {
+	return tHMark.ShortArgs()
 }
 
 func (tHMark *TargetHMark) Parse(main []byte) (int, bool) {
@@ -1706,9 +2507,9 @@ func WithTargetIdleTimerLabel(label string) OptionTargetIdleTimer {
 	}
 }
 
-func NewTargetIdleTimer(opts ...OptionTargetIdleTimer) (*TargetIdleTimer, error) {
+func newTargetIdleTimer(opts ...OptionTargetIdleTimer) (*TargetIdleTimer, error) {
 	target := &TargetIdleTimer{
-		baseTarget: baseTarget{
+		baseTarget: &baseTarget{
 			targetType: TargetTypeIdleTimer,
 		},
 		Timeout: -1,
@@ -1716,14 +2517,39 @@ func NewTargetIdleTimer(opts ...OptionTargetIdleTimer) (*TargetIdleTimer, error)
 	for _, opt := range opts {
 		opt(target)
 	}
+	target.setChild(target)
 	return target, nil
 }
 
 type TargetIdleTimer struct {
-	baseTarget
+	*baseTarget
 	Timeout int
 	Label   string
 	Alarm   bool
+}
+
+func (tIdleTimer *TargetIdleTimer) Short() string {
+	return strings.Join(tIdleTimer.ShortArgs(), " ")
+}
+
+func (tIdleTimer *TargetIdleTimer) ShortArgs() []string {
+	args := make([]string, 0, 6)
+	args = append(args, "-j", tIdleTimer.targetType.String())
+	if tIdleTimer.Timeout > -1 {
+		args = append(args, "--timeout", strconv.Itoa(tIdleTimer.Timeout))
+	}
+	if tIdleTimer.Label != "" {
+		args = append(args, "--label", tIdleTimer.Label)
+	}
+	return args
+}
+
+func (tIdleTimer *TargetIdleTimer) Long() string {
+	return tIdleTimer.Short()
+}
+
+func (tIdleTimer *TargetIdleTimer) LongArgs() []string {
+	return tIdleTimer.ShortArgs()
 }
 
 func (tIdleTimer *TargetIdleTimer) Parse(main []byte) (int, bool) {
@@ -1779,9 +2605,9 @@ func WithTargetLEDAlwaysBlink() OptionTargetLED {
 	}
 }
 
-func NewTargetLED(opts ...OptionTargetLED) (*TargetLED, error) {
+func newTargetLED(opts ...OptionTargetLED) (*TargetLED, error) {
 	target := &TargetLED{
-		baseTarget: baseTarget{
+		baseTarget: &baseTarget{
 			targetType: TargetTypeLED,
 		},
 		Delay: -1,
@@ -1789,14 +2615,44 @@ func NewTargetLED(opts ...OptionTargetLED) (*TargetLED, error) {
 	for _, opt := range opts {
 		opt(target)
 	}
+	target.setChild(target)
 	return target, nil
 }
 
 type TargetLED struct {
-	baseTarget
+	*baseTarget
 	TriggerID   string
 	Delay       int // -1 meaning infinite
 	AlwaysBlink bool
+}
+
+func (tLED *TargetLED) Short() string {
+	return strings.Join(tLED.ShortArgs(), " ")
+}
+
+func (tLED *TargetLED) ShortArgs() []string {
+	args := make([]string, 0, 7)
+	args = append(args, "-j", tLED.targetType.String())
+	if tLED.TriggerID != "" {
+		args = append(args, "--led-trigger-id", tLED.TriggerID)
+	}
+	if tLED.Delay > -1 {
+		args = append(args, "--led-delay", strconv.Itoa(tLED.Delay))
+	} else if tLED.Delay == -1 {
+		args = append(args, "--led-delay", "inf")
+	}
+	if tLED.AlwaysBlink {
+		args = append(args, "--led-always-blink")
+	}
+	return args
+}
+
+func (tLED *TargetLED) Long() string {
+	return tLED.Short()
+}
+
+func (tLED *TargetLED) LongArgs() []string {
+	return tLED.ShortArgs()
 }
 
 func (tLED *TargetLED) Parse(main []byte) (int, bool) {
@@ -1844,7 +2700,7 @@ const (
 	LOGFlagMASK      LOGFlag = 0x2f
 )
 
-type LOGLevel uint8
+type LOGLevel int8
 
 const (
 	LOGLevelEMERG   LOGLevel = 0 /* system is unusable */
@@ -1857,58 +2713,60 @@ const (
 	LOGLevelDEBUG   LOGLevel = 7 /* debug-level messages */
 )
 
-type OptionTargetLOG func(*TargetLOG)
+type OptionTargetLog func(*TargetLog)
 
-func WithTargetLOGLevel(level LOGLevel) OptionTargetLOG {
-	return func(tLOG *TargetLOG) {
+func WithTargetLogLevel(level LOGLevel) OptionTargetLog {
+	return func(tLOG *TargetLog) {
 		tLOG.Level = level
 	}
 }
 
-func WithTargetLOGPrefix(prefix string) OptionTargetLOG {
-	return func(tLOG *TargetLOG) {
+func WithTargetLogPrefix(prefix string) OptionTargetLog {
+	return func(tLOG *TargetLog) {
 		tLOG.Prefix = prefix
 	}
 }
 
-func WithTargetLOGTCPSequence() OptionTargetLOG {
-	return func(tLOG *TargetLOG) {
+func WithTargetLogTCPSequence() OptionTargetLog {
+	return func(tLOG *TargetLog) {
 		tLOG.TCPSequence = true
 	}
 }
 
-func WithTargetLOGTCPOptions() OptionTargetLOG {
-	return func(tLOG *TargetLOG) {
+func WithTargetLogTCPOptions() OptionTargetLog {
+	return func(tLOG *TargetLog) {
 		tLOG.TCPOptions = true
 	}
 }
 
-func WithTargetLOGIPOptions() OptionTargetLOG {
-	return func(tLOG *TargetLOG) {
+func WithTargetLogIPOptions() OptionTargetLog {
+	return func(tLOG *TargetLog) {
 		tLOG.IPOptions = true
 	}
 }
 
-func WithTargetLOGUID() OptionTargetLOG {
-	return func(tLOG *TargetLOG) {
+func WithTargetLogUID() OptionTargetLog {
+	return func(tLOG *TargetLog) {
 		tLOG.UID = true
 	}
 }
 
-func NewTargetLOG(opts ...OptionTargetLOG) (*TargetLOG, error) {
-	target := &TargetLOG{
-		baseTarget: baseTarget{
-			targetType: TargetTypeLOG,
+func newTargetLog(opts ...OptionTargetLog) (*TargetLog, error) {
+	target := &TargetLog{
+		baseTarget: &baseTarget{
+			targetType: TargetTypeLog,
 		},
+		Level: -1,
 	}
 	for _, opt := range opts {
 		opt(target)
 	}
+	target.setChild(target)
 	return target, nil
 }
 
-type TargetLOG struct {
-	baseTarget
+type TargetLog struct {
+	*baseTarget
 	Level       LOGLevel
 	Prefix      string
 	TCPSequence bool
@@ -1917,7 +2775,43 @@ type TargetLOG struct {
 	UID         bool
 }
 
-func (tLOG *TargetLOG) Parse(main []byte) (int, bool) {
+func (tLOG *TargetLog) Short() string {
+	return strings.Join(tLOG.ShortArgs(), " ")
+}
+
+func (tLOG *TargetLog) ShortArgs() []string {
+	args := make([]string, 0, 10)
+	args = append(args, "-j", tLOG.targetType.String())
+	if tLOG.Level > -1 {
+		args = append(args, "--log-level", strconv.Itoa(int(tLOG.Level)))
+	}
+	if tLOG.Prefix != "" {
+		args = append(args, "--log-prefix", tLOG.Prefix)
+	}
+	if tLOG.TCPSequence {
+		args = append(args, "--log-tcp-sequence")
+	}
+	if tLOG.TCPOptions {
+		args = append(args, "--log-tcp-options")
+	}
+	if tLOG.IPOptions {
+		args = append(args, "--log-ip-options")
+	}
+	if tLOG.UID {
+		args = append(args, "--log-uid")
+	}
+	return args
+}
+
+func (tLOG *TargetLog) Long() string {
+	return tLOG.Short()
+}
+
+func (tLOG *TargetLog) LongArgs() []string {
+	return tLOG.ShortArgs()
+}
+
+func (tLOG *TargetLog) Parse(main []byte) (int, bool) {
 	// 1. "^LOG"
 	// 2. "( flags ([0-9]+) level ([0-9]+))?" #1 #2 #3
 	// 3. "( level (alert|crit|debug|emerg|error|info|notice|panic|warning))?" #4 #5
@@ -1969,7 +2863,7 @@ func (tLOG *TargetLOG) Parse(main []byte) (int, bool) {
 		if err != nil {
 			return 0, false
 		}
-		tLOG.Level = LOGLevel(uint8(level))
+		tLOG.Level = LOGLevel(int8(level))
 	}
 	if len(matches[5]) != 0 {
 		switch string(matches[5]) {
@@ -2020,7 +2914,7 @@ type OptionTargetMark func(*TargetMark)
 
 // This option takes mostly 2 value, (value) or (value, mask)
 // Zero out the bits given by mask and XOR value into the ctmark.
-func WithTargetMarkSetXMark(mark ...int) OptionTargetMark {
+func WithTargetMarkSetX(mark ...int) OptionTargetMark {
 	return func(tMark *TargetMark) {
 		switch len(mark) {
 		case 1:
@@ -2029,12 +2923,12 @@ func WithTargetMarkSetXMark(mark ...int) OptionTargetMark {
 			tMark.Mark = mark[0]
 			tMark.Mask = mark[1]
 		}
-		tMark.Operator = OperatorXSET
+		tMark.Operator = xtables.OperatorXSET
 	}
 }
 
 // Zeroes out the bits given by mask and ORs value into the packet mark.
-func WithTargetMarkSetMark(mark ...int) OptionTargetMark {
+func WithTargetMarkSet(mark ...int) OptionTargetMark {
 	return func(tMark *TargetMark) {
 		switch len(mark) {
 		case 1:
@@ -2043,7 +2937,7 @@ func WithTargetMarkSetMark(mark ...int) OptionTargetMark {
 			tMark.Mark = mark[0]
 			tMark.Mask = mark[1]
 		}
-		tMark.Operator = OperatorSET
+		tMark.Operator = xtables.OperatorSET
 	}
 }
 
@@ -2051,7 +2945,7 @@ func WithTargetMarkSetMark(mark ...int) OptionTargetMark {
 func WithTargetMarkAnd(mark int) OptionTargetMark {
 	return func(tMark *TargetMark) {
 		tMark.Mark = mark
-		tMark.Operator = OperatorAND
+		tMark.Operator = xtables.OperatorAND
 	}
 }
 
@@ -2059,7 +2953,7 @@ func WithTargetMarkAnd(mark int) OptionTargetMark {
 func WithTargetMarkOr(mark int) OptionTargetMark {
 	return func(tMark *TargetMark) {
 		tMark.Mark = mark
-		tMark.Operator = OperatorOR
+		tMark.Operator = xtables.OperatorOR
 	}
 }
 
@@ -2067,13 +2961,13 @@ func WithTargetMarkOr(mark int) OptionTargetMark {
 func WithTargetMarkXor(mark int) OptionTargetMark {
 	return func(tMark *TargetMark) {
 		tMark.Mark = mark
-		tMark.Operator = OperatorXOR
+		tMark.Operator = xtables.OperatorXOR
 	}
 }
 
-func NewTargetMark(opts ...OptionTargetMark) (*TargetMark, error) {
+func newTargetMark(opts ...OptionTargetMark) (*TargetMark, error) {
 	target := &TargetMark{
-		baseTarget: baseTarget{
+		baseTarget: &baseTarget{
 			targetType: TargetTypeMark,
 		},
 		Mark: -1,
@@ -2082,14 +2976,55 @@ func NewTargetMark(opts ...OptionTargetMark) (*TargetMark, error) {
 	for _, opt := range opts {
 		opt(target)
 	}
+	target.setChild(target)
 	return target, nil
 }
 
 type TargetMark struct {
-	baseTarget
-	Operator Operator
+	*baseTarget
+	Operator xtables.Operator
 	Mark     int
 	Mask     int
+}
+
+func (tMark *TargetMark) Short() string {
+	return strings.Join(tMark.ShortArgs(), " ")
+}
+
+func (tMark *TargetMark) ShortArgs() []string {
+	args := make([]string, 0, 12)
+	args = append(args, "-j", tMark.targetType.String())
+	switch tMark.Operator {
+	case xtables.OperatorXSET:
+		if tMark.Mask > -1 {
+			args = append(args, "--set-xmark",
+				strconv.Itoa(tMark.Mark)+"/"+strconv.Itoa(tMark.Mask))
+		} else {
+			args = append(args, "--set-xmark", strconv.Itoa(tMark.Mark))
+		}
+	case xtables.OperatorSET:
+		if tMark.Mask > -1 {
+			args = append(args, "--set-mark",
+				strconv.Itoa(tMark.Mark)+"/"+strconv.Itoa(tMark.Mask))
+		} else {
+			args = append(args, "--set-mark", strconv.Itoa(tMark.Mark))
+		}
+	case xtables.OperatorAND:
+		args = append(args, "--and-mark", strconv.Itoa(tMark.Mark))
+	case xtables.OperatorOR:
+		args = append(args, "--or-mark", strconv.Itoa(tMark.Mark))
+	case xtables.OperatorXOR:
+		args = append(args, "--xor-mark", strconv.Itoa(tMark.Mark))
+	}
+	return args
+}
+
+func (tMark *TargetMark) Long() string {
+	return tMark.Short()
+}
+
+func (tMark *TargetMark) LongArgs() []string {
+	return tMark.ShortArgs()
 }
 
 func (tMark *TargetMark) Parse(main []byte) (int, bool) {
@@ -2106,15 +3041,15 @@ func (tMark *TargetMark) Parse(main []byte) (int, bool) {
 	}
 	switch string(matches[1]) {
 	case "set":
-		tMark.Operator = OperatorSET
+		tMark.Operator = xtables.OperatorSET
 	case "and":
-		tMark.Operator = OperatorAND
+		tMark.Operator = xtables.OperatorAND
 	case "or":
-		tMark.Operator = OperatorOR
+		tMark.Operator = xtables.OperatorOR
 	case "xor":
-		tMark.Operator = OperatorXOR
+		tMark.Operator = xtables.OperatorXOR
 	case "xset":
-		tMark.Operator = OperatorXSET
+		tMark.Operator = xtables.OperatorXSET
 	}
 	if len(matches[2]) != 0 {
 		value, err := strconv.ParseInt(string(matches[2]), 16, 64)
@@ -2160,9 +3095,9 @@ func WithTargetMasqueradeRandomFully() OptionTargetMasquerade {
 	}
 }
 
-func NewTargetMasquerade(opts ...OptionTargetMasquerade) (*TargetMasquerade, error) {
+func newTargetMasquerade(opts ...OptionTargetMasquerade) (*TargetMasquerade, error) {
 	target := &TargetMasquerade{
-		baseTarget: baseTarget{
+		baseTarget: &baseTarget{
 			targetType: TargetTypeMasquerade,
 		},
 		PortMin: -1,
@@ -2171,15 +3106,45 @@ func NewTargetMasquerade(opts ...OptionTargetMasquerade) (*TargetMasquerade, err
 	for _, opt := range opts {
 		opt(target)
 	}
+	target.setChild(target)
 	return target, nil
 }
 
 type TargetMasquerade struct {
-	baseTarget
+	*baseTarget
 	PortMin     int
 	PortMax     int
 	Random      bool
 	RandomFully bool
+}
+
+func (tMasquerade *TargetMasquerade) Short() string {
+	return strings.Join(tMasquerade.ShortArgs(), " ")
+}
+
+func (tMasquerade *TargetMasquerade) ShortArgs() []string {
+	args := make([]string, 0, 5)
+	args = append(args, "-j", tMasquerade.targetType.String())
+	if tMasquerade.PortMin > -1 {
+		if tMasquerade.PortMax > -1 {
+			args = append(args, "--to-ports",
+				strconv.Itoa(tMasquerade.PortMin)+"-"+strconv.Itoa(tMasquerade.PortMax))
+		} else {
+			args = append(args, "--to-ports", strconv.Itoa(tMasquerade.PortMin))
+		}
+	}
+	if tMasquerade.Random {
+		args = append(args, "--random")
+	}
+	return args
+}
+
+func (tMasquerade *TargetMasquerade) Long() string {
+	return tMasquerade.Short()
+}
+
+func (tMasquerade *TargetMasquerade) LongArgs() []string {
+	return tMasquerade.ShortArgs()
 }
 
 func (tMasquerade *TargetMasquerade) Parse(main []byte) (int, bool) {
@@ -2234,27 +3199,49 @@ func (tMasquerade *TargetMasquerade) Parse(main []byte) (int, bool) {
 type OptionTargetNetmap func(*TargetNetmap)
 
 // Network address to map to.
-func WithTargetNetmapAddr(addr *Address) OptionTargetNetmap {
+func WithTargetNetmapAddr(addr network.Address) OptionTargetNetmap {
 	return func(tNetmap *TargetNetmap) {
 		tNetmap.Addr = addr
 	}
 }
 
-func NewTargetNetmap(opts ...OptionTargetNetmap) (*TargetNetmap, error) {
+func newTargetNetmap(opts ...OptionTargetNetmap) (*TargetNetmap, error) {
 	target := &TargetNetmap{
-		baseTarget: baseTarget{
+		baseTarget: &baseTarget{
 			targetType: TargetTypeNetmap,
 		},
 	}
 	for _, opt := range opts {
 		opt(target)
 	}
+	target.setChild(target)
 	return target, nil
 }
 
 type TargetNetmap struct {
-	baseTarget
-	Addr *Address
+	*baseTarget
+	Addr network.Address
+}
+
+func (tNetmap *TargetNetmap) Short() string {
+	return strings.Join(tNetmap.ShortArgs(), " ")
+}
+
+func (tNetmap *TargetNetmap) ShortArgs() []string {
+	args := make([]string, 0, 4)
+	args = append(args, "-j", tNetmap.targetType.String())
+	if tNetmap.Addr != nil {
+		args = append(args, "--to", tNetmap.Addr.String())
+	}
+	return args
+}
+
+func (tNetmap *TargetNetmap) Long() string {
+	return tNetmap.Short()
+}
+
+func (tNetmap *TargetNetmap) LongArgs() []string {
+	return tNetmap.ShortArgs()
 }
 
 func (tNetmap *TargetNetmap) Parse(main []byte) (int, bool) {
@@ -2267,13 +3254,13 @@ func (tNetmap *TargetNetmap) Parse(main []byte) (int, bool) {
 	if len(matches) != 3 {
 		return 0, false
 	}
-	addr, err := ParseAddress(string(matches[1]))
+	addr, err := network.ParseAddress(string(matches[1]))
 	if err != nil {
 		return 0, false
 	}
 	tNetmap.Addr = addr
 	if len(matches[2]) != 0 {
-		addr, err = ParseAddress(string(matches[1]) + string(matches[2]))
+		addr, err = network.ParseAddress(string(matches[1]) + string(matches[2]))
 		if err == nil {
 			tNetmap.Addr = addr
 		}
@@ -2323,9 +3310,9 @@ func WithTargetNFLogThreshold(threshold int) OptionTargetNFLog {
 	}
 }
 
-func NewTargetNFLog(opts ...OptionTargetNFLog) (*TargetNFLog, error) {
+func newTargetNFLog(opts ...OptionTargetNFLog) (*TargetNFLog, error) {
 	target := &TargetNFLog{
-		baseTarget: baseTarget{
+		baseTarget: &baseTarget{
 			targetType: TargetTypeNFLog,
 		},
 		Group:     -1,
@@ -2336,16 +3323,47 @@ func NewTargetNFLog(opts ...OptionTargetNFLog) (*TargetNFLog, error) {
 	for _, opt := range opts {
 		opt(target)
 	}
+	target.setChild(target)
 	return target, nil
 }
 
 type TargetNFLog struct {
-	baseTarget
+	*baseTarget
 	Prefix    string
 	Group     int
 	Range     int
 	Size      int
 	Threshold int
+}
+
+func (tNFLog *TargetNFLog) Short() string {
+	return strings.Join(tNFLog.ShortArgs(), " ")
+}
+
+func (tNFLog *TargetNFLog) ShortArgs() []string {
+	args := make([]string, 0, 10)
+	args = append(args, "-j", tNFLog.targetType.String())
+	if tNFLog.Group > -1 {
+		args = append(args, "--nflog-group", strconv.Itoa(tNFLog.Group))
+	}
+	if tNFLog.Prefix != "" {
+		args = append(args, "--nflog-prefix", tNFLog.Prefix)
+	}
+	if tNFLog.Range > -1 {
+		args = append(args, "--nflog-range", strconv.Itoa(tNFLog.Range))
+	}
+	if tNFLog.Threshold > -1 {
+		args = append(args, "--nflog-threshold", strconv.Itoa(tNFLog.Threshold))
+	}
+	return args
+}
+
+func (tNFLog *TargetNFLog) Long() string {
+	return tNFLog.Short()
+}
+
+func (tNFLog *TargetNFLog) LongArgs() []string {
+	return tNFLog.ShortArgs()
 }
 
 func (tNFLog *TargetNFLog) Parse(main []byte) (int, bool) {
@@ -2438,9 +3456,9 @@ func WithTargetNFQueueCPUFanout() OptionTargetNFQueue {
 	}
 }
 
-func NewTargetNFQueue(opts ...OptionTargetNFQueue) (*TargetNFQueue, error) {
+func newTargetNFQueue(opts ...OptionTargetNFQueue) (*TargetNFQueue, error) {
 	target := &TargetNFQueue{
-		baseTarget: baseTarget{
+		baseTarget: &baseTarget{
 			targetType: TargetTypeNFQueue,
 		},
 		QueueMin: -1,
@@ -2449,15 +3467,48 @@ func NewTargetNFQueue(opts ...OptionTargetNFQueue) (*TargetNFQueue, error) {
 	for _, opt := range opts {
 		opt(target)
 	}
+	target.setChild(target)
 	return target, nil
 }
 
 type TargetNFQueue struct {
-	baseTarget
+	*baseTarget
 	QueueMin  int
 	QueueMax  int
 	Bypass    bool
 	CPUFanout bool
+}
+
+func (tNFQueue *TargetNFQueue) Short() string {
+	return strings.Join(tNFQueue.ShortArgs(), " ")
+}
+
+func (tNFQueue *TargetNFQueue) ShortArgs() []string {
+	args := make([]string, 0, 8)
+	args = append(args, "-j", tNFQueue.targetType.String())
+	if tNFQueue.QueueMin > -1 {
+		if tNFQueue.QueueMax > -1 {
+			args = append(args, "--queue-balance",
+				strconv.Itoa(tNFQueue.QueueMin)+":"+strconv.Itoa(tNFQueue.QueueMax))
+		} else {
+			args = append(args, "--queue-num", strconv.Itoa(tNFQueue.QueueMin))
+		}
+	}
+	if tNFQueue.Bypass {
+		args = append(args, "--queue-bypass")
+	}
+	if tNFQueue.CPUFanout {
+		args = append(args, "--queue-cpu-fanout")
+	}
+	return args
+}
+
+func (tNFQueue *TargetNFQueue) Long() string {
+	return tNFQueue.Short()
+}
+
+func (tNFQueue *TargetNFQueue) LongArgs() []string {
+	return tNFQueue.ShortArgs()
 }
 
 func (tNFQueue *TargetNFQueue) Parse(main []byte) (int, bool) {
@@ -2505,36 +3556,66 @@ func WithTargetRateEstName(name string) OptionTargetRateEst {
 }
 
 // Rate measurement interval, in seconds, milliseconds or microseconds.
-func WithTargetRateEstInterval(interval RateFloat) OptionTargetRateEst {
+func WithTargetRateEstInterval(interval xtables.RateFloat) OptionTargetRateEst {
 	return func(tRateEst *TargetRateEst) {
 		tRateEst.Interval = interval
 	}
 }
 
 // Rate measurement averaging time constant.
-func WithTargetRateEstEwmalog(ewmalog RateFloat) OptionTargetRateEst {
+func WithTargetRateEstEwmalog(ewmalog float64) OptionTargetRateEst {
 	return func(tRateEst *TargetRateEst) {
 		tRateEst.Ewmalog = ewmalog
 	}
 }
 
-func NewTargetRateEst(opts ...OptionTargetRateEst) (*TargetRateEst, error) {
+func newTargetRateEst(opts ...OptionTargetRateEst) (*TargetRateEst, error) {
 	target := &TargetRateEst{
-		baseTarget: baseTarget{
+		baseTarget: &baseTarget{
 			targetType: TargetTypeRateEst,
 		},
+		Ewmalog: -1,
 	}
 	for _, opt := range opts {
 		opt(target)
 	}
+	target.setChild(target)
 	return target, nil
 }
 
 type TargetRateEst struct {
-	baseTarget
+	*baseTarget
 	Name     string
-	Interval RateFloat
-	Ewmalog  RateFloat
+	Interval xtables.RateFloat
+	Ewmalog  float64
+}
+
+func (tRateEst *TargetRateEst) Short() string {
+	return strings.Join(tRateEst.ShortArgs(), " ")
+}
+
+func (tRateEst *TargetRateEst) ShortArgs() []string {
+	args := make([]string, 0, 8)
+	args = append(args, "-j", tRateEst.targetType.String())
+	if tRateEst.Name != "" {
+		args = append(args, "--rateest-name", tRateEst.Name)
+	}
+	if (tRateEst.Interval != xtables.RateFloat{}) {
+		args = append(args, "--rateest-interval", tRateEst.Interval.Sting())
+	}
+	if tRateEst.Ewmalog > -1 {
+		args = append(args, "--rateest-ewmalog",
+			strconv.FormatFloat(tRateEst.Ewmalog, 'f', 2, 64))
+	}
+	return args
+}
+
+func (tRateEst *TargetRateEst) Long() string {
+	return tRateEst.Short()
+}
+
+func (tRateEst *TargetRateEst) LongArgs() []string {
+	return tRateEst.ShortArgs()
 }
 
 func (tRateEst *TargetRateEst) Parse(main []byte) (int, bool) {
@@ -2554,30 +3635,29 @@ func (tRateEst *TargetRateEst) Parse(main []byte) (int, bool) {
 	if err != nil {
 		return 0, false
 	}
-	unit := Second
+	unit := xtables.Second
 	switch string(matches[3]) {
 	case "us":
-		unit = Microsecond
+		unit = xtables.Microsecond
 	case "ms":
-		unit = Millisecond
+		unit = xtables.Millisecond
 	case "s":
-		unit = Second
+		unit = xtables.Second
 	}
-	tRateEst.Interval = RateFloat{
-		interval, unit,
+	tRateEst.Interval = xtables.RateFloat{
+		Rate: interval,
+		Unit: unit,
 	}
 	ewmalog, err := strconv.ParseFloat(string(matches[4]), 64)
 	switch string(matches[5]) {
 	case "us":
-		unit = Microsecond
+		unit = xtables.Microsecond
 	case "ms":
-		unit = Millisecond
+		unit = xtables.Millisecond
 	case "s":
-		unit = Second
+		unit = xtables.Second
 	}
-	tRateEst.Ewmalog = RateFloat{
-		ewmalog, unit,
-	}
+	tRateEst.Ewmalog = ewmalog
 	return len(matches[0]), true
 }
 
@@ -2602,9 +3682,9 @@ func WithTargetRedirectRandom() OptionTargetRedirect {
 	}
 }
 
-func NewTargetRedirect(opts ...OptionTargetRedirect) (*TargetRedirect, error) {
+func newTargetRedirect(opts ...OptionTargetRedirect) (*TargetRedirect, error) {
 	target := &TargetRedirect{
-		baseTarget: baseTarget{
+		baseTarget: &baseTarget{
 			targetType: TargetTypeRedirect,
 		},
 		PortMin: -1,
@@ -2613,14 +3693,44 @@ func NewTargetRedirect(opts ...OptionTargetRedirect) (*TargetRedirect, error) {
 	for _, opt := range opts {
 		opt(target)
 	}
+	target.setChild(target)
 	return target, nil
 }
 
 type TargetRedirect struct {
-	baseTarget
+	*baseTarget
 	PortMin int
 	PortMax int
 	Random  bool
+}
+
+func (tRedirect *TargetRedirect) Short() string {
+	return strings.Join(tRedirect.ShortArgs(), " ")
+}
+
+func (tRedirect *TargetRedirect) ShortArgs() []string {
+	args := make([]string, 0, 5)
+	args = append(args, "-j", tRedirect.targetType.String())
+	if tRedirect.PortMin > -1 {
+		if tRedirect.PortMax > -1 {
+			args = append(args, "--to-ports",
+				strconv.Itoa(tRedirect.PortMin)+"-"+strconv.Itoa(tRedirect.PortMax))
+		} else {
+			args = append(args, "--to-ports", strconv.Itoa(tRedirect.PortMin))
+		}
+	}
+	if tRedirect.Random {
+		args = append(args, "--random")
+	}
+	return args
+}
+
+func (tRedirect *TargetRedirect) Long() string {
+	return tRedirect.Short()
+}
+
+func (tRedirect *TargetRedirect) LongArgs() []string {
+	return tRedirect.ShortArgs()
 }
 
 func (tRedirect *TargetRedirect) Parse(main []byte) (int, bool) {
@@ -2657,7 +3767,44 @@ func (tRedirect *TargetRedirect) Parse(main []byte) (int, bool) {
 	return index, true
 }
 
-type RejectType uint8
+type RejectType int8
+
+func (rejectType RejectType) String() string {
+	switch rejectType {
+	case Icmp6NoRoute:
+		return "icmp6-no-route"
+	case NoRoute:
+		return "no-route"
+	case Icmp6AdmProhibited:
+		return "icmp6-adm-prohibited"
+	case AdmProhibited:
+		return "addr-unreach"
+	case Icmp6AddrUnreachable:
+		return "icmp6-addr-unreachable"
+	case AddrUnreachable:
+		return "addr-unreach"
+	case Icmp6PortUnreachable:
+		return "icmp6-port-unreachable"
+	case IcmpNetUnreachable:
+		return "icmp-net-unreachable"
+	case IcmpHostUnreachable:
+		return "icmp-host-unreachable"
+	case IcmpPortUnreachable:
+		return "icmp-port-unreachable"
+	case IcmpProtoUnreachable:
+		return "icmp-proto-unreachable"
+	case IcmpNetProhibited:
+		return "icmp-net-prohibited"
+	case IcmpHostProhibited:
+		return "icmp-host-prohibited"
+	case IcmpAdminProhibited:
+		return "icmp-admin-prohibited"
+	case TcpReset:
+		return "tcp-reset"
+	default:
+		return ""
+	}
+}
 
 const (
 	_ RejectType = iota
@@ -2705,25 +3852,48 @@ type OptionTargetReject func(*TargetReject)
 
 func WithTargetRejectType(typ RejectType) OptionTargetReject {
 	return func(tReject *TargetReject) {
-		tReject.Type = typ
+		tReject.RejectType = typ
 	}
 }
 
-func NewTargetReject(opts ...OptionTargetReject) (*TargetReject, error) {
+func newTargetReject(opts ...OptionTargetReject) (*TargetReject, error) {
 	target := &TargetReject{
-		baseTarget: baseTarget{
+		baseTarget: &baseTarget{
 			targetType: TargetTypeReject,
 		},
+		RejectType: -1,
 	}
 	for _, opt := range opts {
 		opt(target)
 	}
+	target.setChild(target)
 	return target, nil
 }
 
 type TargetReject struct {
-	baseTarget
-	Type RejectType
+	*baseTarget
+	RejectType RejectType
+}
+
+func (tReject *TargetReject) Short() string {
+	return strings.Join(tReject.ShortArgs(), " ")
+}
+
+func (tReject *TargetReject) ShortArgs() []string {
+	args := make([]string, 0, 4)
+	args = append(args, "-j", tReject.targetType.String())
+	if tReject.RejectType > -1 {
+		args = append(args, "--reject-with", tReject.RejectType.String())
+	}
+	return args
+}
+
+func (tReject *TargetReject) Long() string {
+	return tReject.Short()
+}
+
+func (tReject *TargetReject) LongArgs() []string {
+	return tReject.ShortArgs()
 }
 
 func (tReject *TargetReject) Parse(main []byte) (int, bool) {
@@ -2738,14 +3908,14 @@ func (tReject *TargetReject) Parse(main []byte) (int, bool) {
 	if !ok {
 		return 0, false
 	}
-	tReject.Type = typ
+	tReject.RejectType = typ
 	return len(matches[0]), true
 }
 
 type OptionTargetSame func(*TargetSame)
 
 // This option takes mostly 2 addrs, (min) or (min, max)
-func WithTargetSameAddr(addr ...*Address) OptionTargetSame {
+func WithTargetSameAddr(addr ...network.Address) OptionTargetSame {
 	return func(tSame *TargetSame) {
 		switch len(addr) {
 		case 1:
@@ -2769,26 +3939,59 @@ func WithTargetSameNoRandom() OptionTargetSame {
 	}
 }
 
-func NewTargetSame(opts ...OptionTargetSame) (*TargetSame, error) {
+func newTargetSame(opts ...OptionTargetSame) (*TargetSame, error) {
 	target := &TargetSame{
-		baseTarget: baseTarget{
+		baseTarget: &baseTarget{
 			targetType: TargetTypeSame,
 		},
 	}
 	for _, opt := range opts {
 		opt(target)
 	}
+	target.setChild(target)
 	return target, nil
 }
 
 // TODO untested in the real world
 // IPv4 specific
 type TargetSame struct {
-	baseTarget
-	AddrMin *Address
-	AddrMax *Address
+	*baseTarget
+	AddrMin network.Address
+	AddrMax network.Address
 	NoDst   bool
 	Random  bool
+}
+
+func (tSame *TargetSame) Short() string {
+	return strings.Join(tSame.ShortArgs(), " ")
+}
+
+func (tSame *TargetSame) ShortArgs() []string {
+	args := make([]string, 0, 6)
+	args = append(args, "-j", tSame.targetType.String())
+	if tSame.AddrMin != nil {
+		if tSame.AddrMax != nil {
+			args = append(args, "--to",
+				tSame.AddrMin.String()+"-"+tSame.AddrMax.String())
+		} else {
+			args = append(args, "--to", tSame.AddrMin.String())
+		}
+	}
+	if tSame.NoDst {
+		args = append(args, "--nodes")
+	}
+	if tSame.Random {
+		args = append(args, "--random")
+	}
+	return args
+}
+
+func (tSame *TargetSame) Long() string {
+	return tSame.Short()
+}
+
+func (tSame *TargetSame) LongArgs() []string {
+	return tSame.ShortArgs()
 }
 
 func (tSame *TargetSame) Parse(main []byte) (int, bool) {
@@ -2806,14 +4009,14 @@ func (tSame *TargetSame) Parse(main []byte) (int, bool) {
 		return 0, false
 	}
 	if len(matches[2]) != 0 {
-		addr, err := ParseAddress(string(matches[2]))
+		addr, err := network.ParseAddress(string(matches[2]))
 		if err != nil {
 			return 0, false
 		}
 		tSame.AddrMin = addr
 	}
 	if len(matches[4]) != 0 {
-		addr, err := ParseAddress(string(matches[2]))
+		addr, err := network.ParseAddress(string(matches[2]))
 		if err != nil {
 			return 0, false
 		}
@@ -2836,22 +4039,44 @@ func WithTargetSecMarkSelCtx(selCtx string) OptionTargetSecMark {
 	}
 }
 
-func NewTargetSecMark(opts ...OptionTargetSecMark) (*TargetSecMark, error) {
+func newTargetSecMark(opts ...OptionTargetSecMark) (*TargetSecMark, error) {
 	target := &TargetSecMark{
-		baseTarget: baseTarget{
+		baseTarget: &baseTarget{
 			targetType: TargetTypeSecMark,
 		},
 	}
 	for _, opt := range opts {
 		opt(target)
 	}
+	target.setChild(target)
 	return target, nil
 }
 
 // TODO untested in the real world
 type TargetSecMark struct {
-	baseTarget
+	*baseTarget
 	SelCtx string
+}
+
+func (tSecMark *TargetSecMark) Short() string {
+	return strings.Join(tSecMark.ShortArgs(), " ")
+}
+
+func (tSecMark *TargetSecMark) ShortArgs() []string {
+	args := make([]string, 0, 4)
+	args = append(args, "-j", tSecMark.targetType.String())
+	if tSecMark.SelCtx != "" {
+		args = append(args, "--selctx", tSecMark.SelCtx)
+	}
+	return args
+}
+
+func (tSecMark *TargetSecMark) Long() string {
+	return tSecMark.Short()
+}
+
+func (tSecMark *TargetSecMark) LongArgs() []string {
+	return tSecMark.ShortArgs()
 }
 
 func (tSecMark *TargetSecMark) Parse(main []byte) (int, bool) {
@@ -2879,6 +4104,17 @@ const (
 )
 
 type SetFlag uint8
+
+func (setFlag SetFlag) String() string {
+	switch setFlag {
+	case SetFlagSrc:
+		return "src"
+	case SetFlagDst:
+		return "dst"
+	default:
+		return ""
+	}
+}
 
 const (
 	SetFlagSrc SetFlag = 1 << iota
@@ -2941,9 +4177,9 @@ func WithTargetSetMapQueue() OptionTargetSet {
 	}
 }
 
-func NewTargetSet(opts ...OptionTargetSet) (*TargetSet, error) {
+func newTargetSet(opts ...OptionTargetSet) (*TargetSet, error) {
 	target := &TargetSet{
-		baseTarget: baseTarget{
+		baseTarget: &baseTarget{
 			targetType: TargetTypeSet,
 		},
 		Timeout: -1,
@@ -2951,11 +4187,12 @@ func NewTargetSet(opts ...OptionTargetSet) (*TargetSet, error) {
 	for _, opt := range opts {
 		opt(target)
 	}
+	target.setChild(target)
 	return target, nil
 }
 
 type TargetSet struct {
-	baseTarget
+	*baseTarget
 	Mode     SetMode
 	Name     string
 	Flags    []SetFlag
@@ -2964,6 +4201,45 @@ type TargetSet struct {
 	MapMark  bool
 	MapPrio  bool
 	MapQueue bool
+}
+
+func (tSet *TargetSet) Short() string {
+	return strings.Join(tSet.ShortArgs(), " ")
+}
+
+func (tSet *TargetSet) ShortArgs() []string {
+	args := make([]string, 0, 9)
+	args = append(args, "-j", tSet.targetType.String())
+
+	flags := ""
+	sep := ""
+	if tSet.Flags != nil && len(tSet.Flags) != 0 {
+		for _, flag := range tSet.Flags {
+			flags += sep + flag.String()
+			sep = ","
+		}
+	}
+	switch tSet.Mode {
+	case SetModeAdd:
+		args = append(args, "--add-set", tSet.Name, flags)
+	case SetModeDel:
+		args = append(args, "--del-set", tSet.Name, flags)
+	}
+	if tSet.Timeout > -1 {
+		args = append(args, "--timeout", strconv.Itoa(tSet.Timeout))
+	}
+	if tSet.Exist {
+		args = append(args, "--exist")
+	}
+	return args
+}
+
+func (tSet *TargetSet) Long() string {
+	return tSet.Short()
+}
+
+func (tSet *TargetSet) LongArgs() []string {
+	return tSet.ShortArgs()
 }
 
 func (tSet *TargetSet) Parse(main []byte) (int, bool) {
@@ -3032,7 +4308,7 @@ func (tSet *TargetSet) Parse(main []byte) (int, bool) {
 type OptionTargetSNAT func(*TargetSNAT)
 
 // To set addr nil or port -1 means empty.
-func WithTargetSNATToAddr(addrMin, addrMax *Address, portMin, portMax int) OptionTargetSNAT {
+func WithTargetSNATToAddr(addrMin, addrMax network.Address, portMin, portMax int) OptionTargetSNAT {
 	return func(tSNAT *TargetSNAT) {
 		tSNAT.AddrMin = addrMin
 		tSNAT.AddrMax = addrMax
@@ -3053,9 +4329,9 @@ func WithTargetSNATPersistent() OptionTargetSNAT {
 	}
 }
 
-func NewTargetSNAT(opts ...OptionTargetSNAT) (*TargetSNAT, error) {
+func newTargetSNAT(opts ...OptionTargetSNAT) (*TargetSNAT, error) {
 	target := &TargetSNAT{
-		baseTarget: baseTarget{
+		baseTarget: &baseTarget{
 			targetType: TargetTypeSNAT,
 		},
 		PortMin:  -1,
@@ -3065,18 +4341,55 @@ func NewTargetSNAT(opts ...OptionTargetSNAT) (*TargetSNAT, error) {
 	for _, opt := range opts {
 		opt(target)
 	}
+	target.setChild(target)
 	return target, nil
 }
 
 type TargetSNAT struct {
-	baseTarget
-	AddrMin    *Address
-	AddrMax    *Address
+	*baseTarget
+	AddrMin    network.Address
+	AddrMax    network.Address
 	PortMin    int
 	PortMax    int
 	PortBase   int
 	Random     bool
 	Persistent bool
+}
+
+func (tSNAT *TargetSNAT) Short() string {
+	return strings.Join(tSNAT.ShortArgs(), " ")
+}
+
+func (tSNAT *TargetSNAT) ShortArgs() []string {
+	args := make([]string, 0, 6)
+	args = append(args, "-j", tSNAT.targetType.String())
+	if tSNAT.AddrMin != nil {
+		source := tSNAT.AddrMin.String()
+		if tSNAT.AddrMax != nil {
+			source += "-" + tSNAT.AddrMax.String()
+		}
+		if tSNAT.PortMin > -1 {
+			source += ":" + strconv.Itoa(tSNAT.PortMin)
+		}
+		if tSNAT.PortMax > -1 {
+			source += "-" + strconv.Itoa(tSNAT.PortMax)
+		}
+	}
+	if tSNAT.Random {
+		args = append(args, "--random")
+	}
+	if tSNAT.Persistent {
+		args = append(args, "--persistent")
+	}
+	return args
+}
+
+func (tSNAT *TargetSNAT) Long() string {
+	return tSNAT.Short()
+}
+
+func (tSNAT *TargetSNAT) LongArgs() []string {
+	return tSNAT.ShortArgs()
 }
 
 func (tSNAT *TargetSNAT) Parse(main []byte) (int, bool) {
@@ -3096,14 +4409,14 @@ func (tSNAT *TargetSNAT) Parse(main []byte) (int, bool) {
 		return 0, false
 	}
 	if len(matches[2]) != 0 {
-		addr, err := ParseAddress(string(matches[2]))
+		addr, err := network.ParseAddress(string(matches[2]))
 		if err != nil {
 			return 0, false
 		}
 		tSNAT.AddrMin = addr
 	}
 	if len(matches[5]) != 0 {
-		addr, err := ParseAddress(string(matches[5]))
+		addr, err := network.ParseAddress(string(matches[5]))
 		if err != nil {
 			return 0, false
 		}
@@ -3153,23 +4466,48 @@ func WithTargetSNPTDstPrefix(prefix *net.IPNet) OptionTargetSNPT {
 	}
 }
 
-func NewTargetSNPT(opts ...OptionTargetSNPT) (*TargetSNPT, error) {
+func newTargetSNPT(opts ...OptionTargetSNPT) (*TargetSNPT, error) {
 	target := &TargetSNPT{
-		baseTarget: baseTarget{
+		baseTarget: &baseTarget{
 			targetType: TargetTypeSNPT,
 		},
 	}
 	for _, opt := range opts {
 		opt(target)
 	}
+	target.setChild(target)
 	return target, nil
 }
 
 // IPv6 specific
 type TargetSNPT struct {
-	baseTarget
+	*baseTarget
 	SrcPrefix *net.IPNet
 	DstPrefix *net.IPNet
+}
+
+func (tSNPT *TargetSNPT) Short() string {
+	return strings.Join(tSNPT.ShortArgs(), " ")
+}
+
+func (tSNPT *TargetSNPT) ShortArgs() []string {
+	args := make([]string, 0, 6)
+	args = append(args, "-j", tSNPT.targetType.String())
+	if tSNPT.SrcPrefix != nil {
+		args = append(args, "--src-pfx", tSNPT.SrcPrefix.String())
+	}
+	if tSNPT.DstPrefix != nil {
+		args = append(args, "--dst-pfx", tSNPT.DstPrefix.String())
+	}
+	return args
+}
+
+func (tSNPT *TargetSNPT) Long() string {
+	return tSNPT.Short()
+}
+
+func (tSNPT *TargetSNPT) LongArgs() []string {
+	return tSNPT.ShortArgs()
 }
 
 func (tSNPT *TargetSNPT) Parse(main []byte) (int, bool) {
@@ -3222,7 +4560,8 @@ func WithTargetSYNProxySockPerm() OptionTargetSYNProxy {
 	}
 }
 
-//  Pass client timestamp option to backend (will be disabled if not present,
+//	Pass client timestamp option to backend (will be disabled if not present,
+//
 // also needed for selective acknowledgement and window scaling).
 func WithTargetSYNProxyTimestamp() OptionTargetSYNProxy {
 	return func(tSYNProxy *TargetSYNProxy) {
@@ -3236,9 +4575,9 @@ func WithTargetSYNProxyECN() OptionTargetSYNProxy {
 	}
 }
 
-func NewTargetSYNProxy(opts ...OptionTargetSYNProxy) (*TargetSYNProxy, error) {
+func newTargetSYNProxy(opts ...OptionTargetSYNProxy) (*TargetSYNProxy, error) {
 	target := &TargetSYNProxy{
-		baseTarget: baseTarget{
+		baseTarget: &baseTarget{
 			targetType: TargetTypeSYNProxy,
 		},
 		WindowScale: -1,
@@ -3247,16 +4586,47 @@ func NewTargetSYNProxy(opts ...OptionTargetSYNProxy) (*TargetSYNProxy, error) {
 	for _, opt := range opts {
 		opt(target)
 	}
+	target.setChild(target)
 	return target, nil
 }
 
 type TargetSYNProxy struct {
-	baseTarget
+	*baseTarget
 	WindowScale int
 	MSS         int
 	SockPerm    bool
 	Timestamp   bool
 	ECN         bool
+}
+
+func (tSYNProxy *TargetSYNProxy) Short() string {
+	return strings.Join(tSYNProxy.ShortArgs(), " ")
+}
+
+func (tSYNProxy *TargetSYNProxy) ShortArgs() []string {
+	args := make([]string, 0, 8)
+	args = append(args, "-j", tSYNProxy.targetType.String())
+	if tSYNProxy.MSS > -1 {
+		args = append(args, "--mss", strconv.Itoa(tSYNProxy.MSS))
+	}
+	if tSYNProxy.WindowScale > -1 {
+		args = append(args, "--wscale", strconv.Itoa(tSYNProxy.WindowScale))
+	}
+	if tSYNProxy.SockPerm {
+		args = append(args, "--sack-perm")
+	}
+	if tSYNProxy.Timestamp {
+		args = append(args, "--timestamps")
+	}
+	return args
+}
+
+func (tSYNProxy *TargetSYNProxy) Long() string {
+	return tSYNProxy.Short()
+}
+
+func (tSYNProxy *TargetSYNProxy) LongArgs() []string {
+	return tSYNProxy.ShortArgs()
 }
 
 func (tSYNProxy *TargetSYNProxy) Parse(main []byte) (int, bool) {
@@ -3318,9 +4688,9 @@ func WithTargetTCPMSSClampMssToPmtu() OptionTargetTCPMSS {
 	}
 }
 
-func NewTargetTCPMSS(opts ...OptionTargetTCPMSS) (*TargetTCPMSS, error) {
+func newTargetTCPMSS(opts ...OptionTargetTCPMSS) (*TargetTCPMSS, error) {
 	target := &TargetTCPMSS{
-		baseTarget: baseTarget{
+		baseTarget: &baseTarget{
 			targetType: TargetTypeTCPMSS,
 		},
 		MSS: -1,
@@ -3328,13 +4698,38 @@ func NewTargetTCPMSS(opts ...OptionTargetTCPMSS) (*TargetTCPMSS, error) {
 	for _, opt := range opts {
 		opt(target)
 	}
+	target.setChild(target)
 	return target, nil
 }
 
 type TargetTCPMSS struct {
-	baseTarget
+	*baseTarget
 	MSS            int
 	ClampMssToPmtu bool
+}
+
+func (tTCPMSS *TargetTCPMSS) Short() string {
+	return strings.Join(tTCPMSS.ShortArgs(), " ")
+}
+
+func (tTCPMSS *TargetTCPMSS) ShortArgs() []string {
+	args := make([]string, 0, 5)
+	args = append(args, "-j", tTCPMSS.targetType.String())
+	if tTCPMSS.MSS > -1 {
+		args = append(args, "--set-mss", strconv.Itoa(tTCPMSS.MSS))
+	}
+	if tTCPMSS.ClampMssToPmtu {
+		args = append(args, "--clamp-mss-to-pmtu")
+	}
+	return args
+}
+
+func (tTCPMSS *TargetTCPMSS) Long() string {
+	return tTCPMSS.Short()
+}
+
+func (tTCPMSS *TargetTCPMSS) LongArgs() []string {
+	return tTCPMSS.ShortArgs()
 }
 
 func (tTCPMSS *TargetTCPMSS) Parse(main []byte) (int, bool) {
@@ -3363,27 +4758,54 @@ type OptionTargetTCPOptStrip func(*TargetTCPOptStrip)
 
 // Strip the given option(s).
 // The options may be specified by TCP option number or by symbolic name.
-func WithTargetTCPOptStripOpts(opts ...TCPOpt) OptionTargetTCPOptStrip {
+func WithTargetTCPOptStripOpts(opts ...network.TCPOpt) OptionTargetTCPOptStrip {
 	return func(tTCPOptStrip *TargetTCPOptStrip) {
 		tTCPOptStrip.Opts = opts
 	}
 }
 
-func NewTargetTCPOptStrip(opts ...OptionTargetTCPOptStrip) (*TargetTCPOptStrip, error) {
+func newTargetTCPOptStrip(opts ...OptionTargetTCPOptStrip) (*TargetTCPOptStrip, error) {
 	target := &TargetTCPOptStrip{
-		baseTarget: baseTarget{
+		baseTarget: &baseTarget{
 			targetType: TargetTypeTCPOptStrip,
 		},
 	}
 	for _, opt := range opts {
 		opt(target)
 	}
+	target.setChild(target)
 	return target, nil
 }
 
 type TargetTCPOptStrip struct {
-	baseTarget
-	Opts []TCPOpt
+	*baseTarget
+	Opts []network.TCPOpt
+}
+
+func (tTCPOptStrip *TargetTCPOptStrip) Short() string {
+	return strings.Join(tTCPOptStrip.ShortArgs(), " ")
+}
+
+func (tTCPOptStrip *TargetTCPOptStrip) ShortArgs() []string {
+	args := make([]string, 0, 4)
+	args = append(args, "-j", tTCPOptStrip.targetType.String())
+	if tTCPOptStrip.Opts != nil && len(tTCPOptStrip.Opts) != 0 {
+		opts := ""
+		sep := ""
+		for _, opt := range tTCPOptStrip.Opts {
+			sep += sep + opt.String()
+		}
+		args = append(args, "--strip-options", opts)
+	}
+	return args
+}
+
+func (tTCPOptStrip *TargetTCPOptStrip) Long() string {
+	return tTCPOptStrip.Short()
+}
+
+func (tTCPOptStrip *TargetTCPOptStrip) LongArgs() []string {
+	return tTCPOptStrip.ShortArgs()
 }
 
 func (tTCPOptStrip *TargetTCPOptStrip) Parse(main []byte) (int, bool) {
@@ -3396,10 +4818,10 @@ func (tTCPOptStrip *TargetTCPOptStrip) Parse(main []byte) (int, bool) {
 	if len(matches) != 5 {
 		return 0, false
 	}
-	tTCPOptStrip.Opts = []TCPOpt{}
+	tTCPOptStrip.Opts = []network.TCPOpt{}
 	elems := strings.Split(string(matches[1]), ",")
 	for _, elem := range elems {
-		opt, ok := TCPOpts[elem]
+		opt, ok := network.TCPOpts[elem]
 		if ok {
 			tTCPOptStrip.Opts = append(tTCPOptStrip.Opts, opt)
 		} else {
@@ -3407,25 +4829,47 @@ func (tTCPOptStrip *TargetTCPOptStrip) Parse(main []byte) (int, bool) {
 			if err != nil {
 				return 0, false
 			}
-			tTCPOptStrip.Opts = append(tTCPOptStrip.Opts, TCPOpt(option))
+			tTCPOptStrip.Opts = append(tTCPOptStrip.Opts, network.TCPOpt(option))
 		}
 	}
 	return len(matches[0]), true
 }
 
-func NewTargetTEE(gateway net.IP) (*TargetTEE, error) {
+func newTargetTEE(gateway net.IP) (*TargetTEE, error) {
 	target := &TargetTEE{
-		baseTarget: baseTarget{
+		baseTarget: &baseTarget{
 			targetType: TargetTypeTEE,
 		},
 		Gateway: gateway,
 	}
+	target.setChild(target)
 	return target, nil
 }
 
 type TargetTEE struct {
-	baseTarget
+	*baseTarget
 	Gateway net.IP
+}
+
+func (tTEE *TargetTEE) Short() string {
+	return strings.Join(tTEE.ShortArgs(), " ")
+}
+
+func (tTEE *TargetTEE) ShortArgs() []string {
+	args := make([]string, 0, 4)
+	args = append(args, "-j", tTEE.targetType.String())
+	if tTEE.Gateway != nil {
+		args = append(args, "--gateway", tTEE.Gateway.String())
+	}
+	return args
+}
+
+func (tTEE *TargetTEE) Long() string {
+	return tTEE.Short()
+}
+
+func (tTEE *TargetTEE) LongArgs() []string {
+	return tTEE.ShortArgs()
 }
 
 func (tTEE *TargetTEE) Parse(main []byte) (int, bool) {
@@ -3442,7 +4886,7 @@ func (tTEE *TargetTEE) Parse(main []byte) (int, bool) {
 type OptionTargetTOS func(*TargetTOS)
 
 // This option takes mostly 2 tos, (value) or (value/mask)
-func WithTargetTOSSet(tos ...TOS) OptionTargetTOS {
+func WithTargetTOSSet(tos ...network.TOS) OptionTargetTOS {
 	return func(tTOS *TargetTOS) {
 		switch len(tos) {
 		case 1:
@@ -3451,48 +4895,84 @@ func WithTargetTOSSet(tos ...TOS) OptionTargetTOS {
 			tTOS.Value = tos[0]
 			tTOS.Mask = tos[1]
 		}
-		tTOS.Operator = OperatorSET
+		tTOS.Operator = xtables.OperatorSET
 	}
 }
 
-func WithTargetTOSAnd(tos TOS) OptionTargetTOS {
+func WithTargetTOSAnd(tos network.TOS) OptionTargetTOS {
 	return func(tTOS *TargetTOS) {
 		tTOS.Value = tos
-		tTOS.Operator = OperatorAND
+		tTOS.Operator = xtables.OperatorAND
 	}
 }
 
-func WithTargetTOSOr(tos TOS) OptionTargetTOS {
+func WithTargetTOSOr(tos network.TOS) OptionTargetTOS {
 	return func(tTOS *TargetTOS) {
 		tTOS.Value = tos
-		tTOS.Operator = OperatorOR
+		tTOS.Operator = xtables.OperatorOR
 	}
 }
 
-func WithTargetTOSXor(tos TOS) OptionTargetTOS {
+func WithTargetTOSXor(tos network.TOS) OptionTargetTOS {
 	return func(tTOS *TargetTOS) {
 		tTOS.Value = tos
-		tTOS.Operator = OperatorXOR
+		tTOS.Operator = xtables.OperatorXOR
 	}
 }
 
-func NewTargetTOS(opts ...OptionTargetTOS) (*TargetTOS, error) {
+func newTargetTOS(opts ...OptionTargetTOS) (*TargetTOS, error) {
 	target := &TargetTOS{
-		baseTarget: baseTarget{
+		baseTarget: &baseTarget{
 			targetType: TargetTypeTOS,
 		},
+		Value: -1,
+		Mask:  -1,
 	}
 	for _, opt := range opts {
 		opt(target)
 	}
+	target.setChild(target)
 	return target, nil
 }
 
 type TargetTOS struct {
-	baseTarget
-	Operator Operator
-	Value    TOS
-	Mask     TOS
+	*baseTarget
+	Operator xtables.Operator
+	Value    network.TOS
+	Mask     network.TOS
+}
+
+func (tTOS *TargetTOS) Short() string {
+	return strings.Join(tTOS.ShortArgs(), " ")
+}
+
+func (tTOS *TargetTOS) ShortArgs() []string {
+	args := make([]string, 0, 4)
+	args = append(args, "-j", tTOS.targetType.String())
+	switch tTOS.Operator {
+	case xtables.OperatorSET:
+		if tTOS.Mask > -1 {
+			args = append(args, "--set-tos",
+				strconv.Itoa(int(tTOS.Value))+"/"+strconv.Itoa(int(tTOS.Mask)))
+		} else {
+			args = append(args, "--set-tos", strconv.Itoa(int(tTOS.Value)))
+		}
+	case xtables.OperatorAND:
+		args = append(args, "--and-tos", strconv.Itoa(int(tTOS.Value)))
+	case xtables.OperatorOR:
+		args = append(args, "--or-tos", strconv.Itoa(int(tTOS.Value)))
+	case xtables.OperatorXOR:
+		args = append(args, "--xor-tos", strconv.Itoa(int(tTOS.Value)))
+	}
+	return args
+}
+
+func (tTOS *TargetTOS) Long() string {
+	return tTOS.Short()
+}
+
+func (tTOS *TargetTOS) LongArgs() []string {
+	return tTOS.ShortArgs()
 }
 
 func (tTOS *TargetTOS) Parse(main []byte) (int, bool) {
@@ -3509,34 +4989,34 @@ func (tTOS *TargetTOS) Parse(main []byte) (int, bool) {
 	}
 	switch string(matches[1]) {
 	case "set":
-		tTOS.Operator = OperatorSET
+		tTOS.Operator = xtables.OperatorSET
 	case "and":
-		tTOS.Operator = OperatorAND
+		tTOS.Operator = xtables.OperatorAND
 	case "or":
-		tTOS.Operator = OperatorOR
+		tTOS.Operator = xtables.OperatorOR
 	case "xor":
-		tTOS.Operator = OperatorXOR
+		tTOS.Operator = xtables.OperatorXOR
 	}
 	if len(matches[3]) != 0 {
-		tos, ok := TOSMap[string(matches[3])]
+		tos, ok := network.TOSMap[string(matches[3])]
 		if ok {
 			tTOS.Value = tos
 		}
-		tTOS.Mask = TOS(0x3f)
+		tTOS.Mask = network.TOS(0x3f)
 	}
 	if len(matches[5]) != 0 {
-		value, err := strconv.ParseUint(string(matches[5]), 16, 8)
+		value, err := strconv.ParseInt(string(matches[5]), 16, 8)
 		if err != nil {
 			return 0, false
 		}
-		tTOS.Value = TOS(value)
+		tTOS.Value = network.TOS(value)
 	}
 	if len(matches[7]) != 0 {
-		mask, err := strconv.ParseUint(string(matches[7]), 16, 8)
+		mask, err := strconv.ParseInt(string(matches[7]), 16, 8)
 		if err != nil {
 			return 0, false
 		}
-		tTOS.Mask = TOS(mask)
+		tTOS.Mask = network.TOS(mask)
 	}
 	return len(matches[0]), true
 }
@@ -3569,12 +5049,60 @@ func WithTargetTProxyMark(mark ...int) OptionTargetTProxy {
 	}
 }
 
+func newTargetTProxy(opts ...OptionTargetTProxy) (*TargetTProxy, error) {
+	target := &TargetTProxy{
+		baseTarget: &baseTarget{
+			targetType: TargetTypeTProxy,
+		},
+		Port:  -1,
+		Value: -1,
+		Mask:  -1,
+	}
+	for _, opt := range opts {
+		opt(target)
+	}
+	target.setChild(target)
+	return target, nil
+}
+
 type TargetTProxy struct {
-	baseTarget
+	*baseTarget
 	IP    net.IP
 	Port  int
 	Value int
 	Mask  int
+}
+
+func (tTProxy *TargetTProxy) Short() string {
+	return strings.Join(tTProxy.ShortArgs(), " ")
+}
+
+func (tTProxy *TargetTProxy) ShortArgs() []string {
+	args := make([]string, 0, 8)
+	args = append(args, "-j", tTProxy.targetType.String())
+	if tTProxy.IP != nil {
+		args = append(args, "--on-ip", tTProxy.IP.String())
+	}
+	if tTProxy.Port > -1 {
+		args = append(args, "--on-port", strconv.Itoa(tTProxy.Port))
+	}
+	if tTProxy.Value > -1 {
+		if tTProxy.Mask > -1 {
+			args = append(args, "--tproxy-mark",
+				strconv.Itoa(tTProxy.Value)+"/"+strconv.Itoa(tTProxy.Mask))
+		} else {
+			args = append(args, "--tproxy-mark", strconv.Itoa(tTProxy.Value))
+		}
+	}
+	return args
+}
+
+func (tTProxy *TargetTProxy) Long() string {
+	return tTProxy.Short()
+}
+
+func (tTProxy *TargetTProxy) LongArgs() []string {
+	return tTProxy.ShortArgs()
 }
 
 func (tTProxy *TargetTProxy) Parse(main []byte) (int, bool) {
@@ -3617,16 +5145,36 @@ func (tTProxy *TargetTProxy) Parse(main []byte) (int, bool) {
 	return len(matches[0]), true
 }
 
-func NewTargetTrace() (*TargetTrace, error) {
-	return &TargetTrace{
-		baseTarget: baseTarget{
+func newTargetTrace() (*TargetTrace, error) {
+	target := &TargetTrace{
+		baseTarget: &baseTarget{
 			targetType: TargetTypeTrace,
 		},
-	}, nil
+	}
+	target.setChild(target)
+	return target, nil
 }
 
 type TargetTrace struct {
-	baseTarget
+	*baseTarget
+}
+
+func (tTrace *TargetTrace) Short() string {
+	return strings.Join(tTrace.ShortArgs(), " ")
+}
+
+func (tTrace *TargetTrace) ShortArgs() []string {
+	args := make([]string, 0, 2)
+	args = append(args, "-j", tTrace.targetType.String())
+	return args
+}
+
+func (tTrace *TargetTrace) Long() string {
+	return tTrace.Short()
+}
+
+func (tTrace *TargetTrace) LongArgs() []string {
+	return tTrace.ShortArgs()
 }
 
 type OptionTargetTTL func(*TargetTTL)
@@ -3634,27 +5182,27 @@ type OptionTargetTTL func(*TargetTTL)
 func WithTargetTTLSet(value int) OptionTargetTTL {
 	return func(tTTL *TargetTTL) {
 		tTTL.Value = value
-		tTTL.Operator = OperatorSET
+		tTTL.Operator = xtables.OperatorSET
 	}
 }
 
 func WithTargetTTLDec(value int) OptionTargetTTL {
 	return func(tTTL *TargetTTL) {
 		tTTL.Value = value
-		tTTL.Operator = OperatorDEC
+		tTTL.Operator = xtables.OperatorDEC
 	}
 }
 
 func WithTargetTTLInc(value int) OptionTargetTTL {
 	return func(tTTL *TargetTTL) {
 		tTTL.Value = value
-		tTTL.Operator = OperatorINC
+		tTTL.Operator = xtables.OperatorINC
 	}
 }
 
-func NewTargetTTl(opts ...OptionTargetTTL) (*TargetTTL, error) {
+func newTargetTTL(opts ...OptionTargetTTL) (*TargetTTL, error) {
 	target := &TargetTTL{
-		baseTarget: baseTarget{
+		baseTarget: &baseTarget{
 			targetType: TargetTypeTTL,
 		},
 		Value: -1,
@@ -3662,14 +5210,41 @@ func NewTargetTTl(opts ...OptionTargetTTL) (*TargetTTL, error) {
 	for _, opt := range opts {
 		opt(target)
 	}
+	target.setChild(target)
 	return target, nil
 }
 
 // IPv4 specific
 type TargetTTL struct {
-	baseTarget
-	Operator Operator
+	*baseTarget
+	Operator xtables.Operator
 	Value    int
+}
+
+func (tTTL *TargetTTL) Short() string {
+	return strings.Join(tTTL.ShortArgs(), " ")
+}
+
+func (tTTL *TargetTTL) ShortArgs() []string {
+	args := make([]string, 0, 4)
+	args = append(args, "-j", tTTL.targetType.String())
+	switch tTTL.Operator {
+	case xtables.OperatorSET:
+		args = append(args, "--ttl-set", strconv.Itoa(tTTL.Value))
+	case xtables.OperatorDEC:
+		args = append(args, "--ttl-dec", strconv.Itoa(tTTL.Value))
+	case xtables.OperatorINC:
+		args = append(args, "--ttl-inc", strconv.Itoa(tTTL.Value))
+	}
+	return args
+}
+
+func (tTTL *TargetTTL) Long() string {
+	return tTTL.Short()
+}
+
+func (tTTL *TargetTTL) LongArgs() []string {
+	return tTTL.ShortArgs()
 }
 
 func (tTTL *TargetTTL) Parse(main []byte) (int, bool) {
@@ -3686,11 +5261,11 @@ func (tTTL *TargetTTL) Parse(main []byte) (int, bool) {
 	}
 	switch string(matches[1]) {
 	case "set to":
-		tTTL.Operator = OperatorSET
+		tTTL.Operator = xtables.OperatorSET
 	case "decrement to":
-		tTTL.Operator = OperatorDEC
+		tTTL.Operator = xtables.OperatorDEC
 	case "increment to":
-		tTTL.Operator = OperatorINC
+		tTTL.Operator = xtables.OperatorINC
 	}
 	ttl, err := strconv.Atoi(string(matches[2]))
 	if err != nil {
@@ -3700,44 +5275,44 @@ func (tTTL *TargetTTL) Parse(main []byte) (int, bool) {
 	return len(matches[0]), true
 }
 
-type OptionTargetULOG func(*TargetULOG)
+type OptionTargetULog func(*TargetULog)
 
 // This specifies the netlink group (1-32) to which the packet is sent.
 // Default value is 1.
-func WithTargetULOGNetlinkGroup(group int) OptionTargetULOG {
-	return func(tULOG *TargetULOG) {
-		tULOG.NetlinkGroup = group
+func WithTargetULogNetlinkGroup(group int) OptionTargetULog {
+	return func(tULog *TargetULog) {
+		tULog.NetlinkGroup = group
 	}
 }
 
 // Prefix log messages with the specified prefix; up to 32 characters long,
 // and useful for distinguishing messages in the logs.
-func WithTargetULOGPrefix(prefix string) OptionTargetULOG {
-	return func(tULOG *TargetULOG) {
-		tULOG.Prefix = prefix
+func WithTargetULogPrefix(prefix string) OptionTargetULog {
+	return func(tULog *TargetULog) {
+		tULog.Prefix = prefix
 	}
 }
 
 // Number of bytes to be copied to userspace.
 // A value of 0 always copies the entire packet,
 // regardless of its size.  Default is 0.
-func WithTargetULOGCopyRange(rg int) OptionTargetULOG {
-	return func(tULOG *TargetULOG) {
-		tULOG.CopyRange = rg
+func WithTargetULogCopyRange(rg int) OptionTargetULog {
+	return func(tULog *TargetULog) {
+		tULog.CopyRange = rg
 	}
 }
 
 // Number of packet to queue inside kernel.
-func WithTargetULOGQueueThreshold(threshold int) OptionTargetULOG {
-	return func(tULOG *TargetULOG) {
-		tULOG.QueueThreshold = threshold
+func WithTargetULogQueueThreshold(threshold int) OptionTargetULog {
+	return func(tULog *TargetULog) {
+		tULog.QueueThreshold = threshold
 	}
 }
 
-func NewTargetULOG(opts ...OptionTargetULOG) (*TargetULOG, error) {
-	target := &TargetULOG{
-		baseTarget: baseTarget{
-			targetType: TargetTypeULOG,
+func newTargetULog(opts ...OptionTargetULog) (*TargetULog, error) {
+	target := &TargetULog{
+		baseTarget: &baseTarget{
+			targetType: TargetTypeULog,
 		},
 		NetlinkGroup:   -1,
 		CopyRange:      -1,
@@ -3746,21 +5321,52 @@ func NewTargetULOG(opts ...OptionTargetULOG) (*TargetULOG, error) {
 	for _, opt := range opts {
 		opt(target)
 	}
+	target.setChild(target)
 	return target, nil
 }
 
 // TODO untested in the real world
 // IPv4 specific
 // Deprecated
-type TargetULOG struct {
-	baseTarget
+type TargetULog struct {
+	*baseTarget
 	NetlinkGroup   int
 	Prefix         string
 	CopyRange      int
 	QueueThreshold int
 }
 
-func (tULOG *TargetULOG) Parse(main []byte) (int, bool) {
+func (tULog *TargetULog) Short() string {
+	return strings.Join(tULog.ShortArgs(), " ")
+}
+
+func (tULog *TargetULog) ShortArgs() []string {
+	args := make([]string, 0, 10)
+	args = append(args, "-j", tULog.targetType.String())
+	if tULog.NetlinkGroup > -1 {
+		args = append(args, "--ulog-nlgroup", strconv.Itoa(tULog.NetlinkGroup))
+	}
+	if tULog.Prefix != "" {
+		args = append(args, "--ulog-prefix", tULog.Prefix)
+	}
+	if tULog.CopyRange > -1 {
+		args = append(args, "--ulog-cprange", strconv.Itoa(tULog.CopyRange))
+	}
+	if tULog.QueueThreshold > -1 {
+		args = append(args, "--ulog-qthreshold", strconv.Itoa(tULog.QueueThreshold))
+	}
+	return args
+}
+
+func (tULog *TargetULog) Long() string {
+	return tULog.Short()
+}
+
+func (tULog *TargetULog) LongArgs() []string {
+	return tULog.ShortArgs()
+}
+
+func (tULog *TargetULog) Parse(main []byte) (int, bool) {
 	// 1. "^ULOG"
 	// 2. " copy_range ([0-9]+) nlgroup ([0-9]+)"
 	// 3. "( prefix "([!-~]+)")?"
@@ -3779,24 +5385,24 @@ func (tULOG *TargetULOG) Parse(main []byte) (int, bool) {
 	if err != nil {
 		return 0, false
 	}
-	tULOG.CopyRange = rg
+	tULog.CopyRange = rg
 	// group
 	group, err := strconv.Atoi(string(matches[2]))
 	if err != nil {
 		return 0, false
 	}
-	tULOG.NetlinkGroup = group
+	tULog.NetlinkGroup = group
 	// prefix
 	if len(matches[4]) != 0 {
 		str := string(matches[4])
 		str = strings.ReplaceAll(str, `\\`, `\`)
-		tULOG.Prefix = strings.ReplaceAll(str, `\"`, `"`)
+		tULog.Prefix = strings.ReplaceAll(str, `\"`, `"`)
 	}
 	// threshold
 	threshold, err := strconv.Atoi(string(matches[5]))
 	if err != nil {
 		return 0, false
 	}
-	tULOG.QueueThreshold = threshold
+	tULog.QueueThreshold = threshold
 	return len(matches[0]), true
 }

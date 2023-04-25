@@ -1,0 +1,17 @@
+Bridge table: filter
+
+Bridge chain: INPUT, entries: 8, policy: ACCEPT
+1. -p ARP -j SINGCHIA, pcnt = 100 -- bcnt = 0
+2. -p ARP --ulog-prefix "" --ulog-nlgroup 1 --ulog-cprange default_cprange --ulog-qthreshold 1 -j mark --mark-set 0xa --mark-target ACCEPT, pcnt = 0 -- bcnt = 0
+3. -p ARP --ulog-prefix "" --ulog-nlgroup 1 --ulog-cprange default_cprange --ulog-qthreshold 1 -j ACCEPT , pcnt = 0 -- bcnt = 0
+4. -p ARP --ulog-prefix "" --ulog-nlgroup 1 --ulog-cprange default_cprange --ulog-qthreshold 1 -j ACCEPT , pcnt = 0 -- bcnt = 0
+5. -p ARP --log-level emerg --log-prefix "" -j ACCEPT , pcnt = 0 -- bcnt = 0
+6. -p ARP --log-level notice --log-prefix "" -j ACCEPT , pcnt = 0 -- bcnt = 0
+7. -p ARP --log-level alert --log-prefix "" -j ACCEPT , pcnt = 0 -- bcnt = 0
+8. -p ARP --log-level notice --log-prefix "" -j ACCEPT , pcnt = 0 -- bcnt = 0
+
+Bridge chain: FORWARD, entries: 0, policy: ACCEPT
+
+Bridge chain: OUTPUT, entries: 0, policy: ACCEPT
+
+Bridge chain: SINGCHIA, entries: 0, policy: DROP

@@ -1,4 +1,4 @@
-package iptables
+package constraint
 
 type operator int
 
@@ -18,17 +18,17 @@ const (
 	Mustnot
 )
 
-type constraints struct {
+type Constraints struct {
 	constraints map[string]*constraint
 }
 
-func newConstraints() *constraints {
-	return &constraints{
+func NewConstraints() *Constraints {
+	return &Constraints{
 		constraints: make(map[string]*constraint),
 	}
 }
 
-func (constraints *constraints) add(operator operator,
+func (constraints *Constraints) Add(operator operator,
 	firstType, first, secondType string, seconds ...string) {
 	key := operator.String() + firstType + first + secondType
 	value, ok := constraints.constraints[key]
@@ -59,7 +59,7 @@ func (constraints *constraints) add(operator operator,
 	}
 }
 
-func (constraints *constraints) conflict(firstType, first, secondType, second string) bool {
+func (constraints *Constraints) Conflict(firstType, first, secondType, second string) bool {
 	// must
 	key := Must.String() + firstType + first + secondType
 	value, ok := constraints.constraints[key]
