@@ -28,9 +28,54 @@ Go-xtables就是对iptables, ebtables和arptables工具进行了封装，相比�
 * 可控日志（默认日志或logrus等）
 
 ## 使用
+### 上手一试
+#### 仅允许ssh, http和https端口流量
+```golang
+package main
+
+import (
+	"log"
+
+	"github.com/singchia/go-xtables/iptables"
+	"github.com/singchia/go-xtables/pkg/network"
+)
+
+func main() {
+	ipt := iptables.NewIPTables().
+		Table(iptables.TableTypeFilter).
+		Chain(iptables.ChainTypeINPUT).
+		MatchProtocol(false, network.ProtocolTCP)
+
+	// allow ssh
+	err := ipt.MatchTCP(iptables.WithMatchTCPDstPort(false, 22)).TargetAccept().Insert()
+	if err != nil {
+		log.Fatal(err)
+		return
+	}
+	// allow http
+	err = ipt.MatchTCP(iptables.WithMatchTCPDstPort(false, 80)).TargetAccept().Insert()
+	if err != nil {
+		log.Fatal(err)
+		return
+	}
+	// allow https
+	err = ipt.MatchTCP(iptables.WithMatchTCPDstPort(false, 443)).TargetAccept().Insert()
+	if err != nil {
+		log.Fatal(err)
+		return
+	}
+	// drop others
+	err = iptables.NewIPTables().Table(iptables.TableTypeFilter).Chain(iptables.ChainTypeINPUT).Policy(iptables.TargetTypeDrop)
+	if err != nil {
+		log.Fatal(err)
+		return
+	}
+}
+```
+
 ### 简单使用
 #### 拒绝特定端口的所有进入流量
-``` 
+```golang 
 iptables.NewIPTables().
 	Table(iptables.TableTypeFilter).
 	Chain(iptables.ChainTypeINPUT).
@@ -40,7 +85,7 @@ iptables.NewIPTables().
 	Append()
 ```
 #### 允许特定源IP地址的所有进入流量
-```
+```golang
 iptables.NewIPTables().
 	Table(iptables.TableTypeFilter).
 	Chain(iptables.ChainTypeINPUT).
@@ -49,7 +94,7 @@ iptables.NewIPTables().
 	Append()
 ```
 #### 查找相关的规则
-```
+```golang
 rules, err := iptables.NewIPTables().
 	Table(iptables.TableTypeFilter).
 	Chain(iptables.ChainTypeINPUT).
@@ -58,11 +103,11 @@ rules, err := iptables.NewIPTables().
 	FindRules()
 ```
 #### 删除所有表的所有规则
-```
+```golang
 iptables.NewIPTables().Flush()
 ```
 #### 允许每分钟10个连接进入80端口
-```
+```golang
 iptables.NewIPTables().
 	Table(iptables.TableTypeFilter).
 	Chain(iptables.ChainTypeINPUT).
@@ -73,7 +118,7 @@ iptables.NewIPTables().
 	Append()
 ```
 #### 流量镜像到网关
-```
+```golang
 iptables.NewIPTables().
 	Table(iptables.TableTypeMangle).
 	Chain(iptables.ChainTypePREROUTING).
@@ -86,7 +131,7 @@ iptables.NewIPTables().
 
 该示例使用ebtables，请注意该规则作用在```linux-bridge```上，请先确保网卡被bridge接管。
 
-```
+```golang
 ebtables.NewEBTables().
 	Table(ebtables.TableTypeFilter).
 	Chain(ebtables.ChainTypeINPUT).
@@ -96,7 +141,7 @@ ebtables.NewEBTables().
 ```
 ### 现实场景
 #### 防止DDos攻击
-```
+```golang
 custom := "SYN_FLOOD"
 ipt := iptables.NewIPTables().Table(iptables.TableTypeFilter)
 ipt.NewChain(custom)
@@ -120,7 +165,7 @@ ipt.Chain(userDefined).
 	Append()
 ```
 #### 禁PING
-```
+```golang
 iptables.NewIPTables().
 	Table(iptables.TableTypeFilter).
 	Chain(iptables.ChainTypeINPUT).
@@ -130,7 +175,7 @@ iptables.NewIPTables().
 	Append()
 ```
 #### 流量只出不进
-```
+```golang
 ipt := iptables.NewIPTables().Table(iptables.TableTypeFilter)
 ipt.Chain(iptables.ChainTypeINPUT).
 	MatchInInterface(false, "lo").
