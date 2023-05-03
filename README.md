@@ -29,9 +29,53 @@ Check out the [iptables godoc](https://pkg.go.dev/github.com/singchia/go-xtables
 * Log control(inner log, logrus etc.).
 
 ## Usage
-### Simple
+### Getting Start
+#### Only accep ssh, http and https ports for incoming traffic.
+```golang
+package main
+
+import (
+	"log"
+
+	"github.com/singchia/go-xtables/iptables"
+	"github.com/singchia/go-xtables/pkg/network"
+)
+
+func main() {
+	ipt := iptables.NewIPTables().
+		Table(iptables.TableTypeFilter).
+		Chain(iptables.ChainTypeINPUT).
+		MatchProtocol(false, network.ProtocolTCP)
+
+	// allow ssh
+	err := ipt.MatchTCP(iptables.WithMatchTCPDstPort(false, 22)).TargetAccept().Insert()
+	if err != nil {
+		log.Fatal(err)
+		return
+	}
+	// allow http
+	err = ipt.MatchTCP(iptables.WithMatchTCPDstPort(false, 80)).TargetAccept().Insert()
+	if err != nil {
+		log.Fatal(err)
+		return
+	}
+	// allow https
+	err = ipt.MatchTCP(iptables.WithMatchTCPDstPort(false, 443)).TargetAccept().Insert()
+	if err != nil {
+		log.Fatal(err)
+		return
+	}
+	// drop others
+	err = iptables.NewIPTables().Table(iptables.TableTypeFilter).Chain(iptables.ChainTypeINPUT).Policy(iptables.TargetTypeDrop)
+	if err != nil {
+		log.Fatal(err)
+		return
+	}
+}
+```
+### Simple Use
 #### Drop all incoming traffic on specific port
-``` 
+```golang 
 iptables.NewIPTables().
 	Table(iptables.TableTypeFilter).
 	Chain(iptables.ChainTypeINPUT).
@@ -41,7 +85,7 @@ iptables.NewIPTables().
 	Append()
 ```
 #### Accept all incoming traffic from a specific source IP address
-```
+```golang
 iptables.NewIPTables().
 	Table(iptables.TableTypeFilter).
 	Chain(iptables.ChainTypeINPUT).
@@ -50,7 +94,7 @@ iptables.NewIPTables().
 	Append()
 ```
 #### Find related rules
-```
+```golang
 rules, err := iptables.NewIPTables().
 	Table(iptables.TableTypeFilter).
 	Chain(iptables.ChainTypeINPUT).
@@ -59,11 +103,11 @@ rules, err := iptables.NewIPTables().
 	FindRules()
 ```
 #### Delete all rules from all tables
-```
+```golang
 iptables.NewIPTables().Flush()
 ```
 #### Allow a maximum of 10 connections per minute to enter port 80
-```
+```golang
 iptables.NewIPTables().
 	Table(iptables.TableTypeFilter).
 	Chain(iptables.ChainTypeINPUT).
@@ -74,7 +118,7 @@ iptables.NewIPTables().
 	Append()
 ```
 #### Mirror traffic to the gateway
-```
+```golang
 iptables.NewIPTables().
 	Table(iptables.TableTypeMangle).
 	Chain(iptables.ChainTypePREROUTING).
@@ -87,7 +131,7 @@ iptables.NewIPTables().
 
 This example uses ebtables. Please note that this rule applies to the ```linux-bridge```, so make sure that the network interface is being hosted by the bridge.
 
-```
+```golang
 ebtables.NewEBTables().
 	Table(ebtables.TableTypeFilter).
 	Chain(ebtables.ChainTypeINPUT).
@@ -97,7 +141,7 @@ ebtables.NewEBTables().
 ```
 ### Real-world scenario
 #### Anti DDOS attack
-```
+```golang
 custom := "SYN_FLOOD"
 ipt := iptables.NewIPTables().Table(iptables.TableTypeFilter)
 ipt.NewChain(custom)
@@ -121,7 +165,7 @@ ipt.Chain(userDefined).
 	Append()
 ```
 #### Disable PING
-```
+```golang
 iptables.NewIPTables().
 	Table(iptables.TableTypeFilter).
 	Chain(iptables.ChainTypeINPUT).
@@ -131,7 +175,7 @@ iptables.NewIPTables().
 	Append()
 ```
 #### Traffic outbound only except ssh port
-```
+```golang
 ipt := iptables.NewIPTables().Table(iptables.TableTypeFilter)
 ipt.Chain(iptables.ChainTypeINPUT).
 	MatchInInterface(false, "lo").
@@ -164,7 +208,7 @@ The following distributions need to pay attention to compatibility:
 * OpenSUSE Leap 15.2 and higher versions.
 * Arch Linux
 
-## Contribute
+## Contributing
 Currently, go-xtables is in the proof-of-concept (POC) stage. If you find any bugs, please feel free to submit an issue, and the project maintainers will respond to the relevant issues promptly.
  
 If you want to contribute new features or help solve project problems more quickly, please feel free to submit a PR that meets the following simple conditions:

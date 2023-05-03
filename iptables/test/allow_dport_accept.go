@@ -16,7 +16,7 @@ func AllowDPortAccept() {
 		Chain(iptables.ChainTypeINPUT).
 		MatchProtocol(false, network.ProtocolTCP).
 		MatchTCP(iptables.WithMatchTCPDstPort(false, 2432)).
-		TargetDrop().
+		TargetAccept().
 		Append()
 	fmt.Println(err)
 }
