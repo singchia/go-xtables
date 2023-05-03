@@ -30,7 +30,7 @@ Check out the [iptables godoc](https://pkg.go.dev/github.com/singchia/go-xtables
 
 ## Usage
 ### Getting Start
-#### Only accep ssh, http and https ports for incoming traffic.
+#### Only accep ssh, http and https ports for incoming traffic
 ```golang
 package main
 
