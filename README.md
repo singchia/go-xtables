@@ -22,10 +22,11 @@ Check out the [iptables godoc](https://pkg.go.dev/github.com/singchia/go-xtables
 ### Features
 
 * Easy to use.
-* Multiple tables(iptables, ebtables, arptables) to support.
-* Full featured matches, options, watchers and other extensions.
-* Chainable method and order free.
-* Dryrun commands to writer.
+* Multi-layer tables(iptables, ebtables, arptables).
+* Full featured matches, options, watchers and extensions.
+* Rule finding, rule parsing and rule comparison.
+* Chainable and option pattern.
+* Dryrun commands to io.Writer.
 * Log control(inner log, logrus etc.).
 
 ## Usage
