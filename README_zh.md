@@ -21,10 +21,11 @@ Go-xtables就是对iptables, ebtables和arptables工具进行了封装，相比�
 ### 特性
 
 * 简单易用
-* 多tables支持（iptables, ebtables, arptables）
+* 多层tables支持（iptables, ebtables, arptables）
 * 全特性支持（全量matches, options, watchers和其他extensions）
-* 链式调用（任意排序，可复用对象）
-* Dryrun
+* 规则查找，解析和比较
+* 链式调用（自动排序，可复用对象）
+* Dryrun输出
 * 可控日志（默认日志或logrus等）
 
 ## 使用
