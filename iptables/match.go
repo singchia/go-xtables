@@ -5813,6 +5813,7 @@ func (mMH *MatchMH) Parse(main []byte) (int, bool) {
 	return len(matches[0]), true
 }
 
+// 0 for End means ignoring
 type PortRange struct {
 	Start int
 	End   int
