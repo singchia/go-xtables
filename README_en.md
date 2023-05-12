@@ -5,7 +5,7 @@
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 ![Platform](https://img.shields.io/badge/platform-linux-brightgreen.svg)
 
- English | [简体中文](./README.md)
+English | [简体中文](./README.md)
 
 ## Overview
 ### Background
@@ -17,7 +17,7 @@ Check out the [iptables godoc](https://pkg.go.dev/github.com/singchia/go-xtables
 
 ### Design
 
-![](docs/design-v2.jpg)
+![](docs/design-v2.png)
 
 ### Features
 
