@@ -17,7 +17,7 @@ Go-xtables就是对iptables, ebtables和arptables工具进行了封装，相比�
 
 ### 设计
 
-![](docs/design.jpg)
+![](docs/design-v2.jpg)
 
 ### 特性
 
