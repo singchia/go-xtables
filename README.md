@@ -11,7 +11,7 @@ English | [简体中文](./README_cn.md)
 ## Overview
 ### What is 
 
-Go-xtables is a wrapper for the iptables, ebtables, and arptables utils. It provides full features and extensions, and inherits abstractions from the tables, making it very convenient to use.
+Go-xtables is a wrapper for the iptables, ebtables, and arptables utils. It provides full features, extensions and abstractions from Netfilter, making it very convenient to use.
 
 Check out the [iptables godoc](https://pkg.go.dev/github.com/singchia/go-xtables/iptables) and [ebtables godoc](https://pkg.go.dev/github.com/singchia/go-xtables/ebtables)  to learn about the 70+ ```match``` capabilities, 50+ ```target``` capabilities, and 10+ ```option``` capabilities.
 
