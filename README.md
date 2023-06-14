@@ -9,10 +9,9 @@
 English | [简体中文](./README_cn.md)
 
 ## Overview
-### Background
-Netfilter allows packets to be filtered, transformed, and modified across multiple tables and chains, it provides multiple socket options for setsockopt and getsockopt to allow upper-layer applications to add, delete, modify, and query rules. However, these socket options are not directly exposed to developers due to the lack of standard definition. For C/C++ developers, the ```libiptc``` library can be used to interact with Netfilter. But according to the official description, ```libiptc``` does not mean that it is open to the public. So, for Go developers, using system call to wrap socket or using cgo to wrap libiptc is not a good choice. According to the Netfilter instructions, it is recommended that developers use the iptables, ebtables, and arptables tools to operate on packets.
+### What is 
 
-Go-xtables is a wrapper for the iptables, ebtables, and arptables tools. Compared to other libraries, it provides additional capabilities for ebtables and arptables, full feature support (wrapping all extension capabilities mentioned in the man pages), and offers chain and option modes for external use. It fully inherits several abstractions for users from the tables, making it very convenient to use.
+Go-xtables is a wrapper for the iptables, ebtables, and arptables utils. It provides full features and extensions, and inherits abstractions from the tables, making it very convenient to use.
 
 Check out the [iptables godoc](https://pkg.go.dev/github.com/singchia/go-xtables/iptables) and [ebtables godoc](https://pkg.go.dev/github.com/singchia/go-xtables/ebtables)  to learn about the 70+ ```match``` capabilities, 50+ ```target``` capabilities, and 10+ ```option``` capabilities.
 
@@ -22,10 +21,10 @@ Check out the [iptables godoc](https://pkg.go.dev/github.com/singchia/go-xtables
 
 ### Features
 
-* Easy to use.
 * Multiple tables(iptables, ebtables, arptables) to support.
 * Full featured matches, options, watchers and other extensions.
-* Chainable method and order free.
+* Addtional search.
+* Chainable pattern.
 * Dryrun commands to writer.
 * Log control(inner log, logrus etc.).
 
@@ -244,16 +243,13 @@ The following distributions need to pay attention to compatibility:
 * Arch Linux
 
 ## Contributing
-Currently, go-xtables is in the proof-of-concept (POC) stage. If you find any bugs, please feel free to submit an issue, and the project maintainers will respond to the relevant issues promptly.
+If you find any bug, please submit the issue, and we will respond in a short time.
  
-If you want to contribute new features or help solve project problems more quickly, please feel free to submit a PR that meets the following simple conditions:
+If you want to contribute new features or help solve project problems, please feel free to submit a PR:
  
  * Maintain consistent code style
  * Submit one feature at a time
  * Include unit tests with the code you submit
- * Pass the CI build
-
-And after code review, it will be merged into the project.
 
 ## License
 
