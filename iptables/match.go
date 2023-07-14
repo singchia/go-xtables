@@ -5822,7 +5822,7 @@ type PortRange struct {
 type OptionMatchMultiPort func(*MatchMultiPort)
 
 // Match if the source port is one of the given ports.
-func WithMatchMultiPortSrc(invert bool, ports ...PortRange) OptionMatchMultiPort {
+func WithMatchMultiPortSrcPortRanges(invert bool, ports ...PortRange) OptionMatchMultiPort {
 	return func(mMultiPort *MatchMultiPort) {
 		mMultiPort.SrcPorts = ports
 		mMultiPort.invert = invert
@@ -5830,15 +5830,43 @@ func WithMatchMultiPortSrc(invert bool, ports ...PortRange) OptionMatchMultiPort
 }
 
 // Match if the destination port is one of the given ports.
-func WithMatchMultiPortDst(invert bool, ports ...PortRange) OptionMatchMultiPort {
+func WithMatchMultiPortDstPortRanges(invert bool, ports ...PortRange) OptionMatchMultiPort {
 	return func(mMultiPort *MatchMultiPort) {
 		mMultiPort.DstPorts = ports
 		mMultiPort.invert = invert
 	}
 }
 
+func WithMatchMultiPortDstPorts(invert bool, ports ...int) OptionMatchMultiPort {
+	return func(mMultiPort *MatchMultiPort) {
+		portRanges := []PortRange{}
+		for _, port := range ports {
+			portRange := PortRange{
+				Start: port,
+			}
+			portRanges = append(portRanges, portRange)
+		}
+		mMultiPort.DstPorts = portRanges
+		mMultiPort.invert = invert
+	}
+}
+
+func WithMatchMultiPortSrcPorts(invert bool, ports ...int) OptionMatchMultiPort {
+	return func(mMultiPort *MatchMultiPort) {
+		portRanges := []PortRange{}
+		for _, port := range ports {
+			portRange := PortRange{
+				Start: port,
+			}
+			portRanges = append(portRanges, portRange)
+		}
+		mMultiPort.SrcPorts = portRanges
+		mMultiPort.invert = invert
+	}
+}
+
 // Match if either the source or destination ports are equal to one of the given ports.
-func WithMatchMultiPort(invert bool, ports ...PortRange) OptionMatchMultiPort {
+func WithMatchMultiPortPortRanges(invert bool, ports ...PortRange) OptionMatchMultiPort {
 	return func(mMultiPort *MatchMultiPort) {
 		mMultiPort.Ports = ports
 		mMultiPort.invert = invert
