@@ -15,7 +15,7 @@ func main() {
 
 	// allow ssh, http and https
 	err := ipt.MatchMultiPort(
-		iptables.WithMatchMultiPortDst(false, iptables.PortRange{Start: 22}, iptables.PortRange{Start: 80}, iptables.PortRange{Start: 443})).
+		iptables.WithMatchMultiPortDstPorts(false, 22, 80, 443)).
 		TargetAccept().Insert()
 	if err != nil {
 		log.Fatal(err)
