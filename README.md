@@ -14,7 +14,7 @@ Go-xtables is a wrapper for the iptables, ebtables, and arptables utils. It prov
 
 Check out the [iptables godoc](https://pkg.go.dev/github.com/singchia/go-xtables/iptables) and [ebtables godoc](https://pkg.go.dev/github.com/singchia/go-xtables/ebtables)  to learn about the 70+ ```match``` capabilities, 50+ ```target``` capabilities, and 10+ ```option``` capabilities.
 
-### Modules
+### Concepts
 
 ![](docs/design-v2.png)
 
