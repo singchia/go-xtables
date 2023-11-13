@@ -91,8 +91,8 @@ Go-xtables就是对iptables, ebtables和arptables工具进行了封装，相比�
 - [x] TargetTypeAccept
 - [x] TargetTypeDrop
 - [x] TargetTypeReturn
-- [x] TargetTypeJumpChain // jump chain
-- [x] TargetTypeGotoChain // goto chain
+- [x] TargetTypeJumpChain
+- [x] TargetTypeGotoChain
 - [x] TargetTypeAudit
 - [x] TargetTypeCheckSum
 - [x] TargetTypeClassify
@@ -111,11 +111,11 @@ Go-xtables就是对iptables, ebtables和arptables工具进行了封装，相比�
 - [x] TargetTypeLog
 - [x] TargetTypeMark
 - [x] TargetTypeMasquerade
-- [x] TargetTypeMirror // unsupport
+- [x] TargetTypeMirror
 - [x] TargetTypeNetmap
 - [x] TargetTypeNFLog
 - [x] TargetTypeNFQueue
-- [x] TargetTypeNoTrack // unsupport
+- [x] TargetTypeNoTrack
 - [x] TargetTypeRateEst
 - [x] TargetTypeRedirect
 - [x] TargetTypeReject

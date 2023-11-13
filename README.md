@@ -89,8 +89,8 @@ Check out the [iptables godoc](https://pkg.go.dev/github.com/singchia/go-xtables
 - [x] TargetTypeAccept
 - [x] TargetTypeDrop
 - [x] TargetTypeReturn
-- [x] TargetTypeJumpChain // jump chain
-- [x] TargetTypeGotoChain // goto chain
+- [x] TargetTypeJumpChain
+- [x] TargetTypeGotoChain
 - [x] TargetTypeAudit
 - [x] TargetTypeCheckSum
 - [x] TargetTypeClassify
@@ -109,11 +109,11 @@ Check out the [iptables godoc](https://pkg.go.dev/github.com/singchia/go-xtables
 - [x] TargetTypeLog
 - [x] TargetTypeMark
 - [x] TargetTypeMasquerade
-- [x] TargetTypeMirror // unsupport
+- [x] TargetTypeMirror
 - [x] TargetTypeNetmap
 - [x] TargetTypeNFLog
 - [x] TargetTypeNFQueue
-- [x] TargetTypeNoTrack // unsupport
+- [x] TargetTypeNoTrack
 - [x] TargetTypeRateEst
 - [x] TargetTypeRedirect
 - [x] TargetTypeReject
