@@ -16,6 +16,124 @@ Go-xtables就是对iptables, ebtables和arptables工具进行了封装，相比�
 
 查看 [iptables godoc](https://pkg.go.dev/github.com/singchia/go-xtables/iptables) 和 [ebtables godoc](https://pkg.go.dev/github.com/singchia/go-xtables/ebtables) 来了解70+ ```match```能力，50+ ```target```能力以10+ ```option```能力。
 
+**Matches:**
+
+- [x] MatchTypeAddrType
+- [x] MatchTypeAH
+- [x] MatchTypeBPF
+- [x] MatchTypeCGroup
+- [x] MatchTypeCluster
+- [x] MatchTypeComment
+- [x] MatchTypeConnBytes
+- [x] MatchTypeConnLabel
+- [x] MatchTypeConnLimit
+- [x] MatchTypeConnMark
+- [x] MatchTypeConnTrack
+- [x] MatchTypeCPU
+- [x] MatchTypeDCCP
+- [x] MatchTypeDestination
+- [x] MatchTypeDevGroup
+- [x] MatchTypeDSCP
+- [x] MatchTypeDst
+- [x] MatchTypeECN
+- [x] MatchTypeESP
+- [x] MatchTypeEUI64
+- [x] MatchTypeFrag
+- [x] MatchTypeHashLimit
+- [x] MatchTypeHBH
+- [x] MatchTypeHelper
+- [x] MatchTypeHL
+- [x] MatchTypeICMP
+- [x] MatchTypeInInterface
+- [x] MatchTypeIPRange
+- [x] MatchTypeIPv4
+- [x] MatchTypeIPv6
+- [x] MatchTypeIPv6Header
+- [x] MatchTypeIPVS
+- [x] MatchTypeLength
+- [x] MatchTypeLimit
+- [x] MatchTypeMAC
+- [x] MatchTypeMark
+- [x] MatchTypeMH
+- [x] MatchTypeMultiPort
+- [x] MatchTypeNFAcct
+- [x] MatchTypeOSF
+- [x] MatchTypeOutInterface
+- [x] MatchTypeOwner
+- [x] MatchTypePhysDev
+- [x] MatchTypePktType
+- [x] MatchTypePolicy
+- [x] MatchTypeProtocol
+- [x] MatchTypeQuota
+- [x] MatchTypeRateEst
+- [x] MatchTypeRealm
+- [x] MatchTypeRecent
+- [x] MatchTypeRPFilter
+- [x] MatchTypeRT
+- [x] MatchTypeSCTP
+- [x] MatchTypeSet
+- [x] MatchTypeSocket
+- [x] MatchTypeSource
+- [x] MatchTypeSRH
+- [x] MatchTypeState
+- [x] MatchTypeStatistic
+- [x] MatchTypeString
+- [x] MatchTypeTCP
+- [x] MatchTypeTCPMSS
+- [x] MatchTypeTime
+- [x] MatchTypeTOS
+- [x] MatchTypeTTL
+- [x] MatchTypeU32
+- [x] MatchTypeUDP
+
+**Targets**
+
+- [x] TargetTypeAccept
+- [x] TargetTypeDrop
+- [x] TargetTypeReturn
+- [x] TargetTypeJumpChain
+- [x] TargetTypeGotoChain
+- [x] TargetTypeAudit
+- [x] TargetTypeCheckSum
+- [x] TargetTypeClassify
+- [x] TargetTypeClusterIP
+- [x] TargetTypeConnMark
+- [x] TargetTypeConnSecMark
+- [x] TargetTypeCT
+- [x] TargetTypeDNAT
+- [x] TargetTypeDNPT
+- [x] TargetTypeDSCP
+- [x] TargetTypeECN
+- [x] TargetTypeHL
+- [x] TargetTypeHMark
+- [x] TargetTypeIdleTimer
+- [x] TargetTypeLED
+- [x] TargetTypeLog
+- [x] TargetTypeMark
+- [x] TargetTypeMasquerade
+- [x] TargetTypeMirror
+- [x] TargetTypeNetmap
+- [x] TargetTypeNFLog
+- [x] TargetTypeNFQueue
+- [x] TargetTypeNoTrack
+- [x] TargetTypeRateEst
+- [x] TargetTypeRedirect
+- [x] TargetTypeReject
+- [x] TargetTypeSame
+- [x] TargetTypeSecMark
+- [x] TargetTypeSet
+- [x] TargetTypeSNAT
+- [x] TargetTypeSNPT
+- [x] TargetTypeSYNProxy
+- [x] TargetTypeTCPMSS
+- [x] TargetTypeTCPOptStrip
+- [x] TargetTypeTEE
+- [x] TargetTypeTOS
+- [x] TargetTypeTProxy
+- [x] TargetTypeTrace
+- [x] TargetTypeTTL
+- [x] TargetTypeULog
+
 ### 设计
 
 ![](docs/design-v2.png)
@@ -51,7 +169,7 @@ func main() {
 		log.Fatal(err)
 	}
 	// drop others
-	err = iptables.NewIPTables().Table(iptables.TableTypeFilter).Chain(iptables.ChainTypeINPUT).Policy(iptables.TargetTypeDrop)
+	err = iptables.NewIPTables().Table(iptables.TableTypeFilter).Chain(iptables.ChainTypeINPUT).Policy(iptables.- [x] TargetTypeDrop)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -175,9 +293,9 @@ ipt.Chain(iptables.ChainTypeINPUT).
 	MatchTCP(iptables.WithMatchTCPDstPort(false, 22)).
 	TargetAccept().
 	Append()
-ipt.Chain(iptables.ChainTypeINPUT).Policy(iptables.TargetTypeDrop)
-ipt.Chain(iptables.ChainTypeFORWARD).Policy(iptables.TargetTypeDrop)
-ipt.Chain(iptables.ChainTypeOUTPUT).Policy(iptables.TargetTypeAccept)
+ipt.Chain(iptables.ChainTypeINPUT).Policy(iptables.- [x] TargetTypeDrop)
+ipt.Chain(iptables.ChainTypeFORWARD).Policy(iptables.- [x] TargetTypeDrop)
+ipt.Chain(iptables.ChainTypeOUTPUT).Policy(iptables.- [x] TargetTypeAccept)
 ```
 ## 注意
 
