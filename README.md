@@ -14,6 +14,124 @@ Go-xtables is a wrapper for the iptables, ebtables, and arptables utils. It prov
 
 Check out the [iptables godoc](https://pkg.go.dev/github.com/singchia/go-xtables/iptables) and [ebtables godoc](https://pkg.go.dev/github.com/singchia/go-xtables/ebtables)  to learn about the 70+ ```match``` capabilities, 50+ ```target``` capabilities, and 10+ ```option``` capabilities.
 
+**Matches:**
+
+- [x] MatchTypeAddrType
+- [x] MatchTypeAH
+- [x] MatchTypeBPF
+- [x] MatchTypeCGroup
+- [x] MatchTypeCluster
+- [x] MatchTypeComment
+- [x] MatchTypeConnBytes
+- [x] MatchTypeConnLabel
+- [x] MatchTypeConnLimit
+- [x] MatchTypeConnMark
+- [x] MatchTypeConnTrack
+- [x] MatchTypeCPU
+- [x] MatchTypeDCCP
+- [x] MatchTypeDestination
+- [x] MatchTypeDevGroup
+- [x] MatchTypeDSCP
+- [x] MatchTypeDst
+- [x] MatchTypeECN
+- [x] MatchTypeESP
+- [x] MatchTypeEUI64
+- [x] MatchTypeFrag
+- [x] MatchTypeHashLimit
+- [x] MatchTypeHBH
+- [x] MatchTypeHelper
+- [x] MatchTypeHL
+- [x] MatchTypeICMP
+- [x] MatchTypeInInterface
+- [x] MatchTypeIPRange
+- [x] MatchTypeIPv4
+- [x] MatchTypeIPv6
+- [x] MatchTypeIPv6Header
+- [x] MatchTypeIPVS
+- [x] MatchTypeLength
+- [x] MatchTypeLimit
+- [x] MatchTypeMAC
+- [x] MatchTypeMark
+- [x] MatchTypeMH
+- [x] MatchTypeMultiPort
+- [x] MatchTypeNFAcct
+- [x] MatchTypeOSF
+- [x] MatchTypeOutInterface
+- [x] MatchTypeOwner
+- [x] MatchTypePhysDev
+- [x] MatchTypePktType
+- [x] MatchTypePolicy
+- [x] MatchTypeProtocol
+- [x] MatchTypeQuota
+- [x] MatchTypeRateEst
+- [x] MatchTypeRealm
+- [x] MatchTypeRecent
+- [x] MatchTypeRPFilter
+- [x] MatchTypeRT
+- [x] MatchTypeSCTP
+- [x] MatchTypeSet
+- [x] MatchTypeSocket
+- [x] MatchTypeSource
+- [x] MatchTypeSRH
+- [x] MatchTypeState
+- [x] MatchTypeStatistic
+- [x] MatchTypeString
+- [x] MatchTypeTCP
+- [x] MatchTypeTCPMSS
+- [x] MatchTypeTime
+- [x] MatchTypeTOS
+- [x] MatchTypeTTL
+- [x] MatchTypeU32
+- [x] MatchTypeUDP
+
+**Targets**
+
+- [x] TargetTypeAccept
+- [x] TargetTypeDrop
+- [x] TargetTypeReturn
+- [x] TargetTypeJumpChain // jump chain
+- [x] TargetTypeGotoChain // goto chain
+- [x] TargetTypeAudit
+- [x] TargetTypeCheckSum
+- [x] TargetTypeClassify
+- [x] TargetTypeClusterIP
+- [x] TargetTypeConnMark
+- [x] TargetTypeConnSecMark
+- [x] TargetTypeCT
+- [x] TargetTypeDNAT
+- [x] TargetTypeDNPT
+- [x] TargetTypeDSCP
+- [x] TargetTypeECN
+- [x] TargetTypeHL
+- [x] TargetTypeHMark
+- [x] TargetTypeIdleTimer
+- [x] TargetTypeLED
+- [x] TargetTypeLog
+- [x] TargetTypeMark
+- [x] TargetTypeMasquerade
+- [x] TargetTypeMirror // unsupport
+- [x] TargetTypeNetmap
+- [x] TargetTypeNFLog
+- [x] TargetTypeNFQueue
+- [x] TargetTypeNoTrack // unsupport
+- [x] TargetTypeRateEst
+- [x] TargetTypeRedirect
+- [x] TargetTypeReject
+- [x] TargetTypeSame
+- [x] TargetTypeSecMark
+- [x] TargetTypeSet
+- [x] TargetTypeSNAT
+- [x] TargetTypeSNPT
+- [x] TargetTypeSYNProxy
+- [x] TargetTypeTCPMSS
+- [x] TargetTypeTCPOptStrip
+- [x] TargetTypeTEE
+- [x] TargetTypeTOS
+- [x] TargetTypeTProxy
+- [x] TargetTypeTrace
+- [x] TargetTypeTTL
+- [x] TargetTypeULog
+
 ### Concepts
 
 ![](docs/design-v2.png)
