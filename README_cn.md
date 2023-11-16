@@ -9,6 +9,10 @@
 [English](./README.md) | 简体中文
 
 ## 简介
+
+### 设计
+
+![](docs/design-v2.png)
 ### 说明
 Netfilter允许数据包在多个表和链进行过滤、转换和修改，其内核态通过提供setsockopt和getsockopt的多个socket option给上层以增删改查的能力，但这些socket option因为没有标准定义并不直接开放给开发者，对于c/c++开发者来说，可以考虑```libiptc ```来与netfilter交互，不过据netfilter官方描述，libiptc从不（NEVER）意味着对公众开放。因此对于go开发者来说，使用系统调用封装socket或使用cgo封装libiptc都不是更好的选择，按照netfilter的说明，更建议开发者使用iptables, ebtables和arptables工具来操作数据包。
 
@@ -86,7 +90,7 @@ Go-xtables就是对iptables, ebtables和arptables工具进行了封装，相比�
 - [x] MatchTypeU32
 - [x] MatchTypeUDP
 
-**Targets**
+**Targets:**
 
 - [x] TargetTypeAccept
 - [x] TargetTypeDrop
@@ -134,9 +138,6 @@ Go-xtables就是对iptables, ebtables和arptables工具进行了封装，相比�
 - [x] TargetTypeTTL
 - [x] TargetTypeULog
 
-### 设计
-
-![](docs/design-v2.png)
 
 ### 特性
 
