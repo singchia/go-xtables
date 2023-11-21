@@ -170,7 +170,7 @@ func main() {
 		log.Fatal(err)
 	}
 	// drop others
-	err = iptables.NewIPTables().Table(iptables.TableTypeFilter).Chain(iptables.ChainTypeINPUT).Policy(iptables.- [x] TargetTypeDrop)
+	err = iptables.NewIPTables().Table(iptables.TableTypeFilter).Chain(iptables.ChainTypeINPUT).Policy(iptables.TargetTypeDrop)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -294,9 +294,9 @@ ipt.Chain(iptables.ChainTypeINPUT).
 	MatchTCP(iptables.WithMatchTCPDstPort(false, 22)).
 	TargetAccept().
 	Append()
-ipt.Chain(iptables.ChainTypeINPUT).Policy(iptables.- [x] TargetTypeDrop)
-ipt.Chain(iptables.ChainTypeFORWARD).Policy(iptables.- [x] TargetTypeDrop)
-ipt.Chain(iptables.ChainTypeOUTPUT).Policy(iptables.- [x] TargetTypeAccept)
+ipt.Chain(iptables.ChainTypeINPUT).Policy(iptables.TargetTypeDrop)
+ipt.Chain(iptables.ChainTypeFORWARD).Policy(iptables.TargetTypeDrop)
+ipt.Chain(iptables.ChainTypeOUTPUT).Policy(iptables.TargetTypeAccept)
 ```
 ## 注意
 
