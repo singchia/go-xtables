@@ -1,4 +1,5 @@
-![](docs/go-xtables.png)
+<img src="./docs/go-xtables.png" width="60%" height="60%">
+
 
 [![Go Reference](https://pkg.go.dev/badge/badge/github.com/singchia/go-xtables.svg)](https://pkg.go.dev/badge/github.com/singchia/go-xtables)
 [![Go](https://github.com/singchia/go-xtables/actions/workflows/go.yml/badge.svg)](https://github.com/singchia/go-xtables/actions/workflows/go.yml)
