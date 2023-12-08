@@ -1,4 +1,4 @@
-<img src="./docs/go-xtables.png" width="60%" height="60%">
+<img src="./docs/go-xtables.png" width="80%" height="80%">
 
 
 [![Go Reference](https://pkg.go.dev/badge/badge/github.com/singchia/go-xtables.svg)](https://pkg.go.dev/badge/github.com/singchia/go-xtables)
