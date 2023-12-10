@@ -2,13 +2,11 @@
 <img src="./docs/go-xtables.png" width="60%" height="60%">
 </p>
 
-<p align=center>
 [![Go Reference](https://pkg.go.dev/badge/badge/github.com/singchia/go-xtables.svg)](https://pkg.go.dev/badge/github.com/singchia/go-xtables)
 [![Go](https://github.com/singchia/go-xtables/actions/workflows/go.yml/badge.svg)](https://github.com/singchia/go-xtables/actions/workflows/go.yml)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Go Report Card](https://goreportcard.com/badge/github.com/singchia/go-xtables)](https://goreportcard.com/report/github.com/singchia/go-xtables)
 ![Platform](https://img.shields.io/badge/platform-linux-brightgreen.svg)
-</p>
 
 [English](./README.md) | 简体中文
 
