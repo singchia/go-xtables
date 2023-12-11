@@ -2,6 +2,8 @@
 <img src="./docs/go-xtables.png" width="60%" height="60%">
 </p>
 
+<div align="center">
+
 [![Go Reference](https://pkg.go.dev/badge/badge/github.com/singchia/go-xtables.svg)](https://pkg.go.dev/badge/github.com/singchia/go-xtables)
 [![Go](https://github.com/singchia/go-xtables/actions/workflows/go.yml/badge.svg)](https://github.com/singchia/go-xtables/actions/workflows/go.yml)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
@@ -9,6 +11,8 @@
 ![Platform](https://img.shields.io/badge/platform-linux-brightgreen.svg)
 
 English | [简体中文](./README_cn.md)
+
+</div>
 
 ## What is go-xtables?
 
