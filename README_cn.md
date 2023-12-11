@@ -10,11 +10,9 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/singchia/go-xtables)](https://goreportcard.com/report/github.com/singchia/go-xtables)
 ![Platform](https://img.shields.io/badge/platform-linux-brightgreen.svg)
 
-
-
 [English](./README.md) | 简体中文
 
-<div align="center">
+</div>
 
 ## 简介
 
