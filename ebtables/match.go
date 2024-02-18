@@ -179,7 +179,10 @@ func (bm *baseMatch) Parse(params []byte) (int, bool) {
 }
 
 func (bm *baseMatch) Equal(mth Match) bool {
-	return bm.Short() == mth.Short()
+	if bm.child != nil {
+		return bm.child.Short() == mth.Short()
+	}
+	return false
 }
 
 func (bm *baseMatch) Depends() []MatchType {
