@@ -74,7 +74,10 @@ func (bo *baseOption) LongArgs() []string {
 }
 
 func (bo *baseOption) Equal(opt Option) bool {
-	return bo.Short() == opt.Short()
+	if bo.child != nil {
+		return bo.child.Short() == opt.Short()
+	}
+	return false
 }
 
 type OptionFragment struct {

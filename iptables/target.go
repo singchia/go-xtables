@@ -422,7 +422,10 @@ func (bt *baseTarget) Parse([]byte) (int, bool) {
 }
 
 func (bt *baseTarget) Equal(tgt Target) bool {
-	return bt.Short() == tgt.Short()
+	if bt.child != nil {
+		return bt.child.Short() == tgt.Short()
+	}
+	return false
 }
 
 type TargetEmpty struct {

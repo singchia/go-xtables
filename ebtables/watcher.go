@@ -87,7 +87,10 @@ func (bw *baseWatcher) LongArgs() []string {
 }
 
 func (bw *baseWatcher) Equal(wth Watcher) bool {
-	return bw.Short() == wth.Short()
+	if bw.child != nil {
+		return bw.child.Short() == wth.Short()
+	}
+	return false
 }
 
 type OptionWatcherLog func(*WatcherLog)
