@@ -1554,6 +1554,10 @@ type MatchComment struct {
 	Comment string
 }
 
+func (mComment *MatchComment) Short() string {
+	return strings.Join(mComment.ShortArgs(), " ")
+}
+
 func (mComment *MatchComment) ShortArgs() []string {
 	args := make([]string, 0, 4)
 	args = append(args, "-m", mComment.matchType.String())
