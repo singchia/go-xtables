@@ -62,24 +62,35 @@ func NewIPTables(opts ...IPTablesOption) *IPTables {
 func (iptables *IPTables) dump() *IPTables {
 	newiptables := &IPTables{
 		statement: &Statement{
-			err:     iptables.statement.err,
-			table:   iptables.statement.table,
-			chain:   iptables.statement.chain,
-			matches: make(map[MatchType]Match),
-			options: make(map[OptionType]Option),
-			target:  iptables.statement.target,
-			command: iptables.statement.command,
+			err:             iptables.statement.err,
+			table:           iptables.statement.table,
+			chain:           iptables.statement.chain,
+			matches:         make(map[MatchType]Match),
+			matchTypeOrder:  make([]MatchType, 0),
+			options:         make(map[OptionType]Option),
+			optionTypeOrder: make([]OptionType, 0),
+			target:          iptables.statement.target,
+			command:         iptables.statement.command,
 		},
 		cmdName:  iptables.cmdName,
 		log:      iptables.log,
 		dr:       iptables.dr,
 		drWriter: iptables.drWriter,
 	}
+
+	for _, k := range iptables.statement.matchTypeOrder {
+		newiptables.statement.matchTypeOrder = append(newiptables.statement.matchTypeOrder, k)
+	}
 	for k, v := range iptables.statement.matches {
 		newiptables.statement.matches[k] = v
+	}
+
+	for _, k := range iptables.statement.optionTypeOrder {
+		newiptables.statement.optionTypeOrder = append(newiptables.statement.optionTypeOrder, k)
 	}
 	for k, v := range iptables.statement.options {
 		newiptables.statement.options[k] = v
 	}
+
 	return newiptables
 }
