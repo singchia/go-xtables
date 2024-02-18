@@ -14,7 +14,9 @@ type Statement struct {
 	chain            ChainType
 	userDefinedChain string
 	matches          map[MatchType]Match
+	matchTypeOrder   []MatchType
 	options          map[OptionType]Option
+	optionTypeOrder  []OptionType
 	target           Target
 	command          Command
 	dump             bool
@@ -34,10 +36,16 @@ func NewStatement() *Statement {
 }
 
 func (statement *Statement) addMatch(match Match) {
+	if _, ok := statement.matches[match.Type()]; !ok {
+		statement.matchTypeOrder = append(statement.matchTypeOrder, match.Type())
+	}
 	statement.matches[match.Type()] = match
 }
 
 func (statement *Statement) addOption(option Option) {
+	if _, ok := statement.options[option.Type()]; !ok {
+		statement.optionTypeOrder = append(statement.optionTypeOrder, option.Type())
+	}
 	statement.options[option.Type()] = option
 }
 
@@ -102,7 +110,12 @@ func (statement *Statement) Elems() ([]string, error) {
 	}
 
 	// options
-	for _, option := range statement.options {
+	for _, optionType := range statement.optionTypeOrder {
+		option, ok := statement.options[optionType]
+		if !ok {
+			continue
+		}
+
 		args := option.ShortArgs()
 		if args != nil {
 			if option.Type() != OptionTypeNumeric ||
@@ -117,7 +130,11 @@ func (statement *Statement) Elems() ([]string, error) {
 	}
 
 	// matches
-	for _, match := range statement.matches {
+	for _, matchType := range statement.matchTypeOrder {
+		match, ok := statement.matches[matchType]
+		if !ok {
+			continue
+		}
 		args := match.ShortArgs()
 		if args != nil {
 			elems = append(elems, args...)
