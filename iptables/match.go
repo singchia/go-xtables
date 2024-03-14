@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/singchia/go-hammer/tree"
+
 	"github.com/singchia/go-xtables"
 	"github.com/singchia/go-xtables/pkg/network"
 )
@@ -10284,6 +10285,10 @@ func newMatchUDP(opts ...OptionMatchUDP) (*MatchUDP, error) {
 		baseMatch: &baseMatch{
 			matchType: MatchTypeUDP,
 		},
+		SrcPortMin: -1,
+		SrcPortMax: -1,
+		DstPortMin: -1,
+		DstPortMax: -1,
 	}
 	for _, opt := range opts {
 		opt(match)
