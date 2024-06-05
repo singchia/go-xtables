@@ -327,8 +327,10 @@ If you want to contribute new features or help solve project problems, please fe
  * Submit one feature at a time
  * Include unit tests with the code you submit
 
-## License
+## Who is using
 
-© Austin Zhai, 2022-2025
+<img src="docs/users/Moresec-LOGO.png" width="100">
+
+## License
 
 Released under the [Apache License 2.0](https://github.com/singchia/go-xtables/blob/main/LICENSE)

@@ -319,7 +319,7 @@ ipt.Chain(iptables.ChainTypeOUTPUT).Policy(iptables.TargetTypeAccept)
 * Arch Linux
 
 ## 参与开发
- 当前go-xtables处于能力验证阶段（POC），如果你发现任何Bug，请随意提出Issue，项目Maintainers会及时响应相关问题。
+ 当前go-xtables处于生产就绪阶段，如果你发现任何Bug，请随意提出Issue，项目Maintainers会及时响应相关问题。
  
  如果你希望能够提交Feature，更快速解决项目问题，满足以下简单条件下欢迎提交PR：
  
@@ -330,8 +330,12 @@ ipt.Chain(iptables.ChainTypeOUTPUT).Policy(iptables.TargetTypeAccept)
 
 经过Code review没问题，就会合入代码。
 
+## 谁在使用
+
+<img src="docs/users/Moresec-LOGO.png" width="100">
+
+
 ## 许可证
 
-© Austin Zhai, 2022-2025
 
 Released under the [Apache License 2.0](https://github.com/singchia/go-xtables/blob/main/LICENSE)
