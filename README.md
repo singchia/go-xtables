@@ -1,5 +1,5 @@
 <p align=center>
-<img src="./docs/go-xtables.png" width="60%" height="60%">
+<img src="./docs/go-xtables.png" width="35%" height="35%">
 </p>
 
 <div align="center">
