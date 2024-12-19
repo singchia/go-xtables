@@ -9531,23 +9531,22 @@ func (mTCP *MatchTCP) Short() string {
 func (mTCP *MatchTCP) ShortArgs() []string {
 	args := make([]string, 0, 17)
 	args = append(args, "-m", mTCP.matchType.String())
-	if mTCP.SrcPortMin > -1 {
+	if mTCP.SrcPortMin > -1 && mTCP.SrcPortMax > -1 {
+		args = append(args, "--sport", strconv.Itoa(mTCP.SrcPortMin)+":"+strconv.Itoa(mTCP.SrcPortMax))
+	} else if mTCP.SrcPortMin > -1 {
 		if mTCP.SrcPortInvert {
 			args = append(args, "!")
 		}
 		args = append(args, "--sport", strconv.Itoa(mTCP.SrcPortMin))
-		if mTCP.SrcPortMax > -1 {
-			args = append(args, ":"+strconv.Itoa(mTCP.SrcPortMax))
-		}
 	}
-	if mTCP.DstPortMin > -1 {
+
+	if mTCP.DstPortMin > -1 && mTCP.DstPortMax > -1 {
+		args = append(args, "--dport", strconv.Itoa(mTCP.DstPortMin)+":"+strconv.Itoa(mTCP.DstPortMax))
+	} else if mTCP.DstPortMin > -1 {
 		if mTCP.DstPortInvert {
 			args = append(args, "!")
 		}
 		args = append(args, "--dport", strconv.Itoa(mTCP.DstPortMin))
-		if mTCP.DstPortMax > -1 {
-			args = append(args, ":"+strconv.Itoa(mTCP.DstPortMax))
-		}
 	}
 	if mTCP.FlagsMask != 0 && mTCP.FlagsSet != 0 {
 		if mTCP.FlagsInvert {
@@ -9571,24 +9570,24 @@ func (mTCP *MatchTCP) Long() string {
 func (mTCP *MatchTCP) LongArgs() []string {
 	args := make([]string, 0, 17)
 	args = append(args, "-m", mTCP.matchType.String())
-	if mTCP.SrcPortMin > -1 {
+	if mTCP.SrcPortMin > -1 && mTCP.SrcPortMax > -1 {
+		args = append(args, "--source-port", strconv.Itoa(mTCP.SrcPortMin)+":"+strconv.Itoa(mTCP.SrcPortMax))
+	} else if mTCP.SrcPortMin > -1 {
 		if mTCP.SrcPortInvert {
 			args = append(args, "!")
 		}
 		args = append(args, "--source-port", strconv.Itoa(mTCP.SrcPortMin))
-		if mTCP.SrcPortMax > -1 {
-			args = append(args, ":"+strconv.Itoa(mTCP.SrcPortMax))
-		}
 	}
-	if mTCP.DstPortMin > -1 {
+
+	if mTCP.DstPortMin > -1 && mTCP.DstPortMax > -1 {
+		args = append(args, "--destination-port", strconv.Itoa(mTCP.DstPortMin)+":"+strconv.Itoa(mTCP.DstPortMax))
+	} else if mTCP.DstPortMin > -1 {
 		if mTCP.DstPortInvert {
 			args = append(args, "!")
 		}
 		args = append(args, "--destination-port", strconv.Itoa(mTCP.DstPortMin))
-		if mTCP.DstPortMax > -1 {
-			args = append(args, ":"+strconv.Itoa(mTCP.DstPortMax))
-		}
 	}
+
 	if mTCP.FlagsMask != 0 && mTCP.FlagsSet != 0 {
 		if mTCP.FlagsInvert {
 			args = append(args, "!")
