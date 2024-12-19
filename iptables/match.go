@@ -10314,23 +10314,28 @@ func (mUDP *MatchUDP) Short() string {
 func (mUDP *MatchUDP) ShortArgs() []string {
 	args := make([]string, 0, 17)
 	args = append(args, "-m", mUDP.matchType.String())
-	if mUDP.SrcPortMin > -1 {
+	if mUDP.SrcPortMin > -1 && mUDP.SrcPortMax > -1 {
+		if mUDP.SrcPortInvert {
+			args = append(args, "!")
+		}
+		args = append(args, "--sport", strconv.Itoa(mUDP.SrcPortMin)+":"+strconv.Itoa(mUDP.SrcPortMax))
+	} else if mUDP.SrcPortMin > -1 {
 		if mUDP.SrcPortInvert {
 			args = append(args, "!")
 		}
 		args = append(args, "--sport", strconv.Itoa(mUDP.SrcPortMin))
-		if mUDP.SrcPortMax > -1 {
-			args = append(args, ":"+strconv.Itoa(mUDP.SrcPortMax))
-		}
 	}
-	if mUDP.DstPortMin > -1 {
+
+	if mUDP.DstPortMin > -1 && mUDP.DstPortMax > -1 {
+		if mUDP.DstPortInvert {
+			args = append(args, "!")
+		}
+		args = append(args, "--dport", strconv.Itoa(mUDP.DstPortMin)+":"+strconv.Itoa(mUDP.DstPortMax))
+	} else if mUDP.DstPortMin > -1 {
 		if mUDP.DstPortInvert {
 			args = append(args, "!")
 		}
 		args = append(args, "--dport", strconv.Itoa(mUDP.DstPortMin))
-		if mUDP.DstPortMax > -1 {
-			args = append(args, ":"+strconv.Itoa(mUDP.DstPortMax))
-		}
 	}
 	return args
 }
@@ -10342,23 +10347,28 @@ func (mUDP *MatchUDP) Long() string {
 func (mUDP *MatchUDP) LongArgs() []string {
 	args := make([]string, 0, 17)
 	args = append(args, "-m", mUDP.matchType.String())
-	if mUDP.SrcPortMin > -1 {
+	if mUDP.SrcPortMin > -1 && mUDP.SrcPortMax > -1 {
+		if mUDP.SrcPortInvert {
+			args = append(args, "!")
+		}
+		args = append(args, "--source-port", strconv.Itoa(mUDP.SrcPortMin)+":"+strconv.Itoa(mUDP.SrcPortMax))
+	} else if mUDP.SrcPortMin > -1 {
 		if mUDP.SrcPortInvert {
 			args = append(args, "!")
 		}
 		args = append(args, "--source-port", strconv.Itoa(mUDP.SrcPortMin))
-		if mUDP.SrcPortMax > -1 {
-			args = append(args, ":"+strconv.Itoa(mUDP.SrcPortMax))
-		}
 	}
-	if mUDP.DstPortMin > -1 {
+
+	if mUDP.DstPortMin > -1 && mUDP.DstPortMax > -1 {
+		if mUDP.DstPortInvert {
+			args = append(args, "!")
+		}
+		args = append(args, "--destination-port", strconv.Itoa(mUDP.DstPortMin)+":"+strconv.Itoa(mUDP.DstPortMax))
+	} else if mUDP.DstPortMin > -1 {
 		if mUDP.DstPortInvert {
 			args = append(args, "!")
 		}
 		args = append(args, "--destination-port", strconv.Itoa(mUDP.DstPortMin))
-		if mUDP.DstPortMax > -1 {
-			args = append(args, ":"+strconv.Itoa(mUDP.DstPortMax))
-		}
 	}
 	return args
 }
