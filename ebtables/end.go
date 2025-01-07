@@ -308,7 +308,7 @@ func (ebtables *EBTables) DeleteChain() error {
 
 	for _, table := range tables {
 		newebtables.Table(table)
-		command := newDeleteChain(newebtables.statement.chain)
+		command := newDeleteChain(newebtables.statement.chain.String())
 		newebtables.statement.command = command
 		if newebtables.dr {
 			newebtables.dryrun()
