@@ -640,11 +640,12 @@ type DeleteChain struct {
 	chainName string
 }
 
-func newDeleteChain() *DeleteChain {
+func newDeleteChain(chainName string) *DeleteChain {
 	command := &DeleteChain{
 		baseCommand: &baseCommand{
 			commandType: CommandTypeDeleteChain,
 		},
+		chainName: chainName,
 	}
 	command.setChild(command)
 	return command
