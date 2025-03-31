@@ -1376,10 +1376,12 @@ func (mCG *MatchCGroup) LongArgs() []string {
 }
 
 func (mCG *MatchCGroup) Parse(main []byte) (int, bool) {
+	// For cgroup2 paths, must correctly process params like "cgroup ! /system.slice/systemd-journald.service MARK set 0xdeadbeef"
+	//
 	// 1. "^cgroup"
-	// 2. "( (! )?([ -~]+))?" #1 #2 #3
+	// 2. "( (! )?([^\s]+))?" #1 #2 #3
 	// 3. "( (! )?([0-9]+))?" #4 #5 #6
-	pattern := `^cgroup( (! )?([ -~]+))?( (! )?([0-9]+))? *`
+	pattern := `^cgroup( (! )?([^\s]+))?( (! )?([0-9]+))? *`
 	reg := regexp.MustCompile(pattern)
 	matches := reg.FindSubmatch(main)
 	if len(matches) != 7 {
